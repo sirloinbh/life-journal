@@ -1,0 +1,14 @@
+# 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/app/deploy/에서
+[Unit]
+Description=감상문·일기장 weekly restore check of the newest database dump
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=docker
+WorkingDirectory=/opt/life-journal
+ExecStart=/bin/bash -c 'cp /opt/life-journal/deploy/backup.sh /tmp/journal-restore-check.sh && exec /bin/bash /tmp/journal-restore-check.sh verify'
+TimeoutStartSec=30min
+Nice=10
