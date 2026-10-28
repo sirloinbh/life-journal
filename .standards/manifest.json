@@ -1,5 +1,5 @@
 {
-  "centralSha": "3b90c85c232ec9540393ec04d38775708c8cff68",
+  "centralSha": "696badf2715535fcbf01b760c1081f2319f9b942",
   "profile": "app",
   "project": "life-journal",
   "files": {
@@ -60,7 +60,7 @@
     },
     ".github/dependabot.yml": {
       "mode": "full",
-      "sha256": "58ce4623479aee670b5525c896bcca09d47ec7e810d26f63a5d273b7bcb67226",
+      "sha256": "61be3514c0c653e664a28dda66b1ee816afcaa9cc02f22ea141ebf5f17693958",
       "source": "templates/app/.github/dependabot.yml"
     },
     ".github/ISSUE_TEMPLATE/task.md": {
@@ -75,7 +75,7 @@
     },
     ".github/workflows/ci.yml": {
       "mode": "full",
-      "sha256": "c5d37d27afa001038eec559287f16016a6c279e4e3275c2b668b0c6f331ed9fd",
+      "sha256": "7968d9a1d695601ecb4514ee3e1a893380c661d957487334206b3704ae11835b",
       "source": "templates/app/.github/workflows/ci.yml.tmpl"
     },
     ".gitignore": {
@@ -100,7 +100,7 @@
     },
     ".prettierignore": {
       "mode": "section",
-      "sha256": "276a4be5aff4124c43027ec6c20a65abd36b61cf38ae0b67018b4af4a419ccdd",
+      "sha256": "28a38514ee87b25e980223d404b406bedd5dc1f85745bf8e6adb6f8b159357aa",
       "source": "templates/app/.prettierignore.tmpl"
     },
     ".prettierrc.json": {
@@ -138,9 +138,19 @@
       "sha256": "60531b0741e0406f4229d7ccfb6b2b2d38b4c6ed421446871862b36db91fb72b",
       "source": "scripts/lib/render.mjs"
     },
+    ".standards/secret-scan.mjs": {
+      "mode": "full",
+      "sha256": "ec151cd5caef84f81e4e13c3ae4ce79fa59431f656b2850126f00a60be2712b0",
+      "source": "scripts/secret-scan.mjs"
+    },
+    ".vscode/extensions.json": {
+      "mode": "full",
+      "sha256": "71526a8e02c3b567636047b2324dac0c53d9fd6fdb1e735332c3c11acd005087",
+      "source": "templates/app/.vscode/extensions.json.tmpl"
+    },
     ".vscode/settings.json": {
       "mode": "full",
-      "sha256": "303600913e48ed24ed07ac73210069ca1641619b8fad46d9176942b2633a8e8d",
+      "sha256": "c398cc92f1aa987cf1349cc64a35ef31e89e0104e8967ff9b2b4edc63fd42708",
       "source": "templates/common/.vscode/settings.json.tmpl"
     },
     "AGENTS.md": {
@@ -185,7 +195,7 @@
     },
     "deploy/autodeploy.sh": {
       "mode": "full",
-      "sha256": "a44f2ef9d7bdd2f678691c0d07e599eb7b675dc96e621391091e84b3a26c7f68",
+      "sha256": "61872c82da919cc794dcaabd1a4882ac4a98a7f4a23a829f965d0505b2a4950c",
       "source": "templates/app/deploy/autodeploy.sh.tmpl"
     },
     "deploy/autodeploy.timer": {
@@ -193,15 +203,80 @@
       "sha256": "6bc9037bcebe5c281474c740f426415d6ee86cbbc2057abe9cbf5bfe8b9ddae9",
       "source": "templates/app/deploy/autodeploy.timer.tmpl"
     },
+    "deploy/backup.service": {
+      "mode": "full",
+      "sha256": "562d79de806870766a313bc703305e7d55f42b71680f38b99f83124497094b6b",
+      "source": "templates/app/deploy/backup.service.tmpl"
+    },
+    "deploy/backup.sh": {
+      "mode": "full",
+      "sha256": "2360ed73b283dfbfae24856d2f3e4e4315d7b6bbffac9ae926602c42279cfe2a",
+      "source": "templates/app/deploy/backup.sh.tmpl"
+    },
+    "deploy/backup.timer": {
+      "mode": "full",
+      "sha256": "13ceee3dc0d08375025eed94761fa01fc31c0e3dd6d351ac9e929a48b42647f3",
+      "source": "templates/app/deploy/backup.timer.tmpl"
+    },
+    "deploy/health.service": {
+      "mode": "full",
+      "sha256": "f012db008011a5619c3f47cc1999560fc2c97f6d9b84053d9c03da39d137eb50",
+      "source": "templates/app/deploy/health.service.tmpl"
+    },
+    "deploy/health.timer": {
+      "mode": "full",
+      "sha256": "2ce025b6ab8fcedaa0dbd82484a7f4e49e4756443ede1dcc6d1edfb1b9336b8c",
+      "source": "templates/app/deploy/health.timer.tmpl"
+    },
     "deploy/install-autodeploy.sh": {
       "mode": "full",
       "sha256": "f284e8b49b32eb7e6718564b9e2c870780d175fe633c756cb9b8ebc6399ad71e",
       "source": "templates/app/deploy/install-autodeploy.sh.tmpl"
     },
+    "deploy/install-backup.sh": {
+      "mode": "full",
+      "sha256": "a556f4440f370010fbb1d674f20a0e5abd9368c7cfe738d9ab00ac43d86bf0e8",
+      "source": "templates/app/deploy/install-backup.sh.tmpl"
+    },
+    "deploy/notify.sh": {
+      "mode": "full",
+      "sha256": "18e5a268ca36bb88aca26076d12642744999655ac7955e3343cf11bbc04006df",
+      "source": "templates/app/deploy/notify.sh.tmpl"
+    },
     "deploy/remote-deploy.sh": {
       "mode": "full",
-      "sha256": "c4c9199a89fd09b7356d4a033e51e439078e3796014a3422bf60b2a189a3287b",
+      "sha256": "2103b3f8e1e969b4908acbd4cebaca1548499d35b6691dea65052cf2892f4d4c",
       "source": "templates/app/deploy/remote-deploy.sh.tmpl"
+    },
+    "deploy/report.service": {
+      "mode": "full",
+      "sha256": "6025f5933aa683f5acd24e89aae5117af533463aae6c9db9737d5811ea5bbd18",
+      "source": "templates/app/deploy/report.service.tmpl"
+    },
+    "deploy/report.sh": {
+      "mode": "full",
+      "sha256": "8f1f15e870432e2fccf6af8ae857809f3f24bb884a6448335d342cbba63e05e0",
+      "source": "templates/app/deploy/report.sh.tmpl"
+    },
+    "deploy/report.timer": {
+      "mode": "full",
+      "sha256": "fd7f5e88ba0aa286fbef3d52f9f9058937c7e33f1fd8bbe1e1b4060f96b7435a",
+      "source": "templates/app/deploy/report.timer.tmpl"
+    },
+    "deploy/restore-check.service": {
+      "mode": "full",
+      "sha256": "3cbeed170234c122d5271532d9ceea5cb4a33ead9a5cea4c1b8c319caf496e08",
+      "source": "templates/app/deploy/restore-check.service.tmpl"
+    },
+    "deploy/restore-check.timer": {
+      "mode": "full",
+      "sha256": "dd315492749033775b23d72bdad7d2f89bc65d6ba2662e51477b1d2b52621afe",
+      "source": "templates/app/deploy/restore-check.timer.tmpl"
+    },
+    "deploy/ssm-get.sh": {
+      "mode": "full",
+      "sha256": "1af5bc588a8457301a967ee6267dba7616f175127976ee162aee10819b816eb1",
+      "source": "templates/app/deploy/ssm-get.sh.tmpl"
     },
     "eslint.config.mjs": {
       "mode": "full",
@@ -220,7 +295,7 @@
     },
     "frontend/nginx.conf": {
       "mode": "full",
-      "sha256": "19f35aeaa976e837677e3fb54eaf36824d87ccc380b5aa75ab004a3ae73ea7e7",
+      "sha256": "0dc3432c7aedb48e55e5fc8da67ca8c902b0d5a85a8432b17182812991bf1a4e",
       "source": "templates/app/frontend/nginx.conf.tmpl"
     },
     "frontend/package.json": {
