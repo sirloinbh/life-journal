@@ -1,5 +1,5 @@
 {
-  "centralSha": "7a47662beb53746a4bb08b2d2c7e708165eb2f70",
+  "centralSha": "f5bcc28609146d357c3af225bedc3f77868c27aa",
   "profile": "app",
   "project": "life-journal",
   "files": {
@@ -80,7 +80,7 @@
     },
     ".github/workflows/ci.yml": {
       "mode": "full",
-      "sha256": "4003c8769160d3856baabd01bc2bb86d964f78c11d9d7f61c8b4297532701a1a",
+      "sha256": "4c94774a545f7b16e1417633cc76a45b46dc4fa55922dd3f133570472db4c620",
       "source": "templates/app/.github/workflows/ci.yml.tmpl"
     },
     ".gitignore": {
