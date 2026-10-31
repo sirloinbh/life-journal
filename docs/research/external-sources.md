@@ -38,7 +38,7 @@
 ### YES24 Open API (독서)
 
 - 제공: 제목, 저자, 출판사, ISBN, 정가·판매가, 표지 URL, 상세 조회 시 평균 별점([API 명세](https://github.com/yes24-AX/yes24-openapi-samples/blob/main/docs/api-reference.md)).
-- 인증과 한도: `X-Api-Key` 헤더, 기본 키 초당 10회, 일 20,000회([문서](https://developers.yes24.com/docs)). 샘플 저장소의 초당 5회, 일 5,000회는 상향 전 값이다. Basic 플랜은 무료 유지 예정([개발자센터](https://developers.yes24.com)).
+- 인증과 한도: `X-Api-Key` 헤더, 기본 키 초당 10회, 일 20,000회([문서](https://developers.yes24.com/docs)). 샘플 저장소에는 초당 5회, 일 5,000회로 적혀 있지만 공식 문서 값을 따른다. Basic 플랜은 무료 유지 예정([개발자센터](https://developers.yes24.com)).
 - 약관([원문](https://developers.yes24.com/support/terms)):
   - 성능 향상을 위한 일시 캐싱은 허용한다. 가격·재고는 운영정책의 갱신 주기를 지킨다.
   - 대량·체계적 축적으로 별도 DB를 만들거나 제3자에게 제공하면 안 된다.
@@ -56,7 +56,7 @@
 
 - 제공: 공연 목록, 포스터 URL. 가격·출연진·공연장 필드는 미확인([안내](https://kopis.or.kr/por/cs/openapi/openApiInfo.do?menuId=MNU_00074)).
 - 조건: 인증키 1인 1개, KOPIS 기반임을 명시. 유효기간 1년, 3개월 이상 미사용 시 승인 취소.
-- 미확인: 호출 한도, 저장·캐시 조건, 약관 전문. 공식 페이지 본문을 읽지 못해 위 조건도 검색 결과 문구로만 확인했다. 키를 받은 뒤 다시 확인한다.
+- 미확인: 호출 한도, 비용, 저장·캐시 조건, 약관 전문. 공식 페이지 본문을 읽지 못해 위 조건도 검색 결과 문구로만 확인했다. 키를 받은 뒤 다시 확인한다.
 
 ### 한국관광공사 TourAPI (여행)
 
@@ -98,7 +98,7 @@ TMDB에서 가져온 값은 6개월 안에 다시 조회해 갱신한다. 갱신
 ## 조사의 한계
 
 - 약관 인용 중 YES24, 카카오 제4조 제10호, 알라딘 공지는 원문 페이지에서 다시 확인했다. 나머지는 웹 페이지 요약을 거쳤으므로 구현 전에 원문을 대조한다.
-- 읽지 못한 페이지: `developers.naver.com`, Wine-Searcher API 문서와 약관(403), Whiskybase API 페이지(403), KOPIS 본문.
+- 읽지 못한 페이지: `developers.naver.com`, Wine-Searcher API 문서와 약관(403), Whiskybase API 페이지와 약관(403), KMDb 약관, KOPIS 본문.
 
 ## 구현 카드
 
