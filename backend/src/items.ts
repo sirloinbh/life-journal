@@ -245,7 +245,8 @@ const notFound = () => new HttpError(404, '항목을 찾을 수 없습니다');
 
 const SORT_COLUMNS = {
   title: 'title',
-  category: 'category',
+  // Menu order: the keys are English, so their alphabetical order means nothing on screen.
+  category: "array_position(ARRAY['reading', 'screen', 'stage', 'drink', 'travel'], category)",
   status: 'status',
   costKrw: 'cost_krw',
   plannedDate: 'planned_date',

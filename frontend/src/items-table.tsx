@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { Button } from './components/ui/button';
@@ -32,26 +32,33 @@ const COLUMNS = [
 
 const STATUS_LABELS = { wishlist: '하고 싶음', done: '완료' };
 
-type Result = { items: Item[] | null; failure: unknown; search: string | null };
+type Result = { items: Item[] | null; failure: unknown; request: string | null };
 
 // Only the answer for the current address reaches the screen, so a slow old answer cannot replace it.
 function useFilteredItems(search: string) {
-  const [result, setResult] = useState<Result>({ items: null, failure: null, search: null });
+  const [result, setResult] = useState<Result>({ items: null, failure: null, request: null });
+  const [attempt, setAttempt] = useState(0);
+  const request = `${attempt}?${search}`;
   useEffect(() => {
     let current = true;
     requestJson<{ items: Item[] }>(`/api/items${search ? `?${search}` : ''}`).then(
       ({ items }) => {
-        if (current) setResult({ items, failure: null, search });
+        if (current) setResult({ items, failure: null, request });
       },
       (failure: unknown) => {
-        if (current) setResult((last) => ({ items: last.items, failure, search }));
+        if (current) setResult((last) => ({ items: last.items, failure, request }));
       },
     );
     return () => {
       current = false;
     };
-  }, [search]);
-  return { ...result, loading: result.search !== search };
+  }, [search, request]);
+  return {
+    items: result.items,
+    failure: result.failure,
+    loading: result.request !== request,
+    retry: () => setAttempt((count) => count + 1),
+  };
 }
 
 function ChoiceFilter({
@@ -87,27 +94,37 @@ function ChoiceFilter({
   );
 }
 
-/** Applies on Enter or leaving the field, so typing Korean is never cut off by a request. */
-function TextFilter({
+/**
+ * Applies on Enter or leaving the field. Typing Korean is never cut off by a request, and a date is
+ * never searched half typed: a controlled date field also loses the digits typed so far.
+ */
+function InputFilter({
   id,
   label,
   value,
+  type,
   inputMode,
   onChange,
 }: {
   id: string;
   label: string;
   value: string;
+  type?: 'date';
   inputMode?: 'numeric';
   onChange: (value: string) => void;
 }) {
+  const field = useRef<HTMLInputElement>(null);
+  // A new value from the address, such as going back, replaces what is in the field.
+  useEffect(() => {
+    if (field.current && field.current.value.trim() !== value) field.current.value = value;
+  }, [value]);
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={id}>{label}</Label>
       <Input
-        // A new value from the address, such as going back, replaces what is in the field.
-        key={value}
+        ref={field}
         id={id}
+        type={type}
         defaultValue={value}
         inputMode={inputMode}
         autoComplete="off"
@@ -120,36 +137,17 @@ function TextFilter({
   );
 }
 
-function DateFilter({
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type="date" value={value} onChange={(event) => onChange(event.target.value)} />
-    </div>
-  );
-}
-
 export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
   const [params, setParams] = useSearchParams();
   const search = params.toString();
-  const { items, failure, loading } = useFilteredItems(search);
+  const { items, failure, loading, retry } = useFilteredItems(search);
   const sort = params.get('sort') ?? 'createdAt';
   const order = params.get('order') ?? 'desc';
 
   const setFilter = (name: string, value: string) => {
-    if ((params.get(name) ?? '') === (value === ANY ? '' : value)) return;
+    if ((params.get(name) ?? '') === value) return;
     const next = new URLSearchParams(params);
-    if (value && value !== ANY) next.set(name, value);
+    if (value) next.set(name, value);
     else next.delete(name);
     setParams(next, { replace: true });
   };
@@ -166,7 +164,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <TextFilter
+        <InputFilter
           id="table-q"
           label="검색(제목, 분야별 정보)"
           value={filterValue('q')}
@@ -177,35 +175,37 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           label="분야"
           value={params.get('category') ?? ANY}
           options={categories.map(({ key, label }) => ({ value: key, label }))}
-          onChange={(value) => setFilter('category', value)}
+          onChange={(value) => setFilter('category', value === ANY ? '' : value)}
         />
         <ChoiceFilter
           id="table-status"
           label="상태"
           value={params.get('status') ?? ANY}
           options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
-          onChange={(value) => setFilter('status', value)}
+          onChange={(value) => setFilter('status', value === ANY ? '' : value)}
         />
-        <DateFilter
+        <InputFilter
           id="table-from"
-          label="기간 시작(완료일, 없으면 예정일)"
+          label="기간 시작"
+          type="date"
           value={filterValue('from')}
           onChange={(value) => setFilter('from', value)}
         />
-        <DateFilter
+        <InputFilter
           id="table-to"
           label="기간 끝"
+          type="date"
           value={filterValue('to')}
           onChange={(value) => setFilter('to', value)}
         />
-        <TextFilter
+        <InputFilter
           id="table-cost-min"
           label="최소 비용(원)"
           inputMode="numeric"
           value={filterValue('costMin')}
           onChange={(value) => setFilter('costMin', value)}
         />
-        <TextFilter
+        <InputFilter
           id="table-cost-max"
           label="최대 비용(원)"
           inputMode="numeric"
@@ -213,26 +213,47 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           onChange={(value) => setFilter('costMax', value)}
         />
       </div>
+      <p className="text-caption text-muted-foreground">
+        기간은 완료일, 없으면 예정일로 찾습니다. 글자와 날짜는 Enter를 누르거나 칸을 벗어나면
+        적용됩니다.
+      </p>
       <div className="flex min-h-9 items-center justify-between gap-4">
         <p role="status" className="text-body-sm text-muted-foreground">
           {loading ? '불러오는 중…' : items ? `${items.length}개` : ''}
         </p>
         {search ? (
-          <Button variant="outline" size="sm" onClick={() => setParams({}, { replace: true })}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setParams({}, { replace: true });
+              // This button disappears now, so the focus moves to the first filter.
+              document.getElementById('table-q')?.focus();
+            }}
+          >
             조건 지우기
           </Button>
         ) : null}
       </div>
-      {failure && !loading ? <Notice notice={{ kind: 'error', text: errorText(failure) }} /> : null}
+      {failure && !loading ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Notice notice={{ kind: 'error', text: errorText(failure) }} />
+          <Button variant="outline" size="sm" onClick={retry}>
+            다시 시도
+          </Button>
+        </div>
+      ) : null}
       {items === null ? (
         loading ? (
           <Spinner label="항목을 불러오는 중" />
         ) : null
       ) : items.length === 0 ? (
-        <EmptyState
-          title="조건에 맞는 항목이 없습니다"
-          description="조건을 바꾸거나 버킷리스트에서 항목을 추가해 보세요."
-        />
+        loading || failure ? null : (
+          <EmptyState
+            title="조건에 맞는 항목이 없습니다"
+            description="조건을 바꾸거나 버킷리스트에서 항목을 추가해 보세요."
+          />
+        )
       ) : (
         <div className="overflow-x-auto rounded-md border" role="region" aria-label="항목 표">
           <table className="w-full min-w-[44rem] text-left text-body-sm">

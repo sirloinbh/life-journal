@@ -386,7 +386,14 @@ test('search, filters, and sorting return the right items', { skip: !url }, asyn
       rating: 3,
       ...done('2026-02-01'),
     },
-    { category: 'drink', subtype: 'wine', title: 'under_score', plannedDate: '2026-06-01' },
+    {
+      category: 'drink',
+      subtype: 'wine',
+      title: 'under_score',
+      plannedDate: '2026-06-01',
+      costKrw: 0,
+    },
+    { category: 'screen', subtype: 'movie', title: 'back\\slash', costKrw: null },
   ];
   await withApi(
     pool,
@@ -409,6 +416,7 @@ test('search, filters, and sorting return the right items', { skip: !url }, asyn
       await sameItems(`q=${encoded('헤세')}`, ['데미안', '교토']);
       await sameItems(`q=${encoded('BO')}&category=stage`, []);
       await sameItems('q=UNDER', ['under_score']);
+      await sameItems(`q=${encoded('\\')}`, ['back\\slash']);
       await sameItems('q=author', []);
       await sameItems(`q=${encoded('%')}`, ['100% 완독']);
       await sameItems(`q=${encoded('_')}`, ['under_score']);
@@ -423,15 +431,26 @@ test('search, filters, and sorting return the right items', { skip: !url }, asyn
       await sameItems('to=2026-02-01', ['교토']);
       await sameItems('from=2026-05-01&to=2026-05-01', ['라 보엠']);
       await sameItems('costMin=20000', ['100% 완독', '라 보엠']);
-      await sameItems('costMax=20000', ['데미안', '100% 완독']);
+      await sameItems('costMax=20000', ['데미안', '100% 완독', 'under_score']);
+      await sameItems('costMin=0', ['데미안', '100% 완독', '라 보엠', 'under_score']);
+      await sameItems('costMax=0', ['under_score']);
       await sameItems('costMin=12000&costMax=20000&status=wishlist', ['데미안', '100% 완독']);
       await sameItems(`q=${encoded('헤세')}&status=done&to=2026-02-01`, ['교토']);
 
       // Items without a cost come last in either direction.
       assert.deepEqual((await titles('sort=costKrw&order=asc')).slice(0, 3), [
+        'under_score',
         '데미안',
         '100% 완독',
+      ]);
+      // Categories sort in menu order, and the newer item comes first within one.
+      assert.deepEqual(await titles('sort=category&order=asc'), [
+        '100% 완독',
+        '데미안',
+        'back\\slash',
         '라 보엠',
+        'under_score',
+        '교토',
       ]);
       assert.deepEqual((await titles('sort=costKrw&order=desc')).slice(0, 3), [
         '라 보엠',

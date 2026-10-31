@@ -121,7 +121,7 @@ test('filters in the address are used, shown, and kept', async () => {
   expect(asked).toEqual([search]);
   expect(screen.getByLabelText('검색(제목, 분야별 정보)')).toHaveValue('헤세');
   expect(screen.getByRole('combobox', { name: '상태' })).toHaveTextContent('완료');
-  expect(screen.getByLabelText('기간 시작(완료일, 없으면 예정일)')).toHaveValue('2026-01-01');
+  expect(screen.getByLabelText('기간 시작')).toHaveValue('2026-01-01');
   expect(screen.getByLabelText('기간 끝')).toHaveValue('2026-12-31');
   expect(screen.getByLabelText('최소 비용(원)')).toHaveValue('1000');
   expect(screen.getByLabelText('최대 비용(원)')).toHaveValue('2000');
@@ -146,12 +146,94 @@ test('text filters apply on Enter or leaving the field, not while typing', async
   await waitFor(() => expect(asked.at(-1)).toContain('costMin=1000'));
 });
 
-test('date filters apply when they change', async () => {
+test('a date filter applies on leaving the field, not while it is typed', async () => {
   const asked = fakeApi(() => json({ items: [] }));
   openAt('/table');
   await screen.findByText('조건에 맞는 항목이 없습니다');
-  fireEvent.change(screen.getByLabelText('기간 끝'), { target: { value: '2026-12-31' } });
-  await waitFor(() => expect(asked.at(-1)).toBe('to=2026-12-31'));
+  const field = screen.getByLabelText('기간 끝');
+  fireEvent.change(field, { target: { value: '2026-03-02' } });
+  fireEvent.change(field, { target: { value: '2026-03-28' } });
+  expect(asked).toEqual(['']);
+  fireEvent.blur(field);
+  await waitFor(() => expect(asked.at(-1)).toBe('to=2026-03-28'));
+  expect(asked).toHaveLength(2);
+});
+
+test('applying a filter keeps the focus in its field', async () => {
+  fakeApi(() => json({ items: [] }));
+  openAt('/table');
+  await screen.findByText('조건에 맞는 항목이 없습니다');
+  const field = screen.getByLabelText('검색(제목, 분야별 정보)');
+  field.focus();
+  fireEvent.change(field, { target: { value: '헤세' } });
+  fireEvent.keyDown(field, { key: 'Enter' });
+  await waitFor(() => expect(window.location.search).toContain('q='));
+  expect(screen.getByLabelText('검색(제목, 분야별 정보)')).toBe(field);
+  expect(document.activeElement).toBe(field);
+});
+
+test('a search for the word "any" is a normal search', async () => {
+  const asked = fakeApi(() => json({ items: [] }));
+  openAt('/table');
+  await screen.findByText('조건에 맞는 항목이 없습니다');
+  const field = screen.getByLabelText('검색(제목, 분야별 정보)');
+  fireEvent.change(field, { target: { value: 'any' } });
+  fireEvent.keyDown(field, { key: 'Enter' });
+  await waitFor(() => expect(asked.at(-1)).toBe('q=any'));
+});
+
+test('clearing a field removes its condition', async () => {
+  const asked = fakeApi(() => json({ items: [] }));
+  openAt('/table?q=abc&costMin=5');
+  await screen.findByText('조건에 맞는 항목이 없습니다');
+  const field = screen.getByLabelText('검색(제목, 분야별 정보)');
+  fireEvent.change(field, { target: { value: '' } });
+  fireEvent.blur(field);
+  await waitFor(() => expect(asked.at(-1)).toBe('costMin=5'));
+});
+
+test('a failure can be retried with the same conditions, without an empty notice', async () => {
+  let online = false;
+  const asked = fakeApi(() =>
+    online ? json({ items: [row(1, {})] }) : json({ error: '서버 오류가 발생했습니다' }, 500),
+  );
+  openAt('/table?status=done');
+  expect(await screen.findByRole('alert')).toHaveTextContent('서버 오류가 발생했습니다');
+  expect(screen.queryByText('조건에 맞는 항목이 없습니다')).toBeNull();
+  online = true;
+  fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+  expect(await screen.findByRole('link', { name: '항목 1' })).toBeInTheDocument();
+  expect(asked).toEqual(['status=done', 'status=done']);
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+test('the empty notice waits for the answer', async () => {
+  let release: (response: Response) => void = () => {};
+  const held = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  fakeApi((search) => (search ? json({ items: [] }) : held));
+  openAt('/table?q=zzzz');
+  await screen.findByText('조건에 맞는 항목이 없습니다');
+  fireEvent.click(screen.getByRole('button', { name: '조건 지우기' }));
+  await waitFor(() => expect(screen.queryByText('조건에 맞는 항목이 없습니다')).toBeNull());
+  expect(document.activeElement).toBe(screen.getByLabelText('검색(제목, 분야별 정보)'));
+  release(json({ items: [row(1, {})] }));
+  expect(await screen.findByRole('link', { name: '항목 1' })).toBeInTheDocument();
+});
+
+test('going back restores the conditions in the fields', async () => {
+  fakeApi(() => json({ items: [] }));
+  openAt('/table?q=abc');
+  await screen.findByText('조건에 맞는 항목이 없습니다');
+  const field = screen.getByLabelText('검색(제목, 분야별 정보)');
+  expect(field).toHaveValue('abc');
+  await act(async () => {
+    window.history.pushState(null, '', '/table?q=xyz');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(field).toHaveValue('xyz');
 });
 
 test('a column header sorts, and sorts the other way the second time', async () => {
