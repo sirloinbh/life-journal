@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeAll, beforeEach, expect, test, vi } from 'vitest';
 
 import { App } from './app';
@@ -44,6 +44,7 @@ function fakeApi(initial: Partial<Item>[] = []) {
     failNext: null as { status: number; error: string } | null,
     failList: false,
     gate: null as Promise<void> | null,
+    listGate: null as Promise<void> | null,
   };
   vi.stubGlobal(
     'fetch',
@@ -52,6 +53,12 @@ function fakeApi(initial: Partial<Item>[] = []) {
       if (path === '/api/health') return json({ today: TODAY });
       if (api.gate) await api.gate;
       if (method === 'GET') {
+        // A held list answers with what was true when it was asked.
+        const items = api.items;
+        if (api.listGate) {
+          await api.listGate;
+          return json({ items });
+        }
         return api.failList
           ? json({ error: '서버 오류가 발생했습니다' }, 500)
           : json({ items: api.items });
@@ -336,19 +343,70 @@ test('the form cannot close while saving, so a failure is still shown', async ()
   await dialogClosed();
 });
 
-test('a change that succeeded is not reported as failed when the reload fails', async () => {
-  const api = fakeApi([{ title: '데미안' }]);
+test('changes show the server response even when the reload after them fails', async () => {
+  const api = fakeApi([{ title: '데미안', costKrw: 1000 }]);
   openAt('/bucket-list/reading');
-  const dialog = await openDialog('항목 추가');
-  type(dialog, '제목', '수레바퀴');
+  await screen.findByText('데미안');
   api.failList = true;
+
+  let dialog = await openDialog('항목 추가');
+  type(dialog, '제목', '수레바퀴');
   fireEvent.click(dialog.getByRole('button', { name: '저장' }));
   await dialogClosed();
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    '저장했습니다. 목록은 새로 불러오지 못했습니다',
-  );
-  expect(screen.getByText('데미안')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: '다시 시도' })).toBeNull();
+  expect(await screen.findByText('수레바퀴')).toBeInTheDocument();
+  expect(screen.getByText('저장했습니다')).toHaveAttribute('role', 'status');
+  expect(screen.queryByRole('alert')).toBeNull();
+
+  // The next edit starts from the saved values, so it cannot bring old ones back.
+  dialog = await openDialog('데미안 수정');
+  type(dialog, '제목', '고친 제목');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  dialog = await openDialog('고친 제목 수정');
+  expect(dialog.getByLabelText('제목')).toHaveValue('고친 제목');
+  fireEvent.click(dialog.getByRole('button', { name: '취소' }));
+  await dialogClosed();
+
+  dialog = await openDialog('고친 제목 완료 표시');
+  fireEvent.click(dialog.getByRole('button', { name: '완료로 표시' }));
+  await dialogClosed();
+  dialog = await openDialog('고친 제목 완료 취소');
+  fireEvent.click(dialog.getByRole('button', { name: '완료 취소' }));
+  await dialogClosed();
+  expect(await screen.findByRole('button', { name: '고친 제목 완료 표시' })).toBeInTheDocument();
+
+  dialog = await openDialog('고친 제목 삭제');
+  fireEvent.click(dialog.getByRole('button', { name: '삭제' }));
+  await dialogClosed();
+  await waitFor(() => expect(screen.queryByText('고친 제목')).toBeNull());
+  expect(screen.getByText('수레바퀴')).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+test('a slow older list response cannot replace a newer one', async () => {
+  const api = fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('데미안 수정');
+
+  // The 404 starts a reload that answers with the old list, late.
+  const held = gate();
+  api.listGate = held.promise;
+  api.failNext = { status: 404, error: '항목을 찾을 수 없습니다' };
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  expect(await dialog.findByRole('alert')).toHaveTextContent('항목을 찾을 수 없습니다');
+
+  api.listGate = null;
+  type(dialog, '제목', '고친 제목');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  expect(await screen.findByText('고친 제목')).toBeInTheDocument();
+
+  await act(async () => {
+    held.open();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(screen.getByText('고친 제목')).toBeInTheDocument();
+  expect(screen.queryByText('데미안')).toBeNull();
 });
 
 test('editing an item that is already gone reports it and refreshes the list', async () => {

@@ -45,7 +45,7 @@ function useItems() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const latest = useRef(0);
-  // Resolves to whether the list loaded. Only the latest request may change the screen.
+  // Only the latest request may change the screen.
   const reload = useCallback(async () => {
     const request = ++latest.current;
     try {
@@ -54,16 +54,18 @@ function useItems() {
         setItems(data.items);
         setLoadError(null);
       }
-      return true;
     } catch (error) {
       if (request === latest.current) setLoadError(error);
-      return false;
     }
   }, []);
   useEffect(() => {
     void reload();
   }, [reload]);
-  return { items, loadError, reload };
+  // Applies a change the server confirmed. The list stays right even if the next reload fails.
+  const update = useCallback((change: (current: Item[]) => Item[]) => {
+    setItems((current) => current && change(current));
+  }, []);
+  return { items, loadError, reload, update };
 }
 
 function Field({
@@ -305,10 +307,12 @@ function CategoryItems({
   category,
   items,
   reload,
+  update,
 }: {
   category: Category;
   items: Item[];
-  reload: () => Promise<boolean>;
+  reload: () => Promise<void>;
+  update: (change: (current: Item[]) => Item[]) => void;
 }) {
   const { notice, status, error } = useNotice();
   // The last form stays in `modal` after closing, so the closing animation keeps its content.
@@ -318,6 +322,8 @@ function CategoryItems({
   const opener = useRef<HTMLElement | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const shown = items.filter((item) => item.category === category.key);
+  // A closing form is still on screen during its animation and must not submit again.
+  const pending = saving || !formOpen;
 
   const openForm = (next: FormModal, event: MouseEvent<HTMLButtonElement>) => {
     opener.current = event.currentTarget;
@@ -325,20 +331,24 @@ function CategoryItems({
     setFormOpen(true);
   };
 
-  // The change already succeeded here, so a failed reload must not look like a failed change.
-  const afterChange = async (done: string) => {
-    if (await reload()) status(done);
-    else error(`${done}. 목록은 새로 불러오지 못했습니다`);
+  const keepSaved = (saved: Item) => {
+    update((current) =>
+      current.some(({ id }) => id === saved.id)
+        ? current.map((item) => (item.id === saved.id ? saved : item))
+        : [saved, ...current],
+    );
   };
 
   const save: SaveItem = async (id, fields, done) => {
     setSaving(true);
     try {
-      await requestJson<Item>(id === null ? '/api/items' : `/api/items/${id}`, {
+      const saved = await requestJson<Item>(id === null ? '/api/items' : `/api/items/${id}`, {
         method: id === null ? 'POST' : 'PATCH',
         body: fields,
       });
-      await afterChange(done);
+      keepSaved(saved);
+      await reload();
+      status(done);
       setFormOpen(false);
     } catch (cause) {
       if (cause instanceof RequestError && cause.status === 404) void reload();
@@ -352,7 +362,8 @@ function CategoryItems({
   const changeFromDialog = async (change: () => Promise<unknown>, done: string) => {
     try {
       await change();
-      await afterChange(done);
+      await reload();
+      status(done);
     } catch (cause) {
       error(cause);
       await reload();
@@ -385,20 +396,20 @@ function CategoryItems({
                 onEdit={(event) => openForm({ kind: 'edit', item }, event)}
                 onComplete={(event) => openForm({ kind: 'complete', item }, event)}
                 onReopen={() =>
-                  changeFromDialog(
-                    () =>
-                      requestJson<Item>(`/api/items/${item.id}`, {
+                  changeFromDialog(async () => {
+                    keepSaved(
+                      await requestJson<Item>(`/api/items/${item.id}`, {
                         method: 'PATCH',
                         body: { status: 'wishlist', completedDate: null },
                       }),
-                    '완료를 취소했습니다',
-                  )
+                    );
+                  }, '완료를 취소했습니다')
                 }
                 onDelete={() =>
-                  changeFromDialog(
-                    () => requestJson<void>(`/api/items/${item.id}`, { method: 'DELETE' }),
-                    '삭제했습니다',
-                  )
+                  changeFromDialog(async () => {
+                    await requestJson<void>(`/api/items/${item.id}`, { method: 'DELETE' });
+                    update((current) => current.filter(({ id }) => id !== item.id));
+                  }, '삭제했습니다')
                 }
               />
             </li>
@@ -425,13 +436,13 @@ function CategoryItems({
             </DialogDescription>
           </DialogHeader>
           {modal.kind === 'complete' ? (
-            <CompleteForm item={modal.item} pending={saving} save={save} />
+            <CompleteForm item={modal.item} pending={pending} save={save} />
           ) : (
             <ItemForm
               key={modal.kind === 'edit' ? modal.item.id : 'new'}
               category={category}
               item={modal.kind === 'edit' ? modal.item : null}
-              pending={saving}
+              pending={pending}
               save={save}
             />
           )}
@@ -441,7 +452,7 @@ function CategoryItems({
   );
 }
 
-function LoadFailed({ cause, reload }: { cause: unknown; reload: () => Promise<boolean> }) {
+function LoadFailed({ cause, reload }: { cause: unknown; reload: () => Promise<void> }) {
   const [pending, setPending] = useState(false);
   const retry = async () => {
     setPending(true);
@@ -461,7 +472,7 @@ function LoadFailed({ cause, reload }: { cause: unknown; reload: () => Promise<b
 
 export function BucketList({ path }: { path: string }) {
   const params = useParams();
-  const { items, loadError, reload } = useItems();
+  const { items, loadError, reload, update } = useItems();
   const category = categories.find(({ key }) => key === params.category);
   if (!category) return <Navigate to={`${path}/${categories[0].key}`} replace />;
 
@@ -495,7 +506,13 @@ export function BucketList({ path }: { path: string }) {
           <Spinner label="항목을 불러오는 중" />
         )
       ) : (
-        <CategoryItems key={category.key} category={category} items={items} reload={reload} />
+        <CategoryItems
+          key={category.key}
+          category={category}
+          items={items}
+          reload={reload}
+          update={update}
+        />
       )}
     </div>
   );
