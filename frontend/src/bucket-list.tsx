@@ -189,6 +189,14 @@ function ItemForm({
         type="date"
         defaultValue={item?.plannedDate ?? undefined}
       />
+      <Field
+        id={`${id}-link`}
+        label="링크 (선택)"
+        name="link"
+        defaultValue={item?.link ?? undefined}
+        inputMode="url"
+        autoComplete="off"
+      />
       {item?.status === 'done' ? (
         <Field
           id={`${id}-completed`}
@@ -389,11 +397,24 @@ function ItemCard({
           {item.rating !== null ? <Badge variant="outline">평점 {item.rating}</Badge> : null}
         </CardTitle>
       </CardHeader>
-      {summary.length > 0 || ratings || preview ? (
+      {summary.length > 0 || ratings || preview || item.link ? (
         <CardContent className="flex flex-col gap-1 text-body-sm wrap-anywhere text-muted-foreground">
           {summary.length > 0 ? <p>{summary.join(' · ')}</p> : null}
           {ratings ? <p>{ratings}</p> : null}
           {preview ? <p className="truncate">{preview}</p> : null}
+          {item.link ? (
+            <p>
+              <a
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${item.title} 링크 열기`}
+                className="text-primary underline underline-offset-4"
+              >
+                링크 열기
+              </a>
+            </p>
+          ) : null}
         </CardContent>
       ) : null}
       <CardFooter className="flex flex-wrap gap-2">

@@ -8,7 +8,7 @@ const MAX_COST_KRW = 2_147_483_647; // items.cost_krw is a PostgreSQL integer.
 
 const COLUMNS = `id, category, subtype, title, status, cost_krw AS "costKrw",
   planned_date AS "plannedDate", completed_date AS "completedDate", details,
-  rating::float8 AS rating, sub_ratings AS "subRatings", review,
+  rating::float8 AS rating, sub_ratings AS "subRatings", review, link,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 // PostgreSQL rejects NUL and lone surrogates inside jsonb, which would otherwise surface as a 500.
@@ -72,6 +72,20 @@ const reviewText = z
     `감상문은 ${MAX_REVIEW_LENGTH}자 이하로 입력해 주세요`,
   )
   .refine(isStorable, '감상문에 사용할 수 없는 문자가 있습니다');
+
+// The user opens this link in a browser, so only web addresses may reach an href. The server only stores it.
+const isWebLink = (value: string) => {
+  if (!/^https?:\/\/\S+$/i.test(value) || !isStorable(value)) return false;
+  return URL.canParse(value);
+};
+
+const linkMessage = '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요';
+
+const linkText = z
+  .string({ invalid_type_error: linkMessage })
+  .trim()
+  .max(2000, '링크는 2000자 이하로 입력해 주세요')
+  .refine((value) => value === '' || isWebLink(value), linkMessage);
 
 const vintageMessage = '빈티지는 4자리 연도로 입력해 주세요';
 
@@ -185,6 +199,7 @@ const itemFields = z
         })
         .default({}),
       review: reviewText.nullable().optional(),
+      link: linkText.nullable().optional(),
     },
     {
       required_error: '요청 본문이 필요합니다',
@@ -238,6 +253,7 @@ function parseItem(input: unknown, today: string) {
     rating,
     subRatings,
     review,
+    link: item.link || null,
   };
 }
 
@@ -354,8 +370,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
     const { rows } = await pool.query(
       `INSERT INTO items
          (category, subtype, title, status, cost_krw, planned_date, completed_date, details,
-          rating, sub_ratings, review)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          rating, sub_ratings, review, link)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING ${COLUMNS}`,
       [
         item.category,
@@ -369,6 +385,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         item.rating,
         item.subRatings,
         item.review,
+        item.link,
       ],
     );
     res.status(201).json(rows[0]);
@@ -412,6 +429,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         rating,
         subRatings,
         review,
+        link,
       } = current[0];
       const item = parseItem(
         {
@@ -426,6 +444,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
           rating,
           subRatings,
           review,
+          link,
           ...patch,
         },
         today(),
@@ -434,7 +453,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         `UPDATE items
          SET category = $2, subtype = $3, title = $4, status = $5, cost_krw = $6,
              planned_date = $7, completed_date = $8, details = $9, rating = $10,
-             sub_ratings = $11, review = $12, updated_at = now()
+             sub_ratings = $11, review = $12, link = $13, updated_at = now()
          WHERE id = $1
          RETURNING ${COLUMNS}`,
         [
@@ -450,6 +469,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
           item.rating,
           item.subRatings,
           item.review,
+          item.link,
         ],
       );
       await client.query('COMMIT');

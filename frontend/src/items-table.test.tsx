@@ -24,6 +24,7 @@ const row = (id: number, fields: Partial<Item>): Item => ({
   rating: null,
   subRatings: {},
   review: null,
+  link: null,
   ...fields,
 });
 

@@ -164,6 +164,30 @@ const rejected: { name: string; body: unknown; error: string }[] = [
     body: { ...book, subRatings: { content: 4 } },
     error: '완료하지 않은 항목에는 평점을 넣을 수 없습니다',
   },
+  ...[
+    'javascript:alert(1)',
+    'JAVASCRIPT:alert(1)',
+    'data:text/html,hello',
+    'ftp://example.com/file',
+    'example.com',
+    'https://',
+    'http://exa mple.com',
+    '//example.com',
+  ].map((link) => ({
+    name: `a link of ${link}`,
+    body: { ...book, link },
+    error: '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요',
+  })),
+  {
+    name: 'a link that is not text',
+    body: { ...book, link: 5 },
+    error: '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요',
+  },
+  {
+    name: 'a link of 2001 characters',
+    body: { ...book, link: `https://example.com/${'a'.repeat(1981)}` },
+    error: '링크는 2000자 이하로 입력해 주세요',
+  },
   {
     name: 'a review of 6 lines',
     body: {
@@ -370,6 +394,33 @@ for (const [name, review, stored] of [
       { today: () => TODAY },
     );
     assert.equal(queries[0]?.[10], stored);
+  });
+}
+
+for (const [link, stored] of [
+  ['https://www.vivino.com/wines/1?year=2019', 'https://www.vivino.com/wines/1?year=2019'],
+  ['  HTTP://example.com  ', 'HTTP://example.com'],
+  [`https://example.com/${'a'.repeat(1980)}`, `https://example.com/${'a'.repeat(1980)}`],
+  ['', null],
+  [null, null],
+] as const) {
+  test(`a link of ${String(link).slice(0, 40)} is stored without being fetched`, async (t) => {
+    const fetched = t.mock.method(globalThis, 'fetch', () => {
+      throw new Error('The server must not fetch a link');
+    });
+    const queries: unknown[][] = [];
+    const pool = {
+      query: async (_sql: string, values: unknown[]) => {
+        queries.push(values);
+        return { rows: [{ id: 1 }] };
+      },
+    } as unknown as Pool;
+    await withApi(pool, async (call) => {
+      const { status } = await call('/api/items', { method: 'POST', body: { ...book, link } });
+      assert.equal(status, 201);
+    });
+    assert.equal(queries[0]?.[11], stored);
+    assert.equal(fetched.mock.callCount(), 0);
   });
 }
 

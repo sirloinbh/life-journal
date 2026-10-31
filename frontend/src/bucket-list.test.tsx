@@ -39,6 +39,7 @@ function fakeApi(initial: Partial<Item>[] = []) {
     rating: null,
     subRatings: {},
     review: null,
+    link: null,
     ...fields,
   });
   const api = {
@@ -175,6 +176,7 @@ for (const { tab, key, field, detail, ...rest } of cases) {
         subtype: subtype ? subtype[1] : null,
         costKrw: 15000,
         plannedDate: '2027-03-01',
+        link: null,
         details: detail,
       },
     });
@@ -348,6 +350,44 @@ for (const [category, criteria] of Object.entries(criteriaByCategory)) {
     expect(api.requests.at(-1)?.body).toEqual({ rating: null, subRatings: expected });
   });
 }
+
+test('a link is saved, opens in a new tab, and can be cleared', async () => {
+  const api = fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading');
+  let dialog = await openDialog('데미안 수정');
+  type(dialog, '링크 (선택)', ' https://example.com/book ');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body.link).toBe('https://example.com/book');
+  const link = await screen.findByRole('link', { name: '데미안 링크 열기' });
+  expect(link).toHaveAttribute('href', 'https://example.com/book');
+  expect(link).toHaveAttribute('target', '_blank');
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+
+  dialog = await openDialog('데미안 수정');
+  expect(dialog.getByLabelText('링크 (선택)')).toHaveValue('https://example.com/book');
+  type(dialog, '링크 (선택)', '');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body.link).toBeNull();
+  await waitFor(() => expect(screen.queryByRole('link', { name: '데미안 링크 열기' })).toBeNull());
+});
+
+test('a rejected link stays in the form in Korean', async () => {
+  const api = fakeApi([{ title: '데미안' }]);
+  api.failNext = {
+    status: 400,
+    error: '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요',
+  };
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('데미안 수정');
+  type(dialog, '링크 (선택)', 'javascript:alert(1)');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  expect(await dialog.findByRole('alert')).toHaveTextContent(
+    '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요',
+  );
+  expect(api.requests.at(-1)?.body.link).toBe('javascript:alert(1)');
+});
 
 test('only done items can be rated or reviewed', async () => {
   fakeApi([{ title: '데미안' }]);
