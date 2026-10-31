@@ -159,6 +159,67 @@ test('a date filter applies on leaving the field, not while it is typed', async 
   expect(asked).toHaveLength(2);
 });
 
+test('a half-typed date keeps the existing condition, until the conditions are cleared', async () => {
+  const asked = fakeApi(() => json({ items: [] }));
+  openAt('/table?to=2026-03-28&status=done');
+  await screen.findByText('조건에 맞는 항목이 없습니다');
+  const field = screen.getByLabelText<HTMLInputElement>('기간 끝');
+  // jsdom has no partial date input; this is how a browser reports one.
+  fireEvent.change(field, { target: { value: '' } });
+  Object.defineProperty(field, 'validity', { configurable: true, value: { badInput: true } });
+  fireEvent.blur(field);
+  fireEvent.keyDown(field, { key: 'Enter' });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(asked).toEqual(['to=2026-03-28&status=done']);
+  expect(window.location.search).toBe('?to=2026-03-28&status=done');
+
+  const setValue = vi.fn();
+  Object.defineProperty(field, 'value', { configurable: true, get: () => '', set: setValue });
+  fireEvent.click(screen.getByRole('button', { name: '조건 지우기' }));
+  await waitFor(() => expect(window.location.search).toBe(''));
+  await waitFor(() => expect(setValue).toHaveBeenLastCalledWith(''));
+});
+
+test('leaving a field and pressing a header before a render keeps both changes', async () => {
+  const asked = fakeApi(() => json({ items: [row(1, { title: 'e' })] }));
+  openAt('/table');
+  await screen.findByRole('link', { name: 'e' });
+  const field = screen.getByLabelText('검색(제목, 분야별 정보)');
+  fireEvent.change(field, { target: { value: 'e' } });
+  act(() => {
+    fireEvent.blur(field);
+    fireEvent.click(screen.getByRole('button', { name: '제목' }));
+  });
+  await waitFor(() => expect(asked.at(-1)).toBe('q=e&sort=title&order=asc'));
+  expect(window.location.search).toBe('?q=e&sort=title&order=asc');
+});
+
+test('the retry button stays on screen and keeps the focus while retrying', async () => {
+  let release: (response: Response) => void = () => {};
+  const held = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  let first = true;
+  fakeApi(() => {
+    if (first) {
+      first = false;
+      return json({ error: '서버 오류가 발생했습니다' }, 500);
+    }
+    return held;
+  });
+  openAt('/table');
+  const button = await screen.findByRole('button', { name: '다시 시도' });
+  button.focus();
+  fireEvent.click(button);
+  await waitFor(() => expect(button).toHaveAttribute('aria-busy', 'true'));
+  expect(button).toBeInTheDocument();
+  expect(document.activeElement).toBe(button);
+  release(json({ items: [row(1, {})] }));
+  expect(await screen.findByRole('link', { name: '항목 1' })).toBeInTheDocument();
+});
+
 test('applying a filter keeps the focus in its field', async () => {
   fakeApi(() => json({ items: [] }));
   openAt('/table');

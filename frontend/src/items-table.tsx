@@ -104,6 +104,7 @@ function InputFilter({
   value,
   type,
   inputMode,
+  resetCount,
   onChange,
 }: {
   id: string;
@@ -111,13 +112,20 @@ function InputFilter({
   value: string;
   type?: 'date';
   inputMode?: 'numeric';
+  resetCount: number;
   onChange: (value: string) => void;
 }) {
   const field = useRef<HTMLInputElement>(null);
-  // A new value from the address, such as going back, replaces what is in the field.
+  // A new value from the address, such as going back, replaces what is in the field. So does
+  // clearing the conditions, which also has to empty a half-typed date (its value reads as empty).
   useEffect(() => {
-    if (field.current && field.current.value.trim() !== value) field.current.value = value;
-  }, [value]);
+    const input = field.current;
+    if (input && (input.value.trim() !== value || input.validity.badInput)) input.value = value;
+  }, [value, resetCount]);
+  // A half-typed or impossible date reads as empty, but the user did not clear the condition.
+  const apply = (input: HTMLInputElement) => {
+    if (!input.validity.badInput) onChange(input.value.trim());
+  };
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={id}>{label}</Label>
@@ -128,9 +136,9 @@ function InputFilter({
         defaultValue={value}
         inputMode={inputMode}
         autoComplete="off"
-        onBlur={(event) => onChange(event.target.value.trim())}
+        onBlur={(event) => apply(event.target)}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') onChange(event.currentTarget.value.trim());
+          if (event.key === 'Enter') apply(event.currentTarget);
         }}
       />
     </div>
@@ -141,21 +149,27 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
   const [params, setParams] = useSearchParams();
   const search = params.toString();
   const { items, failure, loading, retry } = useFilteredItems(search);
+  const [resetCount, setResetCount] = useState(0);
   const sort = params.get('sort') ?? 'createdAt';
   const order = params.get('order') ?? 'desc';
 
+  // Read the address itself, not this render's params: one tap can leave a field and press a
+  // column header before the screen renders, and the second change must keep the first.
+  const latestParams = () => new URLSearchParams(window.location.search);
+
   const setFilter = (name: string, value: string) => {
-    if ((params.get(name) ?? '') === value) return;
-    const next = new URLSearchParams(params);
+    const next = latestParams();
+    if ((next.get(name) ?? '') === value) return;
     if (value) next.set(name, value);
     else next.delete(name);
     setParams(next, { replace: true });
   };
 
   const sortBy = (key: string) => {
-    const next = new URLSearchParams(params);
+    const next = latestParams();
+    const ascending = next.get('sort') === key && next.get('order') === 'asc';
     next.set('sort', key);
-    next.set('order', sort === key && order === 'asc' ? 'desc' : 'asc');
+    next.set('order', ascending ? 'desc' : 'asc');
     setParams(next, { replace: true });
   };
 
@@ -168,6 +182,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           id="table-q"
           label="검색(제목, 분야별 정보)"
           value={filterValue('q')}
+          resetCount={resetCount}
           onChange={(value) => setFilter('q', value)}
         />
         <ChoiceFilter
@@ -189,6 +204,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           label="기간 시작"
           type="date"
           value={filterValue('from')}
+          resetCount={resetCount}
           onChange={(value) => setFilter('from', value)}
         />
         <InputFilter
@@ -196,6 +212,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           label="기간 끝"
           type="date"
           value={filterValue('to')}
+          resetCount={resetCount}
           onChange={(value) => setFilter('to', value)}
         />
         <InputFilter
@@ -203,6 +220,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           label="최소 비용(원)"
           inputMode="numeric"
           value={filterValue('costMin')}
+          resetCount={resetCount}
           onChange={(value) => setFilter('costMin', value)}
         />
         <InputFilter
@@ -210,6 +228,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           label="최대 비용(원)"
           inputMode="numeric"
           value={filterValue('costMax')}
+          resetCount={resetCount}
           onChange={(value) => setFilter('costMax', value)}
         />
       </div>
@@ -227,6 +246,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
             size="sm"
             onClick={() => {
               setParams({}, { replace: true });
+              setResetCount((count) => count + 1);
               // This button disappears now, so the focus moves to the first filter.
               document.getElementById('table-q')?.focus();
             }}
@@ -235,10 +255,11 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           </Button>
         ) : null}
       </div>
-      {failure && !loading ? (
+      {failure ? (
         <div className="flex flex-wrap items-center gap-3">
           <Notice notice={{ kind: 'error', text: errorText(failure) }} />
-          <Button variant="outline" size="sm" onClick={retry}>
+          {/* Stays on screen while retrying, so the keyboard focus is not lost. */}
+          <Button variant="outline" size="sm" aria-busy={loading || undefined} onClick={retry}>
             다시 시도
           </Button>
         </div>
