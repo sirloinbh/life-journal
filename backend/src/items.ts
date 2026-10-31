@@ -243,13 +243,108 @@ function parseItem(input: unknown, today: string) {
 
 const notFound = () => new HttpError(404, '항목을 찾을 수 없습니다');
 
+const SORT_COLUMNS = {
+  title: 'title',
+  category: 'category',
+  status: 'status',
+  costKrw: 'cost_krw',
+  plannedDate: 'planned_date',
+  completedDate: 'completed_date',
+  rating: 'rating',
+  createdAt: 'created_at',
+};
+
+const queryCost = (label: string) => {
+  const message = `${label}은(는) ${MAX_COST_KRW}원 이하의 0 이상 정수로 입력해 주세요`;
+  return z
+    .string({ invalid_type_error: message })
+    .refine((value) => /^\d{1,10}$/.test(value) && Number(value) <= MAX_COST_KRW, message)
+    .transform(Number)
+    .optional();
+};
+
+const queryDate = (label: string) => date(label).optional();
+
+const listQuery = z
+  .object({
+    q: z
+      .string({ invalid_type_error: '검색어는 하나만 입력해 주세요' })
+      .trim()
+      .max(100, '검색어는 100자 이하로 입력해 주세요')
+      .refine(isStorable, '검색어에 사용할 수 없는 문자가 있습니다')
+      .optional(),
+    category: z
+      .enum(['reading', 'screen', 'stage', 'drink', 'travel'], {
+        errorMap: () => ({ message: categoryMessage }),
+      })
+      .optional(),
+    status: z
+      .enum(['wishlist', 'done'], { errorMap: () => ({ message: statusMessage }) })
+      .optional(),
+    from: queryDate('시작일'),
+    to: queryDate('종료일'),
+    costMin: queryCost('최소 비용'),
+    costMax: queryCost('최대 비용'),
+    sort: z
+      .enum(
+        [
+          'title',
+          'category',
+          'status',
+          'costKrw',
+          'plannedDate',
+          'completedDate',
+          'rating',
+          'createdAt',
+        ],
+        { errorMap: () => ({ message: '정렬 기준이 올바르지 않습니다' }) },
+      )
+      .default('createdAt'),
+    order: z
+      .enum(['asc', 'desc'], { errorMap: () => ({ message: '정렬 방향이 올바르지 않습니다' }) })
+      .default('desc'),
+  })
+  .strict('알 수 없는 검색 조건이 있습니다');
+
+function listSql(input: unknown) {
+  const query = listQuery.parse(input);
+  if (query.from && query.to && query.from > query.to) {
+    throw new HttpError(400, '시작일은 종료일보다 뒤일 수 없습니다');
+  }
+  if (query.costMin !== undefined && query.costMax !== undefined && query.costMin > query.costMax) {
+    throw new HttpError(400, '최소 비용은 최대 비용보다 클 수 없습니다');
+  }
+  const params: unknown[] = [];
+  const where: string[] = [];
+  const param = (value: unknown) => `$${params.push(value)}`;
+  if (query.q) {
+    const pattern = param(`%${query.q.replace(/[\\%_]/g, '\\$&')}%`);
+    where.push(`(title ILIKE ${pattern} ESCAPE '\\'
+      OR EXISTS (SELECT 1 FROM jsonb_each_text(details) AS field
+                 WHERE field.value ILIKE ${pattern} ESCAPE '\\'))`);
+  }
+  if (query.category) where.push(`category = ${param(query.category)}`);
+  if (query.status) where.push(`status = ${param(query.status)}`);
+  // A done item happened on its completed date; anything else is planned.
+  if (query.from) where.push(`COALESCE(completed_date, planned_date) >= ${param(query.from)}`);
+  if (query.to) where.push(`COALESCE(completed_date, planned_date) <= ${param(query.to)}`);
+  if (query.costMin !== undefined) where.push(`cost_krw >= ${param(query.costMin)}`);
+  if (query.costMax !== undefined) where.push(`cost_krw <= ${param(query.costMax)}`);
+  const direction = query.order === 'asc' ? 'ASC' : 'DESC';
+  return {
+    text: `SELECT ${COLUMNS} FROM items
+      ${where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''}
+      ORDER BY ${SORT_COLUMNS[query.sort]} ${direction} NULLS LAST, id DESC`,
+    params,
+  };
+}
+
 export function createItemsRouter(pool: Pool, today: () => string) {
   const router = Router();
 
-  router.get('/', async (_req, res) => {
-    const { rows } = await pool.query(
-      `SELECT ${COLUMNS} FROM items ORDER BY created_at DESC, id DESC`,
-    );
+  router.get('/', async (req, res) => {
+    const { text, params } = listSql(req.query);
+    const { rows } = await pool.query(text, params);
     res.json({ items: rows });
   });
 

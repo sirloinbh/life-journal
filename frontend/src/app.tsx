@@ -1,4 +1,4 @@
-import { LayoutDashboard, ListChecks, Settings2 } from 'lucide-react';
+import { LayoutDashboard, ListChecks, Settings2, Table2 } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
@@ -7,14 +7,21 @@ import { AppShell, type NavItem } from './components/layout/app-shell';
 import { EmptyState } from './components/ui/empty-state';
 import { Toaster } from './components/ui/sonner';
 import { type Health, healthText } from './health';
+import { ItemsTable } from './items-table';
 
 // Every page URL lives here (central docs/directory-rules.md).
-const pages = { overview: '/', bucketList: '/bucket-list', settings: '/settings' } as const;
+const pages = {
+  overview: '/',
+  bucketList: '/bucket-list',
+  table: '/table',
+  settings: '/settings',
+} as const;
 
 // Main menu (LNB) items, in display order.
 const nav: NavItem[] = [
   { to: pages.overview, label: '대시보드', icon: LayoutDashboard },
   { to: pages.bucketList, label: '버킷리스트', icon: ListChecks },
+  { to: pages.table, label: '표 보기', icon: Table2 },
   { to: pages.settings, label: '설정', icon: Settings2 },
 ];
 
@@ -96,6 +103,18 @@ export function App() {
                 health={health}
               >
                 <BucketList path={pages.bucketList} />
+              </Page>
+            }
+          />
+          <Route
+            path={pages.table}
+            element={
+              <Page
+                title="표 보기"
+                description="모든 항목을 표로 보고 검색·필터·정렬합니다"
+                health={health}
+              >
+                <ItemsTable bucketListPath={pages.bucketList} />
               </Page>
             }
           />

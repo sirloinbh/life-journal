@@ -357,6 +357,95 @@ test('a review of a done item is stored, kept, edited, and cleared', { skip: !ur
   }
 });
 
+test('search, filters, and sorting return the right items', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  await pool.query('DELETE FROM items');
+  const done = (completedDate: string) => ({ status: 'done', completedDate });
+  const samples = [
+    { category: 'reading', title: '데미안', costKrw: 12000, details: { author: '헤르만 헤세' } },
+    {
+      category: 'reading',
+      title: '100% 완독',
+      costKrw: 20000,
+      plannedDate: '2026-03-01',
+    },
+    {
+      category: 'stage',
+      subtype: 'opera',
+      title: '라 보엠',
+      costKrw: 150000,
+      plannedDate: '2026-01-01',
+      rating: 4.5,
+      ...done('2026-05-01'),
+    },
+    {
+      category: 'travel',
+      title: '교토',
+      details: { city: '헤세 마을' },
+      rating: 3,
+      ...done('2026-02-01'),
+    },
+    { category: 'drink', subtype: 'wine', title: 'under_score', plannedDate: '2026-06-01' },
+  ];
+  await withApi(
+    pool,
+    async (call) => {
+      for (const body of samples) {
+        const created = await call('/api/items', { method: 'POST', body });
+        assert.equal(created.status, 201, body.title);
+      }
+      const titles = async (query: string) => {
+        const { status, data } = await call(`/api/items?${query}`);
+        assert.equal(status, 200, query);
+        return (data.items as { title: string }[]).map((item) => item.title);
+      };
+      const sameItems = async (query: string, expected: string[]) => {
+        assert.deepEqual((await titles(query)).sort(), [...expected].sort(), query);
+      };
+      const encoded = encodeURIComponent;
+
+      await sameItems(`q=${encoded('보엠')}`, ['라 보엠']);
+      await sameItems(`q=${encoded('헤세')}`, ['데미안', '교토']);
+      await sameItems(`q=${encoded('BO')}&category=stage`, []);
+      await sameItems('q=UNDER', ['under_score']);
+      await sameItems('q=author', []);
+      await sameItems(`q=${encoded('%')}`, ['100% 완독']);
+      await sameItems(`q=${encoded('_')}`, ['under_score']);
+      await sameItems(
+        `q=${encoded(' ')}`,
+        samples.map(({ title }) => title),
+      );
+      await sameItems('category=reading', ['데미안', '100% 완독']);
+      await sameItems('status=done', ['라 보엠', '교토']);
+      await sameItems('status=wishlist&category=reading', ['데미안', '100% 완독']);
+      await sameItems('from=2026-03-01', ['100% 완독', '라 보엠', 'under_score']);
+      await sameItems('to=2026-02-01', ['교토']);
+      await sameItems('from=2026-05-01&to=2026-05-01', ['라 보엠']);
+      await sameItems('costMin=20000', ['100% 완독', '라 보엠']);
+      await sameItems('costMax=20000', ['데미안', '100% 완독']);
+      await sameItems('costMin=12000&costMax=20000&status=wishlist', ['데미안', '100% 완독']);
+      await sameItems(`q=${encoded('헤세')}&status=done&to=2026-02-01`, ['교토']);
+
+      // Items without a cost come last in either direction.
+      assert.deepEqual((await titles('sort=costKrw&order=asc')).slice(0, 3), [
+        '데미안',
+        '100% 완독',
+        '라 보엠',
+      ]);
+      assert.deepEqual((await titles('sort=costKrw&order=desc')).slice(0, 3), [
+        '라 보엠',
+        '100% 완독',
+        '데미안',
+      ]);
+      assert.deepEqual((await titles('sort=rating&order=desc')).slice(0, 2), ['라 보엠', '교토']);
+      assert.deepEqual((await titles('sort=rating&order=asc')).slice(0, 2), ['교토', '라 보엠']);
+      assert.deepEqual(await titles(''), samples.map(({ title }) => title).reverse());
+    },
+    { today: () => TODAY },
+  );
+});
+
 const createTestItem = async (pool: Pool) => {
   const { rows } = await pool.query<{ id: number }>(
     "INSERT INTO items (category, title, cost_krw) VALUES ('reading', '원래 제목', 1000) RETURNING id",
