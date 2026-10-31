@@ -33,9 +33,13 @@ import {
   type Item,
   itemFields,
   itemSummary,
+  MAX_REVIEW_LENGTH,
+  MAX_REVIEW_LINES,
+  measureReview,
   NO_SCORE,
   ratingFields,
   ratingSummary,
+  reviewProblem,
   SCORES,
   serviceToday,
 } from './items';
@@ -303,11 +307,55 @@ function RatingForm({
   );
 }
 
+function ReviewForm({ item, pending, save }: { item: Item; pending: boolean; save: SaveItem }) {
+  const id = useId();
+  const { notice, error } = useNotice();
+  const [text, setText] = useState(item.review ?? '');
+  const measured = measureReview(text);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const problem = reviewProblem(measured);
+    if (problem) {
+      error(problem);
+      return;
+    }
+    try {
+      await save(item.id, { review: measured.review || null }, '감상문을 저장했습니다');
+    } catch (cause) {
+      error(cause);
+    }
+  };
+
+  return (
+    <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={id}>감상문</Label>
+        <textarea
+          id={id}
+          name="review"
+          rows={MAX_REVIEW_LINES}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          aria-describedby={`${id}-size`}
+          className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-body-sm dark:bg-input/30"
+        />
+        <p id={`${id}-size`} className="text-caption text-muted-foreground">
+          {measured.lines}/{MAX_REVIEW_LINES}줄 · {measured.length}/{MAX_REVIEW_LENGTH}자
+        </p>
+      </div>
+      <Notice notice={notice} />
+      <FormButtons pending={pending} submitLabel="저장" />
+    </form>
+  );
+}
+
 function ItemCard({
   item,
   category,
   onEdit,
   onRate,
+  onReview,
   onComplete,
   onReopen,
   onDelete,
@@ -316,6 +364,7 @@ function ItemCard({
   category: Category;
   onEdit: (event: MouseEvent<HTMLButtonElement>) => void;
   onRate: (event: MouseEvent<HTMLButtonElement>) => void;
+  onReview: (event: MouseEvent<HTMLButtonElement>) => void;
   onComplete: (event: MouseEvent<HTMLButtonElement>) => void;
   onReopen: () => Promise<void>;
   onDelete: () => Promise<void>;
@@ -335,10 +384,11 @@ function ItemCard({
           {item.rating !== null ? <Badge variant="outline">평점 {item.rating}</Badge> : null}
         </CardTitle>
       </CardHeader>
-      {summary.length > 0 || ratings ? (
+      {summary.length > 0 || ratings || item.review ? (
         <CardContent className="flex flex-col gap-1 text-body-sm wrap-anywhere text-muted-foreground">
           {summary.length > 0 ? <p>{summary.join(' · ')}</p> : null}
           {ratings ? <p>{ratings}</p> : null}
+          {item.review ? <p className="truncate">{item.review.split('\n')[0]}</p> : null}
         </CardContent>
       ) : null}
       <CardFooter className="flex flex-wrap gap-2">
@@ -347,9 +397,17 @@ function ItemCard({
             <Button size="sm" variant="outline" aria-label={`${item.title} 평점`} onClick={onRate}>
               평점
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label={`${item.title} 감상문`}
+              onClick={onReview}
+            >
+              감상문
+            </Button>
             <ConfirmDialog
               title="완료를 취소할까요?"
-              description="상태가 하고 싶음으로 돌아가고 완료일과 평점이 지워집니다."
+              description="상태가 하고 싶음으로 돌아가고 완료일과 평점, 감상문이 지워집니다."
               confirmLabel="완료 취소"
               cancelLabel="닫기"
               destructive={false}
@@ -393,9 +451,16 @@ type FormModal =
   | { kind: 'new' }
   | { kind: 'edit'; item: Item }
   | { kind: 'complete'; item: Item }
-  | { kind: 'rate'; item: Item };
+  | { kind: 'rate'; item: Item }
+  | { kind: 'review'; item: Item };
 
-const FORM_TITLES = { new: '항목 추가', edit: '항목 수정', complete: '완료로 표시', rate: '평점' };
+const FORM_TITLES = {
+  new: '항목 추가',
+  edit: '항목 수정',
+  complete: '완료로 표시',
+  rate: '평점',
+  review: '감상문',
+};
 
 function CategoryItems({
   category,
@@ -489,6 +554,7 @@ function CategoryItems({
                 category={category}
                 onEdit={(event) => openForm({ kind: 'edit', item }, event)}
                 onRate={(event) => openForm({ kind: 'rate', item }, event)}
+                onReview={(event) => openForm({ kind: 'review', item }, event)}
                 onComplete={(event) => openForm({ kind: 'complete', item }, event)}
                 onReopen={() =>
                   changeFromDialog(async () => {
@@ -500,6 +566,7 @@ function CategoryItems({
                           completedDate: null,
                           rating: null,
                           subRatings: {},
+                          review: null,
                         },
                       }),
                     );
@@ -537,6 +604,8 @@ function CategoryItems({
           </DialogHeader>
           {modal.kind === 'complete' ? (
             <CompleteForm item={modal.item} pending={pending} save={save} />
+          ) : modal.kind === 'review' ? (
+            <ReviewForm key={modal.item.id} item={modal.item} pending={pending} save={save} />
           ) : modal.kind === 'rate' ? (
             <RatingForm
               key={modal.item.id}
