@@ -1,4 +1,5 @@
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import type { Pool } from 'pg';
 import { types } from 'pg';
 import { ZodError } from 'zod';
@@ -22,6 +23,17 @@ export function createApp(pool: Pool, options: { today?: () => string } = {}) {
   const today = options.today ?? (() => serviceDate());
   const app = express();
   app.disable('x-powered-by');
+  // Same level as the /api/ limit in frontend/nginx.conf (10 r/s), for paths that skip nginx.
+  app.use(
+    '/api',
+    rateLimit({
+      windowMs: 60_000,
+      limit: 600,
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+      message: { error: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요' },
+    }),
+  );
   app.use(express.json({ limit: '256kb' }));
   app.get('/api/health', async (_req, res) => {
     await pool.query('SELECT 1');
