@@ -1,0 +1,51 @@
+# #22 5개 분야 항목 저장 API
+
+- 이슈: [#22](https://github.com/sirloinbh/life-journal/issues/22)
+- 브랜치: `feat/22-items-api`
+
+## 목적
+
+버킷리스트, 평가, 감상문, 표 보기의 바탕이 되는 항목 데이터를 저장·조회·수정·삭제할 수 있게 한다.
+
+## 결정
+
+이슈 댓글에 기록한 사용자 결정을 따른다.
+
+- 버킷리스트와 완료 기록은 한 테이블에 두고 `status`(`wishlist` / `done`)로 나눈다.
+- 비용은 원 단위 정수(`cost_krw`)이며 통화는 KRW 하나다.
+- 분야별 정보는 `details`(`jsonb`) 한 칸에 두고 분야별 Zod 스키마로 검증한다.
+- `done`이면 완료일이 필수이고, 완료일은 오늘(Asia/Seoul)보다 뒤일 수 없다. `wishlist`에는 완료일을 넣을 수 없다. 예정일은 제한이 없다.
+
+구현하면서 정한 값은 다음과 같다. #23 화면 작업에서 바뀔 수 있다.
+
+| 분야 (`category`) | 세부 종류 (`subtype`)                     | 분야별 정보 (`details`, 모두 선택)    |
+| ----------------- | ----------------------------------------- | ------------------------------------- |
+| `reading`         | 없음                                      | `author`, `publisher`                 |
+| `screen`          | `movie`, `drama`                          | `director`, `cast`                    |
+| `stage`           | `play`, `performance`, `musical`, `opera` | `venue`, `cast`                       |
+| `drink`           | `wine`, `whisky`, `sake`                  | `producer`, `region`, `vintage`(연도) |
+| `travel`          | 없음                                      | `country`, `city`                     |
+
+## 변경 — 2026-10-31
+
+- `database/migrations/002_items.sql`: `items` 테이블과 목록 정렬용 인덱스. DB도 분야·상태·비용·제목과 "완료 상태와 완료일은 함께" 규칙을 `CHECK`로 막는다.
+- `backend/src/items.ts`: `GET/POST /api/items`, `GET/PATCH/DELETE /api/items/:id`와 검증.
+- `PATCH`: 일부 값만 받아 현재 행과 합친 뒤 전체 규칙을 다시 검사한다. 행을 잠그는 트랜잭션 안에서 처리해 동시 수정으로 값이 사라지지 않게 한다. `details`는 합치지 않고 통째로 바꾼다.
+- `backend/src/app.ts`: 자체 오류 처리를 중앙 `standard/http.ts`의 `errorHandler`·`notFound`로 바꿨다. 잘못된 JSON 본문이 500이 아니라 한국어 400이 된다. BIGINT `id`는 JSON 숫자로 내려준다.
+- 검색·필터·페이지 나누기는 #26 범위라 넣지 않았다.
+
+## 테스트
+
+- `backend/test/items.test.ts`(DB 없음): 잘못된 분야·날짜·비용·세부 종류·분야별 정보, 완료일 규칙, NUL 문자 등 입력이 DB에 닿기 전에 한국어 400으로 거절되는지, 완료일이 오늘이면 받아들이는지 확인한다.
+- `backend/test/db.integration.test.ts`(실제 DB): 마이그레이션 재적용, 5개 분야 저장·재조회·목록 순서, 수정·재오픈·분야 변경·삭제·404, DB `CHECK` 동작을 확인한다.
+- `backend/test/helpers.ts`: 요청에 메서드와 본문을 넣을 수 있게 했다. `fetch` 대신 `node:http`를 쓴다. 임시 포트 범위가 1024부터인 Windows PC에서 테스트 서버가 `fetch`가 막는 포트를 받아 `bad port`로 실패한 것을 고쳤다.
+
+## 검증 — 2026-10-31
+
+임시 PostgreSQL 17.11(`journal_test`, 마이그레이션 001·002 적용)을 `TEST_DATABASE_URL`로 지정해 Windows에서 실행했다.
+
+- `npm run check`: 통과(포맷, lint, 타입, 테스트, 스킬 동기화 검사, 빌드).
+- `npm test`: 백엔드 37개 통과·건너뜀 0개, 프론트엔드 52개 통과.
+- `npm run knip`: 통과.
+- `TEST_DATABASE_URL` 없이 `npm test -w backend`: 32개 통과, DB 통합 테스트 5개 건너뜀. 건너뛴 결과는 DB 검증으로 치지 않는다.
+- 화면 변경이 없어 브라우저 확인은 하지 않았다.
