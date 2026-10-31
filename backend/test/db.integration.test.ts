@@ -31,7 +31,12 @@ test(
 test('the items migration can be applied again without errors', { skip: !url }, async (t) => {
   const pool = new Pool({ connectionString: url });
   t.after(() => pool.end());
-  for (const file of ['002_items.sql', '003_item_ratings.sql', '004_item_review.sql']) {
+  for (const file of [
+    '002_items.sql',
+    '003_item_ratings.sql',
+    '004_item_review.sql',
+    '005_item_link.sql',
+  ]) {
     const sql = await readFile(
       new URL(`../../database/migrations/${file}`, import.meta.url),
       'utf8',
@@ -65,10 +70,11 @@ test(
     VALUES ('reading', 'done', 'done', '2026-10-01')`);
     await pool.query(await migration('003_item_ratings.sql'));
     await pool.query(await migration('004_item_review.sql'));
-    const { rows } = await pool.query('SELECT rating, sub_ratings, review FROM items');
+    await pool.query(await migration('005_item_link.sql'));
+    const { rows } = await pool.query('SELECT rating, sub_ratings, review, link FROM items');
     assert.deepEqual(rows, [
-      { rating: null, sub_ratings: {}, review: null },
-      { rating: null, sub_ratings: {}, review: null },
+      { rating: null, sub_ratings: {}, review: null, link: null },
+      { rating: null, sub_ratings: {}, review: null, link: null },
     ]);
   },
 );
@@ -130,6 +136,7 @@ test('items of all five categories are stored and read back', { skip: !url }, as
           rating: null,
           subRatings: {},
           review: null,
+          link: null,
           createdAt: created.data.createdAt,
           updatedAt: created.data.updatedAt,
           ...sample,
@@ -463,6 +470,41 @@ test('search, filters, and sorting return the right items', { skip: !url }, asyn
     },
     { today: () => TODAY },
   );
+});
+
+test('a link is stored, kept by other edits, and cleared', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  await withApi(pool, async (call) => {
+    const created = await call('/api/items', {
+      method: 'POST',
+      body: {
+        category: 'drink',
+        subtype: 'wine',
+        title: '샤블리',
+        link: 'https://example.com/wine',
+      },
+    });
+    assert.equal(created.status, 201);
+    assert.equal(created.data.link, 'https://example.com/wine');
+    const path = `/api/items/${String(created.data.id)}`;
+    const patch = (body: unknown) => call(path, { method: 'PATCH', body });
+
+    assert.equal((await patch({ title: '샤블리 2019' })).data.link, 'https://example.com/wine');
+    assert.equal((await patch({ link: 'javascript:alert(1)' })).status, 400);
+    assert.equal((await call(path)).data.link, 'https://example.com/wine');
+    assert.equal(
+      (await patch({ link: 'http://example.com/new' })).data.link,
+      'http://example.com/new',
+    );
+    assert.equal((await patch({ link: '' })).data.link, null);
+  });
+  for (const sql of [
+    "INSERT INTO items (category, title, link) VALUES ('reading', '데미안', 'javascript:alert(1)')",
+    "INSERT INTO items (category, title, link) VALUES ('reading', '데미안', 'https://' || repeat('a', 2000))",
+  ]) {
+    await assert.rejects(pool.query(sql), { code: '23514' }, sql);
+  }
 });
 
 const createTestItem = async (pool: Pool) => {

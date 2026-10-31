@@ -12,6 +12,7 @@ export type Item = {
   rating: number | null;
   subRatings: Record<string, number>;
   review: string | null;
+  link: string | null;
 };
 
 export type Category = {
@@ -152,6 +153,7 @@ export function itemFields(category: Category, form: FormData) {
     subtype: text('subtype') || null,
     costKrw: cost ? numberOrText(cost) : null,
     plannedDate: text('plannedDate') || null,
+    link: text('link') || null,
     details,
   };
 }
