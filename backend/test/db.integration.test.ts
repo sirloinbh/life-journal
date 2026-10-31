@@ -31,7 +31,7 @@ test(
 test('the items migration can be applied again without errors', { skip: !url }, async (t) => {
   const pool = new Pool({ connectionString: url });
   t.after(() => pool.end());
-  for (const file of ['002_items.sql', '003_item_ratings.sql']) {
+  for (const file of ['002_items.sql', '003_item_ratings.sql', '004_item_review.sql']) {
     const sql = await readFile(
       new URL(`../../database/migrations/${file}`, import.meta.url),
       'utf8',
@@ -46,7 +46,7 @@ test('the items migration can be applied again without errors', { skip: !url }, 
 });
 
 test(
-  'the ratings migration applies to a table that already has rows',
+  'the ratings and review migrations apply to a table that already has rows',
   { skip: !url },
   async (t) => {
     const pool = new Pool({ connectionString: url, max: 1 });
@@ -64,10 +64,11 @@ test(
     INSERT INTO items (category, title, status, completed_date)
     VALUES ('reading', 'done', 'done', '2026-10-01')`);
     await pool.query(await migration('003_item_ratings.sql'));
-    const { rows } = await pool.query('SELECT rating, sub_ratings FROM items');
+    await pool.query(await migration('004_item_review.sql'));
+    const { rows } = await pool.query('SELECT rating, sub_ratings, review FROM items');
     assert.deepEqual(rows, [
-      { rating: null, sub_ratings: {} },
-      { rating: null, sub_ratings: {} },
+      { rating: null, sub_ratings: {}, review: null },
+      { rating: null, sub_ratings: {}, review: null },
     ]);
   },
 );
@@ -128,6 +129,7 @@ test('items of all five categories are stored and read back', { skip: !url }, as
           completedDate: null,
           rating: null,
           subRatings: {},
+          review: null,
           createdAt: created.data.createdAt,
           updatedAt: created.data.updatedAt,
           ...sample,
@@ -283,6 +285,73 @@ test('ratings of a done item are stored, kept, and cleared with it', { skip: !ur
     "INSERT INTO items (category, title, rating) VALUES ('reading', '데미안', 4)",
     "INSERT INTO items (category, title, status, completed_date, rating) VALUES ('reading', '데미안', 'done', '2026-10-01', 4.3)",
     `INSERT INTO items (category, title, sub_ratings) VALUES ('reading', '데미안', '{"content": 4}')`,
+  ]) {
+    await assert.rejects(pool.query(sql), { code: '23514' }, sql);
+  }
+});
+
+test('a review of a done item is stored, kept, edited, and cleared', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  await withApi(
+    pool,
+    async (call) => {
+      const created = await call('/api/items', {
+        method: 'POST',
+        body: {
+          category: 'reading',
+          title: '데미안',
+          status: 'done',
+          completedDate: TODAY,
+          review: '  첫 줄\r\n둘째 줄 ',
+        },
+      });
+      assert.equal(created.status, 201);
+      assert.equal(created.data.review, '첫 줄\n둘째 줄');
+      const path = `/api/items/${String(created.data.id)}`;
+      const patch = (body: unknown) => call(path, { method: 'PATCH', body });
+
+      const edited = await patch({ title: '데미안 2' });
+      assert.equal(edited.data.review, '첫 줄\n둘째 줄', 'Another edit keeps the review');
+
+      const longer = await patch({ review: '줄\n줄\n줄\n줄\n줄\n줄' });
+      assert.equal(longer.status, 400);
+      assert.deepEqual(longer.data, { error: '감상문은 5줄 이하로 입력해 주세요' });
+
+      const keptReview = await patch({ status: 'wishlist', completedDate: null });
+      assert.equal(keptReview.status, 400);
+      assert.deepEqual(keptReview.data, {
+        error: '완료하지 않은 항목에는 감상문을 넣을 수 없습니다',
+      });
+
+      const rewritten = await patch({ review: '고친 감상문' });
+      assert.equal(rewritten.status, 200);
+      assert.equal(rewritten.data.review, '고친 감상문');
+
+      await assert.rejects(
+        pool.query("UPDATE items SET status = 'wishlist', completed_date = NULL WHERE id = $1", [
+          rewritten.data.id,
+        ]),
+        { code: '23514' },
+        'The database refuses a review on a wishlist item',
+      );
+
+      const blanked = await patch({ review: '   ' });
+      assert.equal(blanked.status, 200);
+      assert.equal(blanked.data.review, null);
+
+      await patch({ review: '다시 쓴 감상문' });
+      const reopened = await patch({ status: 'wishlist', completedDate: null, review: null });
+      assert.equal(reopened.status, 200);
+      assert.equal(reopened.data.status, 'wishlist');
+      assert.equal(reopened.data.review, null);
+    },
+    { today: () => TODAY },
+  );
+  for (const sql of [
+    "INSERT INTO items (category, title, review) VALUES ('reading', '데미안', '좋았다')",
+    `INSERT INTO items (category, title, status, completed_date, review)
+     VALUES ('reading', '데미안', 'done', '2026-10-01', repeat('가', 501))`,
   ]) {
     await assert.rejects(pool.query(sql), { code: '23514' }, sql);
   }

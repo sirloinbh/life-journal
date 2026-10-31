@@ -8,7 +8,7 @@ const MAX_COST_KRW = 2_147_483_647; // items.cost_krw is a PostgreSQL integer.
 
 const COLUMNS = `id, category, subtype, title, status, cost_krw AS "costKrw",
   planned_date AS "plannedDate", completed_date AS "completedDate", details,
-  rating::float8 AS rating, sub_ratings AS "subRatings",
+  rating::float8 AS rating, sub_ratings AS "subRatings", review,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 // PostgreSQL rejects NUL and lone surrogates inside jsonb, which would otherwise surface as a 500.
@@ -56,6 +56,22 @@ const criteria = (label: string, names: Record<string, string>) =>
       Object.fromEntries(Object.entries(names).map(([key, name]) => [key, score(name).optional()])),
     )
     .strict(`${label} 세부 평점에 없는 항목이 있습니다`);
+
+const MAX_REVIEW_LINES = 5;
+const MAX_REVIEW_LENGTH = 500;
+
+const reviewText = z
+  .string({ invalid_type_error: '감상문은 문자로 입력해 주세요' })
+  .transform((value) => value.replace(/\r\n?|[\u0085\u2028\u2029]/g, '\n').trim())
+  .refine(
+    (value) => value.split('\n').length <= MAX_REVIEW_LINES,
+    `감상문은 ${MAX_REVIEW_LINES}줄 이하로 입력해 주세요`,
+  )
+  .refine(
+    (value) => value.length <= MAX_REVIEW_LENGTH,
+    `감상문은 ${MAX_REVIEW_LENGTH}자 이하로 입력해 주세요`,
+  )
+  .refine(isStorable, '감상문에 사용할 수 없는 문자가 있습니다');
 
 const vintageMessage = '빈티지는 4자리 연도로 입력해 주세요';
 
@@ -168,6 +184,7 @@ const itemFields = z
           invalid_type_error: '세부 평점 형식이 올바르지 않습니다',
         })
         .default({}),
+      review: reviewText.nullable().optional(),
     },
     {
       required_error: '요청 본문이 필요합니다',
@@ -205,6 +222,10 @@ function parseItem(input: unknown, today: string) {
   if (item.status === 'wishlist' && (rating !== null || Object.keys(subRatings).length > 0)) {
     throw new HttpError(400, '완료하지 않은 항목에는 평점을 넣을 수 없습니다');
   }
+  const review = item.review || null;
+  if (item.status === 'wishlist' && review !== null) {
+    throw new HttpError(400, '완료하지 않은 항목에는 감상문을 넣을 수 없습니다');
+  }
   return {
     category: item.category,
     subtype,
@@ -216,6 +237,7 @@ function parseItem(input: unknown, today: string) {
     details: category.details.parse(item.details) as Record<string, unknown>,
     rating,
     subRatings,
+    review,
   };
 }
 
@@ -236,8 +258,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
     const { rows } = await pool.query(
       `INSERT INTO items
          (category, subtype, title, status, cost_krw, planned_date, completed_date, details,
-          rating, sub_ratings)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          rating, sub_ratings, review)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING ${COLUMNS}`,
       [
         item.category,
@@ -250,6 +272,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         item.details,
         item.rating,
         item.subRatings,
+        item.review,
       ],
     );
     res.status(201).json(rows[0]);
@@ -292,6 +315,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         details,
         rating,
         subRatings,
+        review,
       } = current[0];
       const item = parseItem(
         {
@@ -305,6 +329,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
           details,
           rating,
           subRatings,
+          review,
           ...patch,
         },
         today(),
@@ -313,7 +338,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         `UPDATE items
          SET category = $2, subtype = $3, title = $4, status = $5, cost_krw = $6,
              planned_date = $7, completed_date = $8, details = $9, rating = $10,
-             sub_ratings = $11, updated_at = now()
+             sub_ratings = $11, review = $12, updated_at = now()
          WHERE id = $1
          RETURNING ${COLUMNS}`,
         [
@@ -328,6 +353,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
           item.details,
           item.rating,
           item.subRatings,
+          item.review,
         ],
       );
       await client.query('COMMIT');

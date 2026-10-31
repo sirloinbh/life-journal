@@ -11,6 +11,7 @@ export type Item = {
   details: Record<string, string | number>;
   rating: number | null;
   subRatings: Record<string, number>;
+  review: string | null;
 };
 
 export type Category = {
@@ -164,6 +165,29 @@ export function itemSummary(item: Item, category: Category) {
   if (item.plannedDate) parts.push(`예정일 ${item.plannedDate}`);
   if (item.completedDate) parts.push(`완료일 ${item.completedDate}`);
   return parts;
+}
+
+export const MAX_REVIEW_LINES = 5;
+export const MAX_REVIEW_LENGTH = 500;
+
+/** The review as the server stores it, with its size. The server checks the same limits. */
+export function measureReview(text: string) {
+  const review = text.replace(/\r\n?|[\u0085\u2028\u2029]/g, '\n').trim();
+  return { review, lines: review ? review.split('\n').length : 0, length: review.length };
+}
+
+/** The first line that shows anything; zero-width characters alone would preview as a blank line. */
+export function reviewPreview(review: string) {
+  return (
+    review.split('\n').find((line) => /[^\s\p{Cf}\u115f\u1160\u2800\u3164\uffa0]/u.test(line)) ??
+    null
+  );
+}
+
+export function reviewProblem({ lines, length }: { lines: number; length: number }) {
+  if (lines > MAX_REVIEW_LINES) return `감상문은 ${MAX_REVIEW_LINES}줄 이하로 입력해 주세요`;
+  if (length > MAX_REVIEW_LENGTH) return `감상문은 ${MAX_REVIEW_LENGTH}자 이하로 입력해 주세요`;
+  return null;
 }
 
 /** The form's "none" choice is NO_SCORE; only chosen scores are sent. */

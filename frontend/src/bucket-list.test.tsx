@@ -38,6 +38,7 @@ function fakeApi(initial: Partial<Item>[] = []) {
     details: {},
     rating: null,
     subRatings: {},
+    review: null,
     ...fields,
   });
   const api = {
@@ -205,6 +206,7 @@ for (const { tab, key, field, detail, ...rest } of cases) {
       completedDate: null,
       rating: null,
       subRatings: {},
+      review: null,
     });
 
     dialog = await openDialog('고친 항목 삭제');
@@ -347,11 +349,117 @@ for (const [category, criteria] of Object.entries(criteriaByCategory)) {
   });
 }
 
-test('only done items can be rated', async () => {
+test('only done items can be rated or reviewed', async () => {
   fakeApi([{ title: '데미안' }]);
   openAt('/bucket-list/reading');
   await screen.findByText('데미안');
   expect(screen.queryByRole('button', { name: '데미안 평점' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '데미안 감상문' })).toBeNull();
+});
+
+const doneBook = { title: '데미안', status: 'done', completedDate: '2026-10-01' } as const;
+
+test('a review is written, previewed by its first line, edited, and cleared', async () => {
+  const api = fakeApi([doneBook]);
+  openAt('/bucket-list/reading');
+  let dialog = await openDialog('데미안 감상문');
+  type(dialog, '감상문', '  첫 줄\n둘째 줄  ');
+  expect(dialog.getByText('2/5줄 · 8/500자')).toBeInTheDocument();
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body).toEqual({ review: '첫 줄\n둘째 줄' });
+  expect(await screen.findByText('첫 줄')).toBeInTheDocument();
+  expect(screen.queryByText(/둘째 줄/)).toBeNull();
+
+  dialog = await openDialog('데미안 감상문');
+  expect(dialog.getByLabelText('감상문')).toHaveValue('첫 줄\n둘째 줄');
+  type(dialog, '감상문', '고친 첫 줄\n고친 둘째 줄');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body).toEqual({ review: '고친 첫 줄\n고친 둘째 줄' });
+  expect(await screen.findByText('고친 첫 줄')).toBeInTheDocument();
+  expect(screen.queryByText('첫 줄')).toBeNull();
+
+  dialog = await openDialog('데미안 감상문');
+  type(dialog, '감상문', '   ');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body).toEqual({ review: null });
+  await waitFor(() => expect(screen.queryByText('고친 첫 줄')).toBeNull());
+});
+
+test('the preview skips lines that show nothing', async () => {
+  fakeApi([
+    { ...doneBook, review: '\u200b\n둘째 줄만 보임' },
+    { ...doneBook, title: '수레바퀴', review: '\u200b' },
+  ]);
+  openAt('/bucket-list/reading');
+  expect(await screen.findByText('둘째 줄만 보임')).toBeInTheDocument();
+  const card = screen.getByRole('heading', { name: /수레바퀴/ }).closest('[data-slot="card"]');
+  // Only the summary line with the completed date remains.
+  expect(card?.querySelectorAll('[data-slot="card-content"] p')).toHaveLength(1);
+});
+
+for (const blank of ['\u200e', '\u00ad', '\u115f', '\u1160', '\u2800', '\u3164', '\uffa0']) {
+  const code = blank.codePointAt(0)!.toString(16);
+  test(`the preview skips a first line of only U+${code}`, async () => {
+    fakeApi([{ ...doneBook, review: `${blank}\n둘째 줄만 보임` }]);
+    openAt('/bucket-list/reading');
+    expect(await screen.findByText('둘째 줄만 보임')).toBeInTheDocument();
+  });
+}
+
+test('other line separators count as lines, like on the server', async () => {
+  const api = fakeApi([doneBook]);
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('데미안 감상문');
+  type(dialog, '감상문', 'ㄱ\u2028ㄴ\u2029ㄷ\u0085ㄹ\rㅁ\r\nㅂ');
+  expect(dialog.getByText('6/5줄 · 11/500자')).toBeInTheDocument();
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  expect(await dialog.findByRole('alert')).toHaveTextContent('감상문은 5줄 이하로 입력해 주세요');
+  expect(api.requests).toHaveLength(0);
+});
+
+test('editing the review clears the previous error', async () => {
+  fakeApi([doneBook]);
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('데미안 감상문');
+  type(dialog, '감상문', 'ㄱ\nㄴ\nㄷ\nㄹ\nㅁ\nㅂ');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialog.findByRole('alert');
+  type(dialog, '감상문', 'ㄱ');
+  expect(dialog.queryByRole('alert')).toBeNull();
+});
+
+for (const [name, text, message] of [
+  ['6 lines', 'ㄱ\nㄴ\nㄷ\nㄹ\nㅁ\nㅂ', '감상문은 5줄 이하로 입력해 주세요'],
+  ['501 characters', '가'.repeat(501), '감상문은 500자 이하로 입력해 주세요'],
+] as const) {
+  test(`a review of ${name} is stopped in the form without a request`, async () => {
+    const api = fakeApi([doneBook]);
+    openAt('/bucket-list/reading');
+    const dialog = await openDialog('데미안 감상문');
+    type(dialog, '감상문', text);
+    fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+    expect(await dialog.findByRole('alert')).toHaveTextContent(message);
+    expect(api.requests).toHaveLength(0);
+  });
+}
+
+test('5 lines and 500 characters are sent, and a server error stays in the form', async () => {
+  const api = fakeApi([doneBook]);
+  api.failNext = { status: 400, error: '감상문에 사용할 수 없는 문자가 있습니다' };
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('데미안 감상문');
+  const text = `${'가'.repeat(495)}\n\n\n\n나`;
+  type(dialog, '감상문', text);
+  expect(dialog.getByText('5/5줄 · 500/500자')).toBeInTheDocument();
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  expect(await dialog.findByRole('alert')).toHaveTextContent(
+    '감상문에 사용할 수 없는 문자가 있습니다',
+  );
+  expect(api.requests.at(-1)?.body).toEqual({ review: text });
+  expect(dialog.getByLabelText('감상문')).toHaveValue(text);
 });
 
 test('a done item gets a rating and sub-ratings, shown with their average', async () => {
