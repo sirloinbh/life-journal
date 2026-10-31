@@ -62,7 +62,7 @@ const MAX_REVIEW_LENGTH = 500;
 
 const reviewText = z
   .string({ invalid_type_error: '감상문은 문자로 입력해 주세요' })
-  .transform((value) => value.replace(/\r\n?/g, '\n').trim())
+  .transform((value) => value.replace(/\r\n?|[\u0085\u2028\u2029]/g, '\n').trim())
   .refine(
     (value) => value.split('\n').length <= MAX_REVIEW_LINES,
     `감상문은 ${MAX_REVIEW_LINES}줄 이하로 입력해 주세요`,

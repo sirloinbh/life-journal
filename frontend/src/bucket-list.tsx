@@ -39,6 +39,7 @@ import {
   NO_SCORE,
   ratingFields,
   ratingSummary,
+  reviewPreview,
   reviewProblem,
   SCORES,
   serviceToday,
@@ -309,7 +310,7 @@ function RatingForm({
 
 function ReviewForm({ item, pending, save }: { item: Item; pending: boolean; save: SaveItem }) {
   const id = useId();
-  const { notice, error } = useNotice();
+  const { notice, error, clear } = useNotice();
   const [text, setText] = useState(item.review ?? '');
   const measured = measureReview(text);
 
@@ -336,7 +337,10 @@ function ReviewForm({ item, pending, save }: { item: Item; pending: boolean; sav
           name="review"
           rows={MAX_REVIEW_LINES}
           value={text}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            setText(event.target.value);
+            clear();
+          }}
           aria-describedby={`${id}-size`}
           className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-body-sm dark:bg-input/30"
         />
@@ -372,6 +376,7 @@ function ItemCard({
   const subtype = category.subtypes.find(({ value }) => value === item.subtype);
   const summary = itemSummary(item, category);
   const ratings = ratingSummary(item, category);
+  const preview = item.review ? reviewPreview(item.review) : null;
   return (
     <Card>
       <CardHeader>
@@ -384,11 +389,11 @@ function ItemCard({
           {item.rating !== null ? <Badge variant="outline">평점 {item.rating}</Badge> : null}
         </CardTitle>
       </CardHeader>
-      {summary.length > 0 || ratings || item.review ? (
+      {summary.length > 0 || ratings || preview ? (
         <CardContent className="flex flex-col gap-1 text-body-sm wrap-anywhere text-muted-foreground">
           {summary.length > 0 ? <p>{summary.join(' · ')}</p> : null}
           {ratings ? <p>{ratings}</p> : null}
-          {item.review ? <p className="truncate">{item.review.split('\n')[0]}</p> : null}
+          {preview ? <p className="truncate">{preview}</p> : null}
         </CardContent>
       ) : null}
       <CardFooter className="flex flex-wrap gap-2">

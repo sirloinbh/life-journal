@@ -172,8 +172,13 @@ export const MAX_REVIEW_LENGTH = 500;
 
 /** The review as the server stores it, with its size. The server checks the same limits. */
 export function measureReview(text: string) {
-  const review = text.replace(/\r\n?/g, '\n').trim();
+  const review = text.replace(/\r\n?|[\u0085\u2028\u2029]/g, '\n').trim();
   return { review, lines: review ? review.split('\n').length : 0, length: review.length };
+}
+
+/** The first line that shows anything; zero-width characters alone would preview as a blank line. */
+export function reviewPreview(review: string) {
+  return review.split('\n').find((line) => /[^\s\u200b-\u200d\u2060\ufeff]/u.test(line)) ?? null;
 }
 
 export function reviewProblem({ lines, length }: { lines: number; length: number }) {

@@ -373,11 +373,53 @@ test('a review is written, previewed by its first line, edited, and cleared', as
 
   dialog = await openDialog('데미안 감상문');
   expect(dialog.getByLabelText('감상문')).toHaveValue('첫 줄\n둘째 줄');
+  type(dialog, '감상문', '고친 첫 줄\n고친 둘째 줄');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body).toEqual({ review: '고친 첫 줄\n고친 둘째 줄' });
+  expect(await screen.findByText('고친 첫 줄')).toBeInTheDocument();
+  expect(screen.queryByText('첫 줄')).toBeNull();
+
+  dialog = await openDialog('데미안 감상문');
   type(dialog, '감상문', '   ');
   fireEvent.click(dialog.getByRole('button', { name: '저장' }));
   await dialogClosed();
   expect(api.requests.at(-1)?.body).toEqual({ review: null });
-  await waitFor(() => expect(screen.queryByText('첫 줄')).toBeNull());
+  await waitFor(() => expect(screen.queryByText('고친 첫 줄')).toBeNull());
+});
+
+test('the preview skips lines that show nothing', async () => {
+  fakeApi([
+    { ...doneBook, review: '\u200b\n둘째 줄만 보임' },
+    { ...doneBook, title: '수레바퀴', review: '\u200b' },
+  ]);
+  openAt('/bucket-list/reading');
+  expect(await screen.findByText('둘째 줄만 보임')).toBeInTheDocument();
+  const card = screen.getByRole('heading', { name: /수레바퀴/ }).closest('[data-slot="card"]');
+  // Only the summary line with the completed date remains.
+  expect(card?.querySelectorAll('[data-slot="card-content"] p')).toHaveLength(1);
+});
+
+test('other line separators count as lines, like on the server', async () => {
+  const api = fakeApi([doneBook]);
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('데미안 감상문');
+  type(dialog, '감상문', 'ㄱ\u2028ㄴ\u2029ㄷ\u0085ㄹ\rㅁ\r\nㅂ');
+  expect(dialog.getByText('6/5줄 · 11/500자')).toBeInTheDocument();
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  expect(await dialog.findByRole('alert')).toHaveTextContent('감상문은 5줄 이하로 입력해 주세요');
+  expect(api.requests).toHaveLength(0);
+});
+
+test('editing the review clears the previous error', async () => {
+  fakeApi([doneBook]);
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('데미안 감상문');
+  type(dialog, '감상문', 'ㄱ\nㄴ\nㄷ\nㄹ\nㅁ\nㅂ');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialog.findByRole('alert');
+  type(dialog, '감상문', 'ㄱ');
+  expect(dialog.queryByRole('alert')).toBeNull();
 });
 
 for (const [name, text, message] of [

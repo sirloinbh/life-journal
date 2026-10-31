@@ -184,6 +184,24 @@ const rejected: { name: string; body: unknown; error: string }[] = [
     },
     error: '감상문은 5줄 이하로 입력해 주세요',
   },
+  ...[
+    ['CR', 'ㄱ\rㄴ\rㄷ\rㄹ\rㅁ\rㅂ'],
+    ['Unicode', 'ㄱ\u2028ㄴ\u2029ㄷ\u0085ㄹ\u2028ㅁ\u2029ㅂ'],
+  ].map(([kind, review]) => ({
+    name: `a review of 6 lines with ${kind} line separators`,
+    body: { ...book, status: 'done', completedDate: '2026-10-01', review },
+    error: '감상문은 5줄 이하로 입력해 주세요',
+  })),
+  {
+    name: 'a review of 251 emoji, which count as 2 characters each',
+    body: { ...book, status: 'done', completedDate: '2026-10-01', review: '😀'.repeat(251) },
+    error: '감상문은 500자 이하로 입력해 주세요',
+  },
+  {
+    name: 'a lone surrogate in a review',
+    body: { ...book, status: 'done', completedDate: '2026-10-01', review: '좋\ud800음' },
+    error: '감상문에 사용할 수 없는 문자가 있습니다',
+  },
   {
     name: 'a review of 501 characters',
     body: { ...book, status: 'done', completedDate: '2026-10-01', review: '가'.repeat(501) },
@@ -298,6 +316,7 @@ for (const [name, review, stored] of [
   ['5 lines and 500 characters', `${'가'.repeat(495)}\n\n\n\n나`, `${'가'.repeat(495)}\n\n\n\n나`],
   ['surrounding space and Windows line ends', '  첫 줄\r\n둘째 줄\n\n ', '첫 줄\n둘째 줄'],
   ['only blanks, which clear it', ' \n ', null],
+  ['250 emoji', '😀'.repeat(250), '😀'.repeat(250)],
 ] as const) {
   test(`a review with ${name} is accepted`, async () => {
     const queries: unknown[][] = [];

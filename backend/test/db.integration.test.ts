@@ -324,9 +324,27 @@ test('a review of a done item is stored, kept, edited, and cleared', { skip: !ur
         error: '완료하지 않은 항목에는 감상문을 넣을 수 없습니다',
       });
 
+      const rewritten = await patch({ review: '고친 감상문' });
+      assert.equal(rewritten.status, 200);
+      assert.equal(rewritten.data.review, '고친 감상문');
+
+      await assert.rejects(
+        pool.query("UPDATE items SET status = 'wishlist', completed_date = NULL WHERE id = $1", [
+          rewritten.data.id,
+        ]),
+        { code: '23514' },
+        'The database refuses a review on a wishlist item',
+      );
+
       const blanked = await patch({ review: '   ' });
       assert.equal(blanked.status, 200);
       assert.equal(blanked.data.review, null);
+
+      await patch({ review: '다시 쓴 감상문' });
+      const reopened = await patch({ status: 'wishlist', completedDate: null, review: null });
+      assert.equal(reopened.status, 200);
+      assert.equal(reopened.data.status, 'wishlist');
+      assert.equal(reopened.data.review, null);
     },
     { today: () => TODAY },
   );
