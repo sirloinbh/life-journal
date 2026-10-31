@@ -400,6 +400,15 @@ test('the preview skips lines that show nothing', async () => {
   expect(card?.querySelectorAll('[data-slot="card-content"] p')).toHaveLength(1);
 });
 
+for (const blank of ['\u200e', '\u00ad', '\u115f', '\u1160', '\u2800', '\u3164', '\uffa0']) {
+  const code = blank.codePointAt(0)!.toString(16);
+  test(`the preview skips a first line of only U+${code}`, async () => {
+    fakeApi([{ ...doneBook, review: `${blank}\n둘째 줄만 보임` }]);
+    openAt('/bucket-list/reading');
+    expect(await screen.findByText('둘째 줄만 보임')).toBeInTheDocument();
+  });
+}
+
 test('other line separators count as lines, like on the server', async () => {
   const api = fakeApi([doneBook]);
   openAt('/bucket-list/reading');

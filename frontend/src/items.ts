@@ -178,7 +178,10 @@ export function measureReview(text: string) {
 
 /** The first line that shows anything; zero-width characters alone would preview as a blank line. */
 export function reviewPreview(review: string) {
-  return review.split('\n').find((line) => /[^\s\u200b-\u200d\u2060\ufeff]/u.test(line)) ?? null;
+  return (
+    review.split('\n').find((line) => /[^\s\p{Cf}\u115f\u1160\u2800\u3164\uffa0]/u.test(line)) ??
+    null
+  );
 }
 
 export function reviewProblem({ lines, length }: { lines: number; length: number }) {
