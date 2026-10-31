@@ -320,25 +320,30 @@ test('a rejected completed date stays in the completion dialog', async () => {
   expect(await dialog.findByRole('alert')).toHaveTextContent('완료일은 오늘보다 뒤일 수 없습니다');
 });
 
-const criteriaByCategory = [
-  ['reading', ['내용', '문장', '여운']],
-  ['screen', ['스토리', '연출', '연기']],
-  ['stage', ['연기', '연출', '무대', '음악']],
-  ['drink', ['향', '맛', '여운', '가성비']],
-  ['travel', ['풍경', '음식', '숙소', '교통']],
-] as const;
+// The server's table in backend/test/items.test.ts must list the same keys.
+const criteriaByCategory = {
+  reading: { 내용: 'content', 문장: 'prose', 여운: 'afterglow' },
+  screen: { 스토리: 'story', 연출: 'direction', 연기: 'acting' },
+  stage: { 연기: 'acting', 연출: 'direction', 무대: 'stage', 음악: 'music' },
+  drink: { 향: 'aroma', 맛: 'taste', 여운: 'finish', 가성비: 'value' },
+  travel: { 풍경: 'scenery', 음식: 'food', 숙소: 'lodging', 교통: 'transport' },
+};
 
-for (const [category, criteria] of criteriaByCategory) {
-  test(`${category}: the rating form shows the criteria of its category`, async () => {
-    fakeApi([{ category, title: '기록', status: 'done', completedDate: '2026-10-01' }]);
+for (const [category, criteria] of Object.entries(criteriaByCategory)) {
+  test(`${category}: the rating form shows and sends the criteria of its category`, async () => {
+    const api = fakeApi([{ category, title: '기록', status: 'done', completedDate: '2026-10-01' }]);
     openAt(`/bucket-list/${category}`);
     const dialog = await openDialog('기록 평점');
-    const labels = [...dialog.getAllByRole('combobox')].map((box) => box.getAttribute('id'));
-    expect(labels).toHaveLength(criteria.length + 1);
+    expect(dialog.getAllByRole('combobox')).toHaveLength(Object.keys(criteria).length + 1);
     expect(dialog.getByRole('combobox', { name: '전체 평점' })).toBeInTheDocument();
-    for (const name of criteria) {
-      expect(dialog.getByRole('combobox', { name })).toBeInTheDocument();
+    const expected: Record<string, number> = {};
+    for (const [name, key] of Object.entries(criteria)) {
+      await choose(dialog, name, '3.5점');
+      expected[key] = 3.5;
     }
+    fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+    await dialogClosed();
+    expect(api.requests.at(-1)?.body).toEqual({ rating: null, subRatings: expected });
   });
 }
 

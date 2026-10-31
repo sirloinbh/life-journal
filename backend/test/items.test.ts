@@ -211,6 +211,49 @@ test('creating an item without a body is a Korean 400', async () => {
   });
 });
 
+// The screen's table in frontend/src/bucket-list.test.tsx must list the same keys.
+const criteriaByCategory = {
+  reading: { subtype: null, keys: ['content', 'prose', 'afterglow'] },
+  screen: { subtype: 'movie', keys: ['story', 'direction', 'acting'] },
+  stage: { subtype: 'opera', keys: ['acting', 'direction', 'stage', 'music'] },
+  drink: { subtype: 'wine', keys: ['aroma', 'taste', 'finish', 'value'] },
+  travel: { subtype: null, keys: ['scenery', 'food', 'lodging', 'transport'] },
+};
+
+for (const [category, { subtype, keys }] of Object.entries(criteriaByCategory)) {
+  test(`${category}: every sub-rating criterion and both score limits are accepted`, async () => {
+    const queries: unknown[][] = [];
+    const pool = {
+      query: async (_sql: string, values: unknown[]) => {
+        queries.push(values);
+        return { rows: [{ id: 1 }] };
+      },
+    } as unknown as Pool;
+    const subRatings = Object.fromEntries(keys.map((key, index) => [key, index ? 5 : 0.5]));
+    await withApi(
+      pool,
+      async (call) => {
+        const { status } = await call('/api/items', {
+          method: 'POST',
+          body: {
+            category,
+            subtype,
+            title: '기록',
+            status: 'done',
+            completedDate: TODAY,
+            rating: 0.5,
+            subRatings,
+          },
+        });
+        assert.equal(status, 201);
+      },
+      { today: () => TODAY },
+    );
+    assert.equal(queries[0]?.[8], 0.5);
+    assert.deepEqual(queries[0]?.[9], subRatings);
+  });
+}
+
 test('a completed date on the service date itself is accepted', async () => {
   const params: unknown[][] = [];
   const pool = {

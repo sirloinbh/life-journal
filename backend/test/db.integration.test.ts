@@ -39,9 +39,38 @@ test('the items migration can be applied again without errors', { skip: !url }, 
     await pool.query(sql);
     await pool.query(sql);
   }
-  const tables = await pool.query("SELECT 1 FROM pg_tables WHERE tablename = 'items'");
+  const tables = await pool.query(
+    "SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'items'",
+  );
   assert.equal(tables.rowCount, 1);
 });
+
+test(
+  'the ratings migration applies to a table that already has rows',
+  { skip: !url },
+  async (t) => {
+    const pool = new Pool({ connectionString: url, max: 1 });
+    const migration = (file: string) =>
+      readFile(new URL(`../../database/migrations/${file}`, import.meta.url), 'utf8');
+    const schema = 'test_ratings_migration';
+    t.after(async () => {
+      await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+      await pool.end();
+    });
+    await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE; CREATE SCHEMA ${schema}`);
+    await pool.query(`SET search_path TO ${schema}`);
+    await pool.query(await migration('002_items.sql'));
+    await pool.query(`INSERT INTO items (category, title) VALUES ('reading', 'wishlist');
+    INSERT INTO items (category, title, status, completed_date)
+    VALUES ('reading', 'done', 'done', '2026-10-01')`);
+    await pool.query(await migration('003_item_ratings.sql'));
+    const { rows } = await pool.query('SELECT rating, sub_ratings FROM items');
+    assert.deepEqual(rows, [
+      { rating: null, sub_ratings: {} },
+      { rating: null, sub_ratings: {} },
+    ]);
+  },
+);
 
 test('items of all five categories are stored and read back', { skip: !url }, async (t) => {
   const pool = new Pool({ connectionString: url });
@@ -227,6 +256,16 @@ test('ratings of a done item are stored, kept, and cleared with it', { skip: !ur
       assert.deepEqual(wrongCriterion.data, {
         error: '와인·위스키·사케 세부 평점에 없는 항목이 있습니다',
       });
+
+      const movedWithRatings = await patch({ category: 'travel', subtype: null });
+      assert.equal(movedWithRatings.status, 400, 'Old criteria do not fit the new category');
+      const moved = await patch({
+        category: 'travel',
+        subtype: null,
+        subRatings: { food: 3 },
+      });
+      assert.equal(moved.status, 200);
+      assert.deepEqual(moved.data.subRatings, { food: 3 });
 
       const reopened = await patch({
         status: 'wishlist',
