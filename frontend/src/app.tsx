@@ -1,18 +1,20 @@
-import { LayoutDashboard, Settings2 } from 'lucide-react';
+import { LayoutDashboard, ListChecks, Settings2 } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
+import { BucketList } from './bucket-list';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { EmptyState } from './components/ui/empty-state';
 import { Toaster } from './components/ui/sonner';
 import { type Health, healthText } from './health';
 
 // Every page URL lives here (central docs/directory-rules.md).
-const pages = { overview: '/', settings: '/settings' } as const;
+const pages = { overview: '/', bucketList: '/bucket-list', settings: '/settings' } as const;
 
 // Main menu (LNB) items, in display order.
 const nav: NavItem[] = [
   { to: pages.overview, label: '대시보드', icon: LayoutDashboard },
+  { to: pages.bucketList, label: '버킷리스트', icon: ListChecks },
   { to: pages.settings, label: '설정', icon: Settings2 },
 ];
 
@@ -83,6 +85,21 @@ export function App() {
                 description="독서·영화 감상문, 일기, 연극·콘서트 등 경험을 기록하는 개인 서비스"
                 health={health}
               />
+            }
+          />
+          <Route
+            path={`${pages.bucketList}/:category?`}
+            element={
+              <Page
+                title="버킷리스트"
+                description="하고 싶은 것을 분야별로 쌓고, 해낸 것은 완료로 표시합니다"
+                health={health}
+              >
+                <BucketList
+                  path={pages.bucketList}
+                  today={health.state === 'ok' ? health.today : undefined}
+                />
+              </Page>
             }
           />
           <Route
