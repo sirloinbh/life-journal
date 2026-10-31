@@ -33,6 +33,10 @@ import {
   type Item,
   itemFields,
   itemSummary,
+  NO_SCORE,
+  ratingFields,
+  ratingSummary,
+  SCORES,
   serviceToday,
 } from './items';
 import { RequestError, requestJson } from './lib/api';
@@ -223,10 +227,87 @@ function CompleteForm({ item, pending, save }: { item: Item; pending: boolean; s
   );
 }
 
+function ScoreField({
+  id,
+  label,
+  name,
+  value,
+}: {
+  id: string;
+  label: string;
+  name: string;
+  value: number | null | undefined;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Select name={name} defaultValue={value == null ? NO_SCORE : String(value)}>
+        <SelectTrigger id={id} className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NO_SCORE}>없음</SelectItem>
+          {SCORES.map((score) => (
+            <SelectItem key={score} value={String(score)}>
+              {score}점
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function RatingForm({
+  category,
+  item,
+  pending,
+  save,
+}: {
+  category: Category;
+  item: Item;
+  pending: boolean;
+  save: SaveItem;
+}) {
+  const id = useId();
+  const { notice, error } = useNotice();
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const fields = ratingFields(category, new FormData(event.currentTarget));
+    try {
+      await save(item.id, fields, '평점을 저장했습니다');
+    } catch (cause) {
+      error(cause);
+    }
+  };
+
+  return (
+    <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
+      <ScoreField id={`${id}-rating`} label="전체 평점" name="rating" value={item.rating} />
+      <p className="text-body-sm text-muted-foreground">
+        세부 평점은 선택입니다. 평균은 참고로만 보여 주고, 전체 평점은 직접 매깁니다.
+      </p>
+      {category.criteria.map(({ key, label }) => (
+        <ScoreField
+          key={key}
+          id={`${id}-${key}`}
+          label={label}
+          name={`sub.${key}`}
+          value={item.subRatings[key]}
+        />
+      ))}
+      <Notice notice={notice} />
+      <FormButtons pending={pending} submitLabel="저장" />
+    </form>
+  );
+}
+
 function ItemCard({
   item,
   category,
   onEdit,
+  onRate,
   onComplete,
   onReopen,
   onDelete,
@@ -234,12 +315,14 @@ function ItemCard({
   item: Item;
   category: Category;
   onEdit: (event: MouseEvent<HTMLButtonElement>) => void;
+  onRate: (event: MouseEvent<HTMLButtonElement>) => void;
   onComplete: (event: MouseEvent<HTMLButtonElement>) => void;
   onReopen: () => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
   const subtype = category.subtypes.find(({ value }) => value === item.subtype);
   const summary = itemSummary(item, category);
+  const ratings = ratingSummary(item, category);
   return (
     <Card>
       <CardHeader>
@@ -249,28 +332,35 @@ function ItemCard({
           <Badge variant={item.status === 'done' ? 'success' : 'secondary'}>
             {item.status === 'done' ? '완료' : '하고 싶음'}
           </Badge>
+          {item.rating !== null ? <Badge variant="outline">평점 {item.rating}</Badge> : null}
         </CardTitle>
       </CardHeader>
-      {summary.length > 0 ? (
-        <CardContent className="text-body-sm wrap-anywhere text-muted-foreground">
-          {summary.join(' · ')}
+      {summary.length > 0 || ratings ? (
+        <CardContent className="flex flex-col gap-1 text-body-sm wrap-anywhere text-muted-foreground">
+          {summary.length > 0 ? <p>{summary.join(' · ')}</p> : null}
+          {ratings ? <p>{ratings}</p> : null}
         </CardContent>
       ) : null}
       <CardFooter className="flex flex-wrap gap-2">
         {item.status === 'done' ? (
-          <ConfirmDialog
-            title="완료를 취소할까요?"
-            description="상태가 하고 싶음으로 돌아가고 완료일이 지워집니다."
-            confirmLabel="완료 취소"
-            cancelLabel="닫기"
-            destructive={false}
-            onConfirm={onReopen}
-            trigger={
-              <Button size="sm" variant="outline" aria-label={`${item.title} 완료 취소`}>
-                완료 취소
-              </Button>
-            }
-          />
+          <>
+            <Button size="sm" variant="outline" aria-label={`${item.title} 평점`} onClick={onRate}>
+              평점
+            </Button>
+            <ConfirmDialog
+              title="완료를 취소할까요?"
+              description="상태가 하고 싶음으로 돌아가고 완료일과 평점이 지워집니다."
+              confirmLabel="완료 취소"
+              cancelLabel="닫기"
+              destructive={false}
+              onConfirm={onReopen}
+              trigger={
+                <Button size="sm" variant="outline" aria-label={`${item.title} 완료 취소`}>
+                  완료 취소
+                </Button>
+              }
+            />
+          </>
         ) : (
           <Button
             size="sm"
@@ -299,9 +389,13 @@ function ItemCard({
   );
 }
 
-type FormModal = { kind: 'new' } | { kind: 'edit'; item: Item } | { kind: 'complete'; item: Item };
+type FormModal =
+  | { kind: 'new' }
+  | { kind: 'edit'; item: Item }
+  | { kind: 'complete'; item: Item }
+  | { kind: 'rate'; item: Item };
 
-const FORM_TITLES = { new: '항목 추가', edit: '항목 수정', complete: '완료로 표시' };
+const FORM_TITLES = { new: '항목 추가', edit: '항목 수정', complete: '완료로 표시', rate: '평점' };
 
 function CategoryItems({
   category,
@@ -394,13 +488,19 @@ function CategoryItems({
                 item={item}
                 category={category}
                 onEdit={(event) => openForm({ kind: 'edit', item }, event)}
+                onRate={(event) => openForm({ kind: 'rate', item }, event)}
                 onComplete={(event) => openForm({ kind: 'complete', item }, event)}
                 onReopen={() =>
                   changeFromDialog(async () => {
                     keepSaved(
                       await requestJson<Item>(`/api/items/${item.id}`, {
                         method: 'PATCH',
-                        body: { status: 'wishlist', completedDate: null },
+                        body: {
+                          status: 'wishlist',
+                          completedDate: null,
+                          rating: null,
+                          subRatings: {},
+                        },
                       }),
                     );
                   }, '완료를 취소했습니다')
@@ -437,6 +537,14 @@ function CategoryItems({
           </DialogHeader>
           {modal.kind === 'complete' ? (
             <CompleteForm item={modal.item} pending={pending} save={save} />
+          ) : modal.kind === 'rate' ? (
+            <RatingForm
+              key={modal.item.id}
+              category={category}
+              item={modal.item}
+              pending={pending}
+              save={save}
+            />
           ) : (
             <ItemForm
               key={modal.kind === 'edit' ? modal.item.id : 'new'}

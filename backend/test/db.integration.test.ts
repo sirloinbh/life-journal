@@ -31,15 +31,46 @@ test(
 test('the items migration can be applied again without errors', { skip: !url }, async (t) => {
   const pool = new Pool({ connectionString: url });
   t.after(() => pool.end());
-  const sql = await readFile(
-    new URL('../../database/migrations/002_items.sql', import.meta.url),
-    'utf8',
+  for (const file of ['002_items.sql', '003_item_ratings.sql']) {
+    const sql = await readFile(
+      new URL(`../../database/migrations/${file}`, import.meta.url),
+      'utf8',
+    );
+    await pool.query(sql);
+    await pool.query(sql);
+  }
+  const tables = await pool.query(
+    "SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'items'",
   );
-  await pool.query(sql);
-  await pool.query(sql);
-  const tables = await pool.query("SELECT 1 FROM pg_tables WHERE tablename = 'items'");
   assert.equal(tables.rowCount, 1);
 });
+
+test(
+  'the ratings migration applies to a table that already has rows',
+  { skip: !url },
+  async (t) => {
+    const pool = new Pool({ connectionString: url, max: 1 });
+    const migration = (file: string) =>
+      readFile(new URL(`../../database/migrations/${file}`, import.meta.url), 'utf8');
+    const schema = 'test_ratings_migration';
+    t.after(async () => {
+      await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+      await pool.end();
+    });
+    await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE; CREATE SCHEMA ${schema}`);
+    await pool.query(`SET search_path TO ${schema}`);
+    await pool.query(await migration('002_items.sql'));
+    await pool.query(`INSERT INTO items (category, title) VALUES ('reading', 'wishlist');
+    INSERT INTO items (category, title, status, completed_date)
+    VALUES ('reading', 'done', 'done', '2026-10-01')`);
+    await pool.query(await migration('003_item_ratings.sql'));
+    const { rows } = await pool.query('SELECT rating, sub_ratings FROM items');
+    assert.deepEqual(rows, [
+      { rating: null, sub_ratings: {} },
+      { rating: null, sub_ratings: {} },
+    ]);
+  },
+);
 
 test('items of all five categories are stored and read back', { skip: !url }, async (t) => {
   const pool = new Pool({ connectionString: url });
@@ -95,6 +126,8 @@ test('items of all five categories are stored and read back', { skip: !url }, as
           costKrw: null,
           plannedDate: null,
           completedDate: null,
+          rating: null,
+          subRatings: {},
           createdAt: created.data.createdAt,
           updatedAt: created.data.updatedAt,
           ...sample,
@@ -183,6 +216,76 @@ test('items are updated, checked as a whole, and deleted', { skip: !url }, async
     },
     { today: () => TODAY },
   );
+});
+
+test('ratings of a done item are stored, kept, and cleared with it', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  await withApi(
+    pool,
+    async (call) => {
+      const created = await call('/api/items', {
+        method: 'POST',
+        body: {
+          category: 'drink',
+          subtype: 'wine',
+          title: '샤블리',
+          status: 'done',
+          completedDate: TODAY,
+          rating: 4.5,
+          subRatings: { aroma: 4, value: 5 },
+        },
+      });
+      assert.equal(created.status, 201);
+      assert.equal(created.data.rating, 4.5);
+      assert.deepEqual(created.data.subRatings, { aroma: 4, value: 5 });
+      const path = `/api/items/${String(created.data.id)}`;
+      const patch = (body: unknown) => call(path, { method: 'PATCH', body });
+
+      const edited = await patch({ title: '샤블리 2019' });
+      assert.equal(edited.data.rating, 4.5, 'Another edit keeps the rating');
+
+      const keptRating = await patch({ status: 'wishlist', completedDate: null });
+      assert.equal(keptRating.status, 400);
+      assert.deepEqual(keptRating.data, {
+        error: '완료하지 않은 항목에는 평점을 넣을 수 없습니다',
+      });
+
+      const wrongCriterion = await patch({ subRatings: { acting: 4 } });
+      assert.equal(wrongCriterion.status, 400);
+      assert.deepEqual(wrongCriterion.data, {
+        error: '와인·위스키·사케 세부 평점에 없는 항목이 있습니다',
+      });
+
+      const movedWithRatings = await patch({ category: 'travel', subtype: null });
+      assert.equal(movedWithRatings.status, 400, 'Old criteria do not fit the new category');
+      const moved = await patch({
+        category: 'travel',
+        subtype: null,
+        subRatings: { food: 3 },
+      });
+      assert.equal(moved.status, 200);
+      assert.deepEqual(moved.data.subRatings, { food: 3 });
+
+      const reopened = await patch({
+        status: 'wishlist',
+        completedDate: null,
+        rating: null,
+        subRatings: {},
+      });
+      assert.equal(reopened.status, 200);
+      assert.equal(reopened.data.rating, null);
+      assert.deepEqual(reopened.data.subRatings, {});
+    },
+    { today: () => TODAY },
+  );
+  for (const sql of [
+    "INSERT INTO items (category, title, rating) VALUES ('reading', '데미안', 4)",
+    "INSERT INTO items (category, title, status, completed_date, rating) VALUES ('reading', '데미안', 'done', '2026-10-01', 4.3)",
+    `INSERT INTO items (category, title, sub_ratings) VALUES ('reading', '데미안', '{"content": 4}')`,
+  ]) {
+    await assert.rejects(pool.query(sql), { code: '23514' }, sql);
+  }
 });
 
 const createTestItem = async (pool: Pool) => {
