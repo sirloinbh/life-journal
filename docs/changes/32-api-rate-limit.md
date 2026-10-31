@@ -37,3 +37,11 @@ PR #30의 `CodeQL` 체크가 `js/missing-rate-limiting` 경고로 실패했다. 
 - `npm run knip`: 통과.
 - `node .standards/ioc-scan.mjs`: 의심 항목 없음.
 - `CodeQL` 경고가 사라지는지는 PR #30에 이 변경을 병합한 뒤 확인한다. #30의 경로가 아직 `main`에 없어 이 PR에서는 확인할 수 없다.
+
+## 리뷰 — 2026-10-31
+
+head `4eb27fc`를 분리된 에이전트가 리뷰했다. 지적은 1건이고 코드 수정이 없어 2차 리뷰는 하지 않는다.
+
+- `frontend/nginx.conf`의 주석 "The API itself has no limit"이 이 변경 뒤로 사실이 아니다. 중앙 관리 파일이라 [#34](https://github.com/sirloinbh/life-journal/issues/34)로 분리했다.
+- 리뷰어가 빌드 결과를 실행해 601번째 요청의 429와 `{ error }` 형식, 위조한 `X-Forwarded-For`로 우회되지 않는 것을 확인했다.
+- API 시작 후 첫 요청에 클라이언트가 보낸 `X-Forwarded-For`나 `Forwarded`가 있으면 패키지 경고가 로그에 1회 남는다. 응답은 정상이라 그대로 둔다.
