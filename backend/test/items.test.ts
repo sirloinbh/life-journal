@@ -253,6 +253,38 @@ for (const { name, body, error } of rejected) {
   });
 }
 
+const COST_MESSAGE = '0 이상 정수로 입력해 주세요';
+
+for (const [query, error] of [
+  ['category=music', '분야가 올바르지 않습니다'],
+  ['status=doing', '상태는 하고 싶음(wishlist) 또는 완료(done)여야 합니다'],
+  ['from=2026-02-30', '시작일은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요'],
+  ['to=tomorrow', '종료일은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요'],
+  ['from=2026-02-01&to=2026-01-01', '시작일은 종료일보다 뒤일 수 없습니다'],
+  ['costMin=-1', `최소 비용은(는) 2147483647원 이하의 ${COST_MESSAGE}`],
+  ['costMax=1.5', `최대 비용은(는) 2147483647원 이하의 ${COST_MESSAGE}`],
+  ['costMax=2147483648', `최대 비용은(는) 2147483647원 이하의 ${COST_MESSAGE}`],
+  ['costMin=2&costMax=1', '최소 비용은 최대 비용보다 클 수 없습니다'],
+  ['sort=password', '정렬 기준이 올바르지 않습니다'],
+  ['sort=title;DROP%20TABLE%20items', '정렬 기준이 올바르지 않습니다'],
+  ['order=sideways', '정렬 방향이 올바르지 않습니다'],
+  ['q=a&q=b', '검색어는 하나만 입력해 주세요'],
+  ['from=2026-01-01&from=2026-01-02', '시작일은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요'],
+  ['category=reading&category=travel', '분야가 올바르지 않습니다'],
+  ['costMin=1&costMin=2', `최소 비용은(는) 2147483647원 이하의 ${COST_MESSAGE}`],
+  [`q=${'가'.repeat(101)}`, '검색어는 100자 이하로 입력해 주세요'],
+  ['q=%00', '검색어에 사용할 수 없는 문자가 있습니다'],
+  ['nickname=x', '알 수 없는 검색 조건이 있습니다'],
+] as const) {
+  test(`listing items with ${query.slice(0, 40)} is a Korean 400`, async () => {
+    await withApi(untouchedPool(), async (call) => {
+      const response = await call(`/api/items?${encodeURI(query).replaceAll('%25', '%')}`);
+      assert.equal(response.status, 400);
+      assert.deepEqual(response.data, { error });
+    });
+  });
+}
+
 test('a body that is not valid JSON is a Korean 400', async () => {
   await withApi(untouchedPool(), async (call) => {
     const { status, data } = await call('/api/items', { method: 'POST', rawBody: '{"title":' });
