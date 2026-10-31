@@ -77,9 +77,7 @@ const CATEGORIES = {
       region: text('산지', 100).optional(),
       vintage: z
         .number({ invalid_type_error: vintageMessage })
-        .int(vintageMessage)
-        .min(1000, vintageMessage)
-        .max(9999, vintageMessage)
+        .refine((year) => Number.isInteger(year) && year >= 1000 && year <= 9999, vintageMessage)
         .optional(),
     }),
   },
@@ -110,9 +108,8 @@ const itemFields = z
         .default('wishlist'),
       costKrw: z
         .number({ invalid_type_error: costMessage })
-        .int(costMessage)
-        .min(0, costMessage)
-        .max(MAX_COST_KRW, `비용은 ${MAX_COST_KRW}원 이하로 입력해 주세요`)
+        .refine((cost) => Number.isInteger(cost) && cost >= 0, costMessage)
+        .refine((cost) => cost <= MAX_COST_KRW, `비용은 ${MAX_COST_KRW}원 이하로 입력해 주세요`)
         .nullable()
         .optional(),
       plannedDate: date('예정일').nullable().optional(),
@@ -211,6 +208,13 @@ export function createItemsRouter(pool: Pool, today: () => string) {
     const patch = itemPatch.parse(req.body);
     if (Object.keys(patch).length === 0) throw new HttpError(400, '수정할 내용이 없습니다');
     const client = await pool.connect();
+    // pg-pool stops listening while a client is checked out, and an unheard socket error would end
+    // the process. The pending query still rejects, so the request answers with a 500.
+    const onClientError = (error: Error) => {
+      console.error(JSON.stringify({ event: 'db_client_error', message: error.message }));
+    };
+    client.on('error', onClientError);
+    let connectionBroken = false;
     try {
       await client.query('BEGIN');
       const { rows: current } = await client.query(
@@ -255,10 +259,14 @@ export function createItemsRouter(pool: Pool, today: () => string) {
       await client.query('COMMIT');
       res.json(rows[0]);
     } catch (error) {
-      await client.query('ROLLBACK');
+      // A failed ROLLBACK must not replace the error the client should see.
+      await client.query('ROLLBACK').catch(() => {
+        connectionBroken = true;
+      });
       throw error;
     } finally {
-      client.release();
+      client.off('error', onClientError);
+      client.release(connectionBroken);
     }
   });
 

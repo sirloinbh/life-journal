@@ -65,6 +65,16 @@ const rejected: { name: string; body: unknown; error: string }[] = [
     error: '비용은 0원 이상의 정수로 입력해 주세요',
   },
   {
+    name: 'a negative fractional cost, with the message only once',
+    body: { ...book, costKrw: -1.5 },
+    error: '비용은 0원 이상의 정수로 입력해 주세요',
+  },
+  {
+    name: 'a fractional vintage below the range, with the message only once',
+    body: { category: 'drink', subtype: 'wine', title: '샤블리', details: { vintage: 1.5 } },
+    error: '빈티지는 4자리 연도로 입력해 주세요',
+  },
+  {
     name: 'a cost given as text',
     body: { ...book, costKrw: '1000' },
     error: '비용은 0원 이상의 정수로 입력해 주세요',
@@ -182,6 +192,29 @@ test('a completed date on the service date itself is accepted', async () => {
   );
   assert.equal(params.length, 1);
   assert.equal(params[0]?.[6], TODAY);
+});
+
+test('a failed ROLLBACK keeps the original error and discards the connection', async () => {
+  const released: unknown[] = [];
+  const client = {
+    on: () => {},
+    off: () => {},
+    release: (broken: unknown) => released.push(broken),
+    query: async (sql: string) => {
+      if (sql === 'ROLLBACK') throw new Error('connection lost');
+      return { rows: [] };
+    },
+  };
+  const pool = { connect: async () => client } as unknown as Pool;
+  await withApi(pool, async (call) => {
+    const { status, data } = await call('/api/items/1', {
+      method: 'PATCH',
+      body: { title: '수정' },
+    });
+    assert.equal(status, 404);
+    assert.deepEqual(data, { error: '항목을 찾을 수 없습니다' });
+  });
+  assert.deepEqual(released, [true]);
 });
 
 test('malformed item ids and empty patches are Korean 400s', async () => {

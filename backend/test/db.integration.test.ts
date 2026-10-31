@@ -185,6 +185,139 @@ test('items are updated, checked as a whole, and deleted', { skip: !url }, async
   );
 });
 
+const createTestItem = async (pool: Pool) => {
+  const { rows } = await pool.query<{ id: number }>(
+    "INSERT INTO items (category, title, cost_krw) VALUES ('reading', '원래 제목', 1000) RETURNING id",
+  );
+  return rows[0]!.id;
+};
+
+// Waits until `count` connections of this database are blocked behind a lock.
+async function waitForLockWaiters(pool: Pool, count: number) {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const { rows } = await pool.query<{ pid: number }>(
+      "SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
+    );
+    if (rows.length === count) return rows;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`Expected ${count} connections waiting for a lock`);
+}
+
+test('concurrent patches of different fields both survive', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  const id = await createTestItem(pool);
+  await withApi(pool, async (call) => {
+    const holder = await pool.connect();
+    try {
+      await holder.query('BEGIN');
+      await holder.query('SELECT 1 FROM items WHERE id = $1 FOR UPDATE', [id]);
+      const patches = Promise.all([
+        call(`/api/items/${id}`, { method: 'PATCH', body: { title: '새 제목' } }),
+        call(`/api/items/${id}`, { method: 'PATCH', body: { costKrw: 2000 } }),
+      ]);
+      await waitForLockWaiters(pool, 2);
+      await holder.query('COMMIT');
+      const results = await patches;
+      assert.deepEqual(
+        results.map((result) => result.status),
+        [200, 200],
+      );
+    } finally {
+      holder.release();
+    }
+    const { data } = await call(`/api/items/${id}`);
+    assert.equal(data.title, '새 제목');
+    assert.equal(data.costKrw, 2000);
+  });
+});
+
+test('a patch that fails after its UPDATE leaves the row unchanged', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  const id = await createTestItem(pool);
+  const failingCommit = {
+    connect: async () => {
+      const client = await pool.connect();
+      const query = client.query.bind(client) as (sql: string, values?: unknown[]) => unknown;
+      return new Proxy(client, {
+        get: (target, key) =>
+          key === 'query'
+            ? (sql: string, values?: unknown[]) =>
+                sql === 'COMMIT' ? Promise.reject(new Error('commit failed')) : query(sql, values)
+            : (Reflect.get(target, key) as unknown),
+      });
+    },
+  } as unknown as Pool;
+  const original = console.error;
+  console.error = () => {};
+  try {
+    await withApi(failingCommit, async (call) => {
+      const { status } = await call(`/api/items/${id}`, {
+        method: 'PATCH',
+        body: { title: '사라질 제목' },
+      });
+      assert.equal(status, 500);
+    });
+  } finally {
+    console.error = original;
+  }
+  const { rows } = await pool.query('SELECT title FROM items WHERE id = $1', [id]);
+  assert.equal(rows[0].title, '원래 제목');
+});
+
+test(
+  'losing the connection during a patch answers 500 and keeps the API alive',
+  { skip: !url },
+  async (t) => {
+    const pool = new Pool({ connectionString: url });
+    t.after(() => pool.end());
+    const id = await createTestItem(pool);
+    const original = console.error;
+    console.error = () => {};
+    try {
+      await withApi(pool, async (call) => {
+        const holder = await pool.connect();
+        try {
+          await holder.query('BEGIN');
+          await holder.query('SELECT 1 FROM items WHERE id = $1 FOR UPDATE', [id]);
+          const patch = call(`/api/items/${id}`, { method: 'PATCH', body: { title: '끊김' } });
+          const [waiter] = await waitForLockWaiters(pool, 1);
+          await holder.query('SELECT pg_terminate_backend($1)', [waiter!.pid]);
+          assert.equal((await patch).status, 500);
+          await holder.query('ROLLBACK');
+        } finally {
+          holder.release();
+        }
+        const { status, data } = await call(`/api/items/${id}`);
+        assert.equal(status, 200);
+        assert.equal(data.title, '원래 제목');
+      });
+    } finally {
+      console.error = original;
+    }
+  },
+);
+
+test('a patch cannot set a completed date after the service date', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  const id = await createTestItem(pool);
+  await withApi(
+    pool,
+    async (call) => {
+      const { status, data } = await call(`/api/items/${id}`, {
+        method: 'PATCH',
+        body: { status: 'done', completedDate: '2026-11-01' },
+      });
+      assert.equal(status, 400);
+      assert.deepEqual(data, { error: '완료일은 오늘보다 뒤일 수 없습니다' });
+    },
+    { today: () => TODAY },
+  );
+});
+
 test(
   'the database itself refuses a done item without a completed date',
   { skip: !url },
