@@ -50,6 +50,21 @@ test('unknown API paths return a Korean 404 JSON body', async () => {
   );
 });
 
+test('API requests beyond 600 per minute get a Korean 429', async () => {
+  await withApi(
+    pool(async () => ({ rows: [] })),
+    async (call) => {
+      for (let request = 1; request <= 600; request++) {
+        const { status } = await call('/api/health');
+        assert.equal(status, 200, `request ${request}`);
+      }
+      const { status, data } = await call('/api/does-not-exist');
+      assert.equal(status, 429);
+      assert.deepEqual(data, { error: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요' });
+    },
+  );
+});
+
 test('service date follows Asia/Seoul across the UTC day boundary', () => {
   assert.equal(serviceDate(new Date('2026-10-18T14:59:59Z')), '2026-10-18');
   assert.equal(serviceDate(new Date('2026-10-18T15:00:00Z')), '2026-10-19');
