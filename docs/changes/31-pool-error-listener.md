@@ -26,5 +26,9 @@
 
 - `npm run check`: 통과. 백엔드 47개 통과·건너뜀 0개, 프론트엔드 80개 통과.
 - `npm run knip`: 통과.
-- 리스너를 뺀 코드로 `npm test -w backend`를 돌려 새 테스트 2개가 `terminating connection due to administrator command` 오류로 실패하는 것을 확인하고 코드를 되돌렸다.
+- 리스너를 뺀 코드로 `npm test -w backend`를 돌려 새 테스트 2개가 실패하는 것을 확인하고 코드를 되돌렸다. 오류는 각각 `Error: connection lost`와 `terminating connection due to administrator command`다.
 - 화면 변경이 없어 브라우저 확인은 하지 않았다.
+
+## 리뷰 — 2026-10-31
+
+head `a9ccbe1`을 분리된 에이전트가 리뷰했다. 코드 지적은 없고, 위 검증 기록의 오류 문구 1건만 고쳤다. 코드 수정이 없어 2차 리뷰는 하지 않는다. 리뷰어가 실제 `server.ts`로 쉬는 연결 5개를 끊어 프로세스가 살아 있고 `/api/health`가 200인 것과, 테스트가 반복·병렬 실행에서 실패하지 않는 것을 확인했다.
