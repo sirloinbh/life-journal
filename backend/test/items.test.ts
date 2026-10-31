@@ -31,7 +31,7 @@ const rejected: { name: string; body: unknown; error: string }[] = [
   },
   {
     name: 'an unknown field',
-    body: { ...book, rating: 5 },
+    body: { ...book, nickname: '책' },
     error: '알 수 없는 항목이 있습니다',
   },
   {
@@ -123,6 +123,46 @@ const rejected: { name: string; body: unknown; error: string }[] = [
     name: 'a lone surrogate in details, which jsonb cannot store',
     body: { ...book, details: { author: '헤\ud800세' } },
     error: '저자에 사용할 수 없는 문자가 있습니다',
+  },
+  ...[0, 5.5, 4.3, '4'].map((rating) => ({
+    name: `an overall rating of ${JSON.stringify(rating)}`,
+    body: { ...book, status: 'done', completedDate: '2026-10-01', rating },
+    error: '전체 평점은(는) 0.5점부터 5점까지 0.5점 단위로 입력해 주세요',
+  })),
+  {
+    name: 'a sub-rating out of range',
+    body: {
+      ...book,
+      status: 'done',
+      completedDate: '2026-10-01',
+      subRatings: { content: 6 },
+    },
+    error: '내용은(는) 0.5점부터 5점까지 0.5점 단위로 입력해 주세요',
+  },
+  {
+    name: 'a sub-rating criterion of another category',
+    body: {
+      ...book,
+      status: 'done',
+      completedDate: '2026-10-01',
+      subRatings: { acting: 4 },
+    },
+    error: '독서 세부 평점에 없는 항목이 있습니다',
+  },
+  {
+    name: 'sub-ratings that are not an object',
+    body: { ...book, status: 'done', completedDate: '2026-10-01', subRatings: 4 },
+    error: '세부 평점 형식이 올바르지 않습니다',
+  },
+  {
+    name: 'a rating on a wishlist item',
+    body: { ...book, rating: 4 },
+    error: '완료하지 않은 항목에는 평점을 넣을 수 없습니다',
+  },
+  {
+    name: 'a sub-rating on a wishlist item',
+    body: { ...book, subRatings: { content: 4 } },
+    error: '완료하지 않은 항목에는 평점을 넣을 수 없습니다',
   },
   {
     name: 'a done item without a completed date',

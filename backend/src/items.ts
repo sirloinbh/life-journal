@@ -8,6 +8,7 @@ const MAX_COST_KRW = 2_147_483_647; // items.cost_krw is a PostgreSQL integer.
 
 const COLUMNS = `id, category, subtype, title, status, cost_krw AS "costKrw",
   planned_date AS "plannedDate", completed_date AS "completedDate", details,
+  rating::float8 AS rating, sub_ratings AS "subRatings",
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 // PostgreSQL rejects NUL and lone surrogates inside jsonb, which would otherwise surface as a 500.
@@ -42,6 +43,20 @@ const details = (label: string, fields: z.ZodRawShape) =>
     .object(fields, { invalid_type_error: `${label} 정보 형식이 올바르지 않습니다` })
     .strict(`${label} 정보에 없는 항목이 있습니다`);
 
+const score = (label: string) => {
+  const message = `${label}은(는) 0.5점부터 5점까지 0.5점 단위로 입력해 주세요`;
+  return z
+    .number({ invalid_type_error: message })
+    .refine((value) => value >= 0.5 && value <= 5 && Number.isInteger(value * 2), message);
+};
+
+const criteria = (label: string, names: Record<string, string>) =>
+  z
+    .object(
+      Object.fromEntries(Object.entries(names).map(([key, name]) => [key, score(name).optional()])),
+    )
+    .strict(`${label} 세부 평점에 없는 항목이 있습니다`);
+
 const vintageMessage = '빈티지는 4자리 연도로 입력해 주세요';
 
 const CATEGORIES = {
@@ -52,6 +67,7 @@ const CATEGORIES = {
       author: text('저자', 100).optional(),
       publisher: text('출판사', 100).optional(),
     }),
+    criteria: criteria('독서', { content: '내용', prose: '문장', afterglow: '여운' }),
   },
   screen: {
     label: '영화·드라마',
@@ -60,6 +76,7 @@ const CATEGORIES = {
       director: text('감독', 100).optional(),
       cast: text('출연진', 200).optional(),
     }),
+    criteria: criteria('영화·드라마', { story: '스토리', direction: '연출', acting: '연기' }),
   },
   stage: {
     label: '연극·공연·뮤지컬·오페라',
@@ -67,6 +84,12 @@ const CATEGORIES = {
     details: details('연극·공연·뮤지컬·오페라', {
       venue: text('공연장', 100).optional(),
       cast: text('출연진', 200).optional(),
+    }),
+    criteria: criteria('연극·공연·뮤지컬·오페라', {
+      acting: '연기',
+      direction: '연출',
+      stage: '무대',
+      music: '음악',
     }),
   },
   drink: {
@@ -80,6 +103,12 @@ const CATEGORIES = {
         .refine((year) => Number.isInteger(year) && year >= 1000 && year <= 9999, vintageMessage)
         .optional(),
     }),
+    criteria: criteria('와인·위스키·사케', {
+      aroma: '향',
+      taste: '맛',
+      finish: '여운',
+      value: '가성비',
+    }),
   },
   travel: {
     label: '여행',
@@ -88,8 +117,22 @@ const CATEGORIES = {
       country: text('나라', 100).optional(),
       city: text('도시', 100).optional(),
     }),
+    criteria: criteria('여행', {
+      scenery: '풍경',
+      food: '음식',
+      lodging: '숙소',
+      transport: '교통',
+    }),
   },
-} satisfies Record<string, { label: string; subtypes: readonly string[]; details: z.ZodTypeAny }>;
+} satisfies Record<
+  string,
+  {
+    label: string;
+    subtypes: readonly string[];
+    details: z.ZodTypeAny;
+    criteria: z.ZodTypeAny;
+  }
+>;
 
 const categoryMessage = '분야가 올바르지 않습니다';
 const statusMessage = '상태는 하고 싶음(wishlist) 또는 완료(done)여야 합니다';
@@ -117,6 +160,12 @@ const itemFields = z
       details: z
         .record(z.string(), z.unknown(), {
           invalid_type_error: '분야별 정보 형식이 올바르지 않습니다',
+        })
+        .default({}),
+      rating: score('전체 평점').nullable().optional(),
+      subRatings: z
+        .record(z.string(), z.unknown(), {
+          invalid_type_error: '세부 평점 형식이 올바르지 않습니다',
         })
         .default({}),
     },
@@ -151,6 +200,11 @@ function parseItem(input: unknown, today: string) {
   if (completedDate !== null && completedDate > today) {
     throw new HttpError(400, '완료일은 오늘보다 뒤일 수 없습니다');
   }
+  const rating = item.rating ?? null;
+  const subRatings = category.criteria.parse(item.subRatings) as Record<string, unknown>;
+  if (item.status === 'wishlist' && (rating !== null || Object.keys(subRatings).length > 0)) {
+    throw new HttpError(400, '완료하지 않은 항목에는 평점을 넣을 수 없습니다');
+  }
   return {
     category: item.category,
     subtype,
@@ -160,6 +214,8 @@ function parseItem(input: unknown, today: string) {
     plannedDate: item.plannedDate ?? null,
     completedDate,
     details: category.details.parse(item.details) as Record<string, unknown>,
+    rating,
+    subRatings,
   };
 }
 
@@ -179,8 +235,9 @@ export function createItemsRouter(pool: Pool, today: () => string) {
     const item = parseItem(req.body, today());
     const { rows } = await pool.query(
       `INSERT INTO items
-         (category, subtype, title, status, cost_krw, planned_date, completed_date, details)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         (category, subtype, title, status, cost_krw, planned_date, completed_date, details,
+          rating, sub_ratings)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING ${COLUMNS}`,
       [
         item.category,
@@ -191,6 +248,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         item.plannedDate,
         item.completedDate,
         item.details,
+        item.rating,
+        item.subRatings,
       ],
     );
     res.status(201).json(rows[0]);
@@ -222,8 +281,18 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         [id],
       );
       if (current.length === 0) throw notFound();
-      const { category, subtype, title, status, costKrw, plannedDate, completedDate, details } =
-        current[0];
+      const {
+        category,
+        subtype,
+        title,
+        status,
+        costKrw,
+        plannedDate,
+        completedDate,
+        details,
+        rating,
+        subRatings,
+      } = current[0];
       const item = parseItem(
         {
           category,
@@ -234,6 +303,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
           plannedDate,
           completedDate,
           details,
+          rating,
+          subRatings,
           ...patch,
         },
         today(),
@@ -241,7 +312,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
       const { rows } = await client.query(
         `UPDATE items
          SET category = $2, subtype = $3, title = $4, status = $5, cost_krw = $6,
-             planned_date = $7, completed_date = $8, details = $9, updated_at = now()
+             planned_date = $7, completed_date = $8, details = $9, rating = $10,
+             sub_ratings = $11, updated_at = now()
          WHERE id = $1
          RETURNING ${COLUMNS}`,
         [
@@ -254,6 +326,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
           item.plannedDate,
           item.completedDate,
           item.details,
+          item.rating,
+          item.subRatings,
         ],
       );
       await client.query('COMMIT');

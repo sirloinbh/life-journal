@@ -9,6 +9,8 @@ export type Item = {
   plannedDate: string | null;
   completedDate: string | null;
   details: Record<string, string | number>;
+  rating: number | null;
+  subRatings: Record<string, number>;
 };
 
 export type Category = {
@@ -17,7 +19,10 @@ export type Category = {
   description: string;
   subtypes: { value: string; label: string }[];
   fields: { key: string; label: string; numeric?: boolean }[];
+  criteria: { key: string; label: string }[];
 };
+
+export const SCORES = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
 
 export const categories: Category[] = [
   {
@@ -28,6 +33,11 @@ export const categories: Category[] = [
     fields: [
       { key: 'author', label: '저자' },
       { key: 'publisher', label: '출판사' },
+    ],
+    criteria: [
+      { key: 'content', label: '내용' },
+      { key: 'prose', label: '문장' },
+      { key: 'afterglow', label: '여운' },
     ],
   },
   {
@@ -41,6 +51,11 @@ export const categories: Category[] = [
     fields: [
       { key: 'director', label: '감독' },
       { key: 'cast', label: '출연진' },
+    ],
+    criteria: [
+      { key: 'story', label: '스토리' },
+      { key: 'direction', label: '연출' },
+      { key: 'acting', label: '연기' },
     ],
   },
   {
@@ -57,6 +72,12 @@ export const categories: Category[] = [
       { key: 'venue', label: '공연장' },
       { key: 'cast', label: '출연진' },
     ],
+    criteria: [
+      { key: 'acting', label: '연기' },
+      { key: 'direction', label: '연출' },
+      { key: 'stage', label: '무대' },
+      { key: 'music', label: '음악' },
+    ],
   },
   {
     key: 'drink',
@@ -72,6 +93,12 @@ export const categories: Category[] = [
       { key: 'region', label: '산지' },
       { key: 'vintage', label: '빈티지', numeric: true },
     ],
+    criteria: [
+      { key: 'aroma', label: '향' },
+      { key: 'taste', label: '맛' },
+      { key: 'finish', label: '여운' },
+      { key: 'value', label: '가성비' },
+    ],
   },
   {
     key: 'travel',
@@ -81,6 +108,12 @@ export const categories: Category[] = [
     fields: [
       { key: 'country', label: '나라' },
       { key: 'city', label: '도시' },
+    ],
+    criteria: [
+      { key: 'scenery', label: '풍경' },
+      { key: 'food', label: '음식' },
+      { key: 'lodging', label: '숙소' },
+      { key: 'transport', label: '교통' },
     ],
   },
 ];
@@ -131,4 +164,32 @@ export function itemSummary(item: Item, category: Category) {
   if (item.plannedDate) parts.push(`예정일 ${item.plannedDate}`);
   if (item.completedDate) parts.push(`완료일 ${item.completedDate}`);
   return parts;
+}
+
+/** The form's "none" choice is NO_SCORE; only chosen scores are sent. */
+export const NO_SCORE = 'none';
+
+export function ratingFields(category: Category, form: FormData) {
+  const chosen = (name: string) => {
+    const value = form.get(name);
+    return typeof value === 'string' && value && value !== NO_SCORE ? Number(value) : null;
+  };
+  const subRatings: Record<string, number> = {};
+  for (const { key } of category.criteria) {
+    const value = chosen(`sub.${key}`);
+    if (value !== null) subRatings[key] = value;
+  }
+  return { rating: chosen('rating'), subRatings };
+}
+
+/** The sub-rating line. Its average is for reference only; the overall rating is set by hand. */
+export function ratingSummary(item: Item, category: Category) {
+  const scored = category.criteria.flatMap(({ key, label }) => {
+    const value = item.subRatings[key];
+    return value === undefined ? [] : [{ label, value }];
+  });
+  if (scored.length === 0) return null;
+  const average = scored.reduce((sum, { value }) => sum + value, 0) / scored.length;
+  const parts = scored.map(({ label, value }) => `${label} ${value}`);
+  return `${parts.join(' · ')} (세부 평균 ${average.toFixed(1)}, 참고용)`;
 }

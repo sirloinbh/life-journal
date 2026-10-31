@@ -36,6 +36,8 @@ function fakeApi(initial: Partial<Item>[] = []) {
     plannedDate: null,
     completedDate: null,
     details: {},
+    rating: null,
+    subRatings: {},
     ...fields,
   });
   const api = {
@@ -198,7 +200,12 @@ for (const { tab, key, field, detail, ...rest } of cases) {
     dialog = await openDialog('고친 항목 완료 취소');
     fireEvent.click(dialog.getByRole('button', { name: '완료 취소' }));
     await dialogClosed();
-    expect(api.requests.at(-1)?.body).toEqual({ status: 'wishlist', completedDate: null });
+    expect(api.requests.at(-1)?.body).toEqual({
+      status: 'wishlist',
+      completedDate: null,
+      rating: null,
+      subRatings: {},
+    });
 
     dialog = await openDialog('고친 항목 삭제');
     fireEvent.click(dialog.getByRole('button', { name: '삭제' }));
@@ -311,6 +318,71 @@ test('a rejected completed date stays in the completion dialog', async () => {
   type(dialog, '완료일', '2027-01-01');
   fireEvent.click(dialog.getByRole('button', { name: '완료로 표시' }));
   expect(await dialog.findByRole('alert')).toHaveTextContent('완료일은 오늘보다 뒤일 수 없습니다');
+});
+
+const criteriaByCategory = [
+  ['reading', ['내용', '문장', '여운']],
+  ['screen', ['스토리', '연출', '연기']],
+  ['stage', ['연기', '연출', '무대', '음악']],
+  ['drink', ['향', '맛', '여운', '가성비']],
+  ['travel', ['풍경', '음식', '숙소', '교통']],
+] as const;
+
+for (const [category, criteria] of criteriaByCategory) {
+  test(`${category}: the rating form shows the criteria of its category`, async () => {
+    fakeApi([{ category, title: '기록', status: 'done', completedDate: '2026-10-01' }]);
+    openAt(`/bucket-list/${category}`);
+    const dialog = await openDialog('기록 평점');
+    const labels = [...dialog.getAllByRole('combobox')].map((box) => box.getAttribute('id'));
+    expect(labels).toHaveLength(criteria.length + 1);
+    expect(dialog.getByRole('combobox', { name: '전체 평점' })).toBeInTheDocument();
+    for (const name of criteria) {
+      expect(dialog.getByRole('combobox', { name })).toBeInTheDocument();
+    }
+  });
+}
+
+test('only done items can be rated', async () => {
+  fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading');
+  await screen.findByText('데미안');
+  expect(screen.queryByRole('button', { name: '데미안 평점' })).toBeNull();
+});
+
+test('a done item gets a rating and sub-ratings, shown with their average', async () => {
+  const api = fakeApi([{ title: '데미안', status: 'done', completedDate: '2026-10-01' }]);
+  openAt('/bucket-list/reading');
+  let dialog = await openDialog('데미안 평점');
+  await choose(dialog, '전체 평점', '4.5점');
+  await choose(dialog, '내용', '5점');
+  await choose(dialog, '여운', '4점');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body).toEqual({
+    rating: 4.5,
+    subRatings: { content: 5, afterglow: 4 },
+  });
+  expect(await screen.findByText('평점 4.5')).toBeInTheDocument();
+  expect(screen.getByText('내용 5 · 여운 4 (세부 평균 4.5, 참고용)')).toBeInTheDocument();
+
+  dialog = await openDialog('데미안 평점');
+  expect(dialog.getByRole('combobox', { name: '전체 평점' })).toHaveTextContent('4.5점');
+  await choose(dialog, '전체 평점', '없음');
+  await choose(dialog, '내용', '없음');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body).toEqual({ rating: null, subRatings: { afterglow: 4 } });
+});
+
+test('a rejected rating stays in the rating form in Korean', async () => {
+  const api = fakeApi([{ title: '데미안', status: 'done', completedDate: '2026-10-01' }]);
+  api.failNext = { status: 400, error: '완료하지 않은 항목에는 평점을 넣을 수 없습니다' };
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('데미안 평점');
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  expect(await dialog.findByRole('alert')).toHaveTextContent(
+    '완료하지 않은 항목에는 평점을 넣을 수 없습니다',
+  );
 });
 
 test('a done item edits its completed date in the form', async () => {
