@@ -2,10 +2,14 @@ import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import type { Pool } from 'pg';
 import { types } from 'pg';
-import { ZodError } from 'zod';
+
+import { createItemsRouter } from './items.js';
+import { errorHandler, notFound } from './standard/http.js';
 
 // DATE columns stay YYYY-MM-DD strings so the service time zone never shifts them.
 types.setTypeParser(1082, (value) => value);
+// BIGINT ids stay JSON numbers: parseId only accepts ids that a JS number holds exactly.
+types.setTypeParser(20, Number);
 
 const serviceTimeZone = 'Asia/Seoul';
 
@@ -39,28 +43,8 @@ export function createApp(pool: Pool, options: { today?: () => string } = {}) {
     await pool.query('SELECT 1');
     res.json({ ok: true, service: 'life-journal', today: today() });
   });
-  app.use('/api', (_req, res) => {
-    res.status(404).json({ error: '요청한 API를 찾을 수 없습니다' });
-  });
-  app.use(
-    (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      if (err instanceof ZodError) {
-        res.status(400).json({ error: err.issues.map((issue) => issue.message).join(', ') });
-        return;
-      }
-      const error = typeof err === 'object' && err !== null ? (err as { code?: unknown }) : {};
-      if (error.code === '23505') {
-        res.status(409).json({ error: '이미 등록된 항목입니다' });
-        return;
-      }
-      console.error(
-        JSON.stringify({
-          event: 'request_error',
-          message: err instanceof Error ? err.message : String(err),
-        }),
-      );
-      res.status(500).json({ error: '서버 오류가 발생했습니다' });
-    },
-  );
+  app.use('/api/items', createItemsRouter(pool, today));
+  app.use('/api', notFound);
+  app.use(errorHandler);
   return app;
 }

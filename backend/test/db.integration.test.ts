@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
 import { Pool } from 'pg';
@@ -6,6 +7,7 @@ import { Pool } from 'pg';
 import { withApi } from './helpers.js';
 
 const url = process.env.TEST_DATABASE_URL;
+const TODAY = '2026-10-31';
 
 // Requires a dedicated test DB with database/migrations applied. Skipped (not passed) without it.
 test(
@@ -23,5 +25,310 @@ test(
       assert.equal(status, 200);
       assert.equal(data.ok, true);
     });
+  },
+);
+
+test('the items migration can be applied again without errors', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  const sql = await readFile(
+    new URL('../../database/migrations/002_items.sql', import.meta.url),
+    'utf8',
+  );
+  await pool.query(sql);
+  await pool.query(sql);
+  const tables = await pool.query("SELECT 1 FROM pg_tables WHERE tablename = 'items'");
+  assert.equal(tables.rowCount, 1);
+});
+
+test('items of all five categories are stored and read back', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  await pool.query('DELETE FROM items');
+  const samples = [
+    { category: 'reading', title: '데미안', details: { author: '헤르만 헤세' } },
+    {
+      category: 'screen',
+      subtype: 'movie',
+      title: '기생충',
+      costKrw: 15000,
+      details: { director: '봉준호' },
+    },
+    {
+      category: 'stage',
+      subtype: 'opera',
+      title: '라 보엠',
+      plannedDate: '2027-03-01',
+      details: { venue: '예술의전당' },
+    },
+    {
+      category: 'drink',
+      subtype: 'wine',
+      title: '샤블리',
+      status: 'done',
+      completedDate: TODAY,
+      details: { vintage: 2019, region: '부르고뉴' },
+    },
+    {
+      category: 'travel',
+      title: '교토 단풍',
+      costKrw: 0,
+      details: { country: '일본', city: '교토' },
+    },
+  ];
+  await withApi(
+    pool,
+    async (call) => {
+      const ids: unknown[] = [];
+      for (const sample of samples) {
+        const created = await call('/api/items', { method: 'POST', body: sample });
+        assert.equal(created.status, 201, sample.category);
+        assert.equal(typeof created.data.id, 'number');
+        ids.push(created.data.id);
+        const read = await call(`/api/items/${String(created.data.id)}`);
+        assert.equal(read.status, 200);
+        assert.deepEqual(read.data, created.data);
+        assert.deepEqual(read.data, {
+          id: created.data.id,
+          subtype: null,
+          status: 'wishlist',
+          costKrw: null,
+          plannedDate: null,
+          completedDate: null,
+          createdAt: created.data.createdAt,
+          updatedAt: created.data.updatedAt,
+          ...sample,
+        });
+      }
+      const list = await call('/api/items');
+      assert.equal(list.status, 200);
+      const listed = (list.data.items as { id: unknown }[]).map((item) => item.id);
+      assert.deepEqual(listed, [...ids].reverse());
+    },
+    { today: () => TODAY },
+  );
+});
+
+test('items are updated, checked as a whole, and deleted', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  await withApi(
+    pool,
+    async (call) => {
+      const created = await call('/api/items', {
+        method: 'POST',
+        body: {
+          category: 'screen',
+          subtype: 'drama',
+          title: '  시그널  ',
+          costKrw: 1000,
+          details: { director: '김원석' },
+        },
+      });
+      assert.equal(created.data.title, '시그널');
+      const path = `/api/items/${String(created.data.id)}`;
+      const patch = (body: unknown) => call(path, { method: 'PATCH', body });
+
+      const edited = await patch({ title: '비밀의 숲', costKrw: null });
+      assert.equal(edited.status, 200);
+      assert.equal(edited.data.title, '비밀의 숲');
+      assert.equal(edited.data.costKrw, null);
+      assert.equal(edited.data.subtype, 'drama');
+      assert.deepEqual(edited.data.details, { director: '김원석' });
+
+      const noDate = await patch({ status: 'done' });
+      assert.equal(noDate.status, 400);
+      assert.deepEqual(noDate.data, { error: '완료한 항목에는 완료일을 입력해 주세요' });
+
+      const done = await patch({ status: 'done', completedDate: '2026-10-30' });
+      assert.equal(done.status, 200);
+      assert.equal(done.data.completedDate, '2026-10-30');
+
+      const keptDate = await patch({ status: 'wishlist' });
+      assert.equal(keptDate.status, 400);
+      assert.deepEqual(keptDate.data, {
+        error: '완료하지 않은 항목에는 완료일을 넣을 수 없습니다',
+      });
+
+      const reopened = await patch({ status: 'wishlist', completedDate: null });
+      assert.equal(reopened.status, 200);
+      assert.equal(reopened.data.completedDate, null);
+
+      // The old subtype and details do not fit the new category, so nothing may change.
+      const moved = await patch({ category: 'travel' });
+      assert.equal(moved.status, 400);
+      const unchanged = await call(path);
+      assert.equal(unchanged.data.category, 'screen');
+      assert.equal(unchanged.data.title, '비밀의 숲');
+
+      const movedWhole = await patch({
+        category: 'travel',
+        subtype: null,
+        details: { city: '교토' },
+      });
+      assert.equal(movedWhole.status, 200);
+      assert.equal(movedWhole.data.category, 'travel');
+
+      const removed = await call(path, { method: 'DELETE' });
+      assert.equal(removed.status, 204);
+      for (const init of [
+        { method: 'GET' },
+        { method: 'DELETE' },
+        { method: 'PATCH', body: { title: '없음' } },
+      ]) {
+        const missing = await call(path, init);
+        assert.equal(missing.status, 404, init.method);
+        assert.deepEqual(missing.data, { error: '항목을 찾을 수 없습니다' });
+      }
+    },
+    { today: () => TODAY },
+  );
+});
+
+const createTestItem = async (pool: Pool) => {
+  const { rows } = await pool.query<{ id: number }>(
+    "INSERT INTO items (category, title, cost_krw) VALUES ('reading', '원래 제목', 1000) RETURNING id",
+  );
+  return rows[0]!.id;
+};
+
+// Waits until `count` connections of this database are blocked behind a lock.
+async function waitForLockWaiters(pool: Pool, count: number) {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const { rows } = await pool.query<{ pid: number }>(
+      "SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
+    );
+    if (rows.length === count) return rows;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`Expected ${count} connections waiting for a lock`);
+}
+
+test('concurrent patches of different fields both survive', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  const id = await createTestItem(pool);
+  await withApi(pool, async (call) => {
+    const holder = await pool.connect();
+    try {
+      await holder.query('BEGIN');
+      await holder.query('SELECT 1 FROM items WHERE id = $1 FOR UPDATE', [id]);
+      const patches = Promise.all([
+        call(`/api/items/${id}`, { method: 'PATCH', body: { title: '새 제목' } }),
+        call(`/api/items/${id}`, { method: 'PATCH', body: { costKrw: 2000 } }),
+      ]);
+      await waitForLockWaiters(pool, 2);
+      await holder.query('COMMIT');
+      const results = await patches;
+      assert.deepEqual(
+        results.map((result) => result.status),
+        [200, 200],
+      );
+    } finally {
+      holder.release();
+    }
+    const { data } = await call(`/api/items/${id}`);
+    assert.equal(data.title, '새 제목');
+    assert.equal(data.costKrw, 2000);
+  });
+});
+
+test('a patch that fails after its UPDATE leaves the row unchanged', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  const id = await createTestItem(pool);
+  const failingCommit = {
+    connect: async () => {
+      const client = await pool.connect();
+      const query = client.query.bind(client) as (sql: string, values?: unknown[]) => unknown;
+      return new Proxy(client, {
+        get: (target, key) =>
+          key === 'query'
+            ? (sql: string, values?: unknown[]) =>
+                sql === 'COMMIT' ? Promise.reject(new Error('commit failed')) : query(sql, values)
+            : (Reflect.get(target, key) as unknown),
+      });
+    },
+  } as unknown as Pool;
+  const original = console.error;
+  console.error = () => {};
+  try {
+    await withApi(failingCommit, async (call) => {
+      const { status } = await call(`/api/items/${id}`, {
+        method: 'PATCH',
+        body: { title: '사라질 제목' },
+      });
+      assert.equal(status, 500);
+    });
+  } finally {
+    console.error = original;
+  }
+  const { rows } = await pool.query('SELECT title FROM items WHERE id = $1', [id]);
+  assert.equal(rows[0].title, '원래 제목');
+});
+
+test(
+  'losing the connection during a patch answers 500 and keeps the API alive',
+  { skip: !url },
+  async (t) => {
+    const pool = new Pool({ connectionString: url });
+    t.after(() => pool.end());
+    const id = await createTestItem(pool);
+    const original = console.error;
+    console.error = () => {};
+    try {
+      await withApi(pool, async (call) => {
+        const holder = await pool.connect();
+        try {
+          await holder.query('BEGIN');
+          await holder.query('SELECT 1 FROM items WHERE id = $1 FOR UPDATE', [id]);
+          const patch = call(`/api/items/${id}`, { method: 'PATCH', body: { title: '끊김' } });
+          const [waiter] = await waitForLockWaiters(pool, 1);
+          await holder.query('SELECT pg_terminate_backend($1)', [waiter!.pid]);
+          assert.equal((await patch).status, 500);
+          await holder.query('ROLLBACK');
+        } finally {
+          holder.release();
+        }
+        const { status, data } = await call(`/api/items/${id}`);
+        assert.equal(status, 200);
+        assert.equal(data.title, '원래 제목');
+      });
+    } finally {
+      console.error = original;
+    }
+  },
+);
+
+test('a patch cannot set a completed date after the service date', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  const id = await createTestItem(pool);
+  await withApi(
+    pool,
+    async (call) => {
+      const { status, data } = await call(`/api/items/${id}`, {
+        method: 'PATCH',
+        body: { status: 'done', completedDate: '2026-11-01' },
+      });
+      assert.equal(status, 400);
+      assert.deepEqual(data, { error: '완료일은 오늘보다 뒤일 수 없습니다' });
+    },
+    { today: () => TODAY },
+  );
+});
+
+test(
+  'the database itself refuses a done item without a completed date',
+  { skip: !url },
+  async (t) => {
+    const pool = new Pool({ connectionString: url });
+    t.after(() => pool.end());
+    await assert.rejects(
+      pool.query(
+        "INSERT INTO items (category, title, status) VALUES ('reading', '데미안', 'done')",
+      ),
+      { code: '23514' },
+    );
   },
 );
