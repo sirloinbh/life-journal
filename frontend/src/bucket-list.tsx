@@ -1,5 +1,5 @@
-import type { FormEvent } from 'react';
-import { useCallback, useEffect, useId, useState } from 'react';
+import type { FormEvent, MouseEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Navigate, NavLink, useParams } from 'react-router';
 
 import { Badge } from './components/ui/badge';
@@ -27,23 +27,37 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
-import { categories, type Category, type Item, itemFields, itemSummary } from './items';
-import { requestJson } from './lib/api';
-import { useNotice } from './lib/use-notice';
+import {
+  categories,
+  type Category,
+  type Item,
+  itemFields,
+  itemSummary,
+  serviceToday,
+} from './items';
+import { RequestError, requestJson } from './lib/api';
+import { errorText, useNotice } from './lib/use-notice';
 import { cn } from './lib/utils';
 
-type SaveItem = (id: number | null, fields: object) => Promise<void>;
+type SaveItem = (id: number | null, fields: object, done: string) => Promise<void>;
 
 function useItems() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
+  const latest = useRef(0);
+  // Resolves to whether the list loaded. Only the latest request may change the screen.
   const reload = useCallback(async () => {
+    const request = ++latest.current;
     try {
       const data = await requestJson<{ items: Item[] }>('/api/items');
-      setItems(data.items);
-      setLoadError(null);
+      if (request === latest.current) {
+        setItems(data.items);
+        setLoadError(null);
+      }
+      return true;
     } catch (error) {
-      setLoadError(error);
+      if (request === latest.current) setLoadError(error);
+      return false;
     }
   }, []);
   useEffect(() => {
@@ -65,37 +79,50 @@ function Field({
   );
 }
 
+function FormButtons({ pending, submitLabel }: { pending: boolean; submitLabel: string }) {
+  return (
+    <DialogFooter>
+      <DialogClose asChild>
+        <Button type="button" variant="outline" disabled={pending}>
+          취소
+        </Button>
+      </DialogClose>
+      <Button type="submit" disabled={pending} aria-busy={pending || undefined}>
+        {pending ? <Spinner size="sm" label="저장하는 중" /> : null}
+        {submitLabel}
+      </Button>
+    </DialogFooter>
+  );
+}
+
 function ItemForm({
   category,
   item,
+  pending,
   save,
-  onDone,
 }: {
   category: Category;
   item: Item | null;
+  pending: boolean;
   save: SaveItem;
-  onDone: () => void;
 }) {
   const id = useId();
   const { notice, error } = useNotice();
-  const [pending, setPending] = useState(false);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const fields = itemFields(category, form);
-    setPending(true);
     try {
       if (item === null) {
-        await save(null, { category: category.key, ...fields });
+        await save(null, { category: category.key, ...fields }, '저장했습니다');
       } else {
-        const completedDate = form.get('completedDate');
-        await save(item.id, item.status === 'done' ? { ...fields, completedDate } : fields);
+        const completedDate = form.get('completedDate') || null;
+        const body = item.status === 'done' ? { ...fields, completedDate } : fields;
+        await save(item.id, body, '저장했습니다');
       }
-      onDone();
     } catch (cause) {
       error(cause);
-      setPending(false);
     }
   };
 
@@ -161,46 +188,27 @@ function ItemForm({
         />
       ) : null}
       <Notice notice={notice} />
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button type="button" variant="outline" disabled={pending}>
-            취소
-          </Button>
-        </DialogClose>
-        <Button type="submit" disabled={pending} aria-busy={pending || undefined}>
-          {pending ? <Spinner size="sm" label="저장하는 중" /> : null}
-          저장
-        </Button>
-      </DialogFooter>
+      <FormButtons pending={pending} submitLabel="저장" />
     </form>
   );
 }
 
-function CompleteForm({
-  item,
-  today,
-  save,
-  onDone,
-}: {
-  item: Item;
-  today: string | undefined;
-  save: SaveItem;
-  onDone: () => void;
-}) {
+function CompleteForm({ item, pending, save }: { item: Item; pending: boolean; save: SaveItem }) {
   const id = useId();
   const { notice, error } = useNotice();
-  const [pending, setPending] = useState(false);
+  const [today] = useState(serviceToday);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const value = new FormData(event.currentTarget).get('completedDate');
-    setPending(true);
+    const completedDate = new FormData(event.currentTarget).get('completedDate') || null;
     try {
-      await save(item.id, { status: 'done', completedDate: value || null });
-      onDone();
+      await save(
+        item.id,
+        { status: 'done', completedDate },
+        `${item.title}을(를) 완료로 표시했습니다`,
+      );
     } catch (cause) {
       error(cause);
-      setPending(false);
     }
   };
 
@@ -208,65 +216,148 @@ function CompleteForm({
     <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
       <Field id={id} label="완료일" name="completedDate" type="date" defaultValue={today} />
       <Notice notice={notice} />
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button type="button" variant="outline" disabled={pending}>
-            취소
-          </Button>
-        </DialogClose>
-        <Button type="submit" disabled={pending} aria-busy={pending || undefined}>
-          {pending ? <Spinner size="sm" label="저장하는 중" /> : null}
-          완료로 표시
-        </Button>
-      </DialogFooter>
+      <FormButtons pending={pending} submitLabel="완료로 표시" />
     </form>
   );
 }
 
-type Modal =
-  | { kind: 'new' }
-  | { kind: 'edit'; item: Item }
-  | { kind: 'complete'; item: Item }
-  | { kind: 'reopen'; item: Item }
-  | { kind: 'delete'; item: Item };
+function ItemCard({
+  item,
+  category,
+  onEdit,
+  onComplete,
+  onReopen,
+  onDelete,
+}: {
+  item: Item;
+  category: Category;
+  onEdit: (event: MouseEvent<HTMLButtonElement>) => void;
+  onComplete: (event: MouseEvent<HTMLButtonElement>) => void;
+  onReopen: () => Promise<void>;
+  onDelete: () => Promise<void>;
+}) {
+  const subtype = category.subtypes.find(({ value }) => value === item.subtype);
+  const summary = itemSummary(item, category);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle asHeading="h2" className="flex flex-wrap items-center gap-2">
+          <span className="min-w-0 wrap-anywhere">{item.title}</span>
+          {subtype ? <Badge variant="outline">{subtype.label}</Badge> : null}
+          <Badge variant={item.status === 'done' ? 'success' : 'secondary'}>
+            {item.status === 'done' ? '완료' : '하고 싶음'}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      {summary.length > 0 ? (
+        <CardContent className="text-body-sm wrap-anywhere text-muted-foreground">
+          {summary.join(' · ')}
+        </CardContent>
+      ) : null}
+      <CardFooter className="flex flex-wrap gap-2">
+        {item.status === 'done' ? (
+          <ConfirmDialog
+            title="완료를 취소할까요?"
+            description="상태가 하고 싶음으로 돌아가고 완료일이 지워집니다."
+            confirmLabel="완료 취소"
+            cancelLabel="닫기"
+            destructive={false}
+            onConfirm={onReopen}
+            trigger={
+              <Button size="sm" variant="outline" aria-label={`${item.title} 완료 취소`}>
+                완료 취소
+              </Button>
+            }
+          />
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label={`${item.title} 완료 표시`}
+            onClick={onComplete}
+          >
+            완료 표시
+          </Button>
+        )}
+        <Button size="sm" variant="outline" aria-label={`${item.title} 수정`} onClick={onEdit}>
+          수정
+        </Button>
+        <ConfirmDialog
+          title="항목을 삭제할까요?"
+          description={<span className="wrap-anywhere">{item.title}을(를) 삭제합니다.</span>}
+          onConfirm={onDelete}
+          trigger={
+            <Button size="sm" variant="outline" aria-label={`${item.title} 삭제`}>
+              삭제
+            </Button>
+          }
+        />
+      </CardFooter>
+    </Card>
+  );
+}
+
+type FormModal = { kind: 'new' } | { kind: 'edit'; item: Item } | { kind: 'complete'; item: Item };
+
+const FORM_TITLES = { new: '항목 추가', edit: '항목 수정', complete: '완료로 표시' };
 
 function CategoryItems({
   category,
   items,
-  today,
   reload,
 }: {
   category: Category;
   items: Item[];
-  today: string | undefined;
-  reload: () => Promise<void>;
+  reload: () => Promise<boolean>;
 }) {
   const { notice, status, error } = useNotice();
-  const [modal, setModal] = useState<Modal | null>(null);
-  const close = () => setModal(null);
+  // The last form stays in `modal` after closing, so the closing animation keeps its content.
+  const [modal, setModal] = useState<FormModal>({ kind: 'new' });
+  const [formOpen, setFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const opener = useRef<HTMLElement | null>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
   const shown = items.filter((item) => item.category === category.key);
 
-  const save: SaveItem = async (id, fields) => {
-    await requestJson<Item>(id === null ? '/api/items' : `/api/items/${id}`, {
-      method: id === null ? 'POST' : 'PATCH',
-      body: fields,
-    });
-    await reload();
+  const openForm = (next: FormModal, event: MouseEvent<HTMLButtonElement>) => {
+    opener.current = event.currentTarget;
+    setModal(next);
+    setFormOpen(true);
+  };
+
+  // The change already succeeded here, so a failed reload must not look like a failed change.
+  const afterChange = async (done: string) => {
+    if (await reload()) status(done);
+    else error(`${done}. 목록은 새로 불러오지 못했습니다`);
+  };
+
+  const save: SaveItem = async (id, fields, done) => {
+    setSaving(true);
+    try {
+      await requestJson<Item>(id === null ? '/api/items' : `/api/items/${id}`, {
+        method: id === null ? 'POST' : 'PATCH',
+        body: fields,
+      });
+      await afterChange(done);
+      setFormOpen(false);
+    } catch (cause) {
+      if (cause instanceof RequestError && cause.status === 404) void reload();
+      throw cause;
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Failures close the dialog and show on the page; the list is reloaded in case the item is gone.
-  const changeFromDialog = async (change: () => Promise<void>, done: string) => {
+  const changeFromDialog = async (change: () => Promise<unknown>, done: string) => {
     try {
       await change();
-      status(done);
+      await afterChange(done);
     } catch (cause) {
       error(cause);
       await reload();
     }
   };
-
-  const formDialog =
-    modal?.kind === 'new' || modal?.kind === 'edit' || modal?.kind === 'complete' ? modal : null;
 
   return (
     <>
@@ -274,9 +365,11 @@ function CategoryItems({
         <p className="text-body-sm text-muted-foreground">
           {category.description} · {shown.length}개
         </p>
-        <Button onClick={() => setModal({ kind: 'new' })}>항목 추가</Button>
+        <Button ref={addButton} onClick={(event) => openForm({ kind: 'new' }, event)}>
+          항목 추가
+        </Button>
       </div>
-      <Notice notice={notice} />
+      <Notice notice={notice} className="wrap-anywhere" />
       {shown.length === 0 ? (
         <EmptyState
           title={`${category.label} 항목이 없습니다`}
@@ -284,148 +377,92 @@ function CategoryItems({
         />
       ) : (
         <ul className="flex flex-col gap-3">
-          {shown.map((item) => {
-            const subtype = category.subtypes.find(({ value }) => value === item.subtype);
-            return (
-              <li key={item.id}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-0 break-words">{item.title}</span>
-                      {subtype ? <Badge variant="outline">{subtype.label}</Badge> : null}
-                      <Badge variant={item.status === 'done' ? 'success' : 'secondary'}>
-                        {item.status === 'done' ? '완료' : '하고 싶음'}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  {itemSummary(item, category).length > 0 ? (
-                    <CardContent className="text-body-sm break-words text-muted-foreground">
-                      {itemSummary(item, category).join(' · ')}
-                    </CardContent>
-                  ) : null}
-                  <CardFooter className="flex flex-wrap gap-2">
-                    {item.status === 'done' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        aria-label={`${item.title} 완료 취소`}
-                        onClick={() => setModal({ kind: 'reopen', item })}
-                      >
-                        완료 취소
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        aria-label={`${item.title} 완료 표시`}
-                        onClick={() => setModal({ kind: 'complete', item })}
-                      >
-                        완료 표시
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      aria-label={`${item.title} 수정`}
-                      onClick={() => setModal({ kind: 'edit', item })}
-                    >
-                      수정
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      aria-label={`${item.title} 삭제`}
-                      onClick={() => setModal({ kind: 'delete', item })}
-                    >
-                      삭제
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </li>
-            );
-          })}
+          {shown.map((item) => (
+            <li key={item.id}>
+              <ItemCard
+                item={item}
+                category={category}
+                onEdit={(event) => openForm({ kind: 'edit', item }, event)}
+                onComplete={(event) => openForm({ kind: 'complete', item }, event)}
+                onReopen={() =>
+                  changeFromDialog(
+                    () =>
+                      requestJson<Item>(`/api/items/${item.id}`, {
+                        method: 'PATCH',
+                        body: { status: 'wishlist', completedDate: null },
+                      }),
+                    '완료를 취소했습니다',
+                  )
+                }
+                onDelete={() =>
+                  changeFromDialog(
+                    () => requestJson<void>(`/api/items/${item.id}`, { method: 'DELETE' }),
+                    '삭제했습니다',
+                  )
+                }
+              />
+            </li>
+          ))}
         </ul>
       )}
-      <Dialog open={formDialog !== null} onOpenChange={(open) => !open && close()}>
-        <DialogContent>
+      <Dialog
+        open={formOpen}
+        onOpenChange={(open) => {
+          if (!open && !saving) setFormOpen(false);
+        }}
+      >
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            // These dialogs have no trigger for Radix to return to. A marked-done item has lost its button.
+            event.preventDefault();
+            (opener.current?.isConnected ? opener.current : addButton.current)?.focus();
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>
-              {formDialog?.kind === 'new'
-                ? '항목 추가'
-                : formDialog?.kind === 'complete'
-                  ? '완료로 표시'
-                  : '항목 수정'}
-            </DialogTitle>
-            <DialogDescription>
-              {formDialog?.kind === 'new' ? category.label : formDialog?.item.title}
+            <DialogTitle>{FORM_TITLES[modal.kind]}</DialogTitle>
+            <DialogDescription className="wrap-anywhere">
+              {modal.kind === 'new' ? category.label : modal.item.title}
             </DialogDescription>
           </DialogHeader>
-          {formDialog?.kind === 'complete' ? (
-            <CompleteForm
-              item={formDialog.item}
-              today={today}
-              save={save}
-              onDone={() => {
-                close();
-                status(`${formDialog.item.title}을(를) 완료로 표시했습니다`);
-              }}
-            />
-          ) : formDialog ? (
+          {modal.kind === 'complete' ? (
+            <CompleteForm item={modal.item} pending={saving} save={save} />
+          ) : (
             <ItemForm
+              key={modal.kind === 'edit' ? modal.item.id : 'new'}
               category={category}
-              item={formDialog.kind === 'edit' ? formDialog.item : null}
+              item={modal.kind === 'edit' ? modal.item : null}
+              pending={saving}
               save={save}
-              onDone={() => {
-                close();
-                status('저장했습니다');
-              }}
             />
-          ) : null}
+          )}
         </DialogContent>
       </Dialog>
-      <ConfirmDialog
-        open={modal?.kind === 'delete'}
-        onOpenChange={(open) => !open && close()}
-        title="항목을 삭제할까요?"
-        description={modal?.kind === 'delete' ? `${modal.item.title}을(를) 삭제합니다.` : undefined}
-        onConfirm={() =>
-          modal?.kind === 'delete'
-            ? changeFromDialog(async () => {
-                await requestJson<void>(`/api/items/${modal.item.id}`, { method: 'DELETE' });
-                await reload();
-              }, '삭제했습니다')
-            : undefined
-        }
-      />
-      <ConfirmDialog
-        open={modal?.kind === 'reopen'}
-        onOpenChange={(open) => !open && close()}
-        title="완료를 취소할까요?"
-        description="상태가 하고 싶음으로 돌아가고 완료일이 지워집니다."
-        confirmLabel="완료 취소"
-        cancelLabel="닫기"
-        destructive={false}
-        onConfirm={() =>
-          modal?.kind === 'reopen'
-            ? changeFromDialog(
-                () => save(modal.item.id, { status: 'wishlist', completedDate: null }),
-                '완료를 취소했습니다',
-              )
-            : undefined
-        }
-      />
     </>
   );
 }
 
-export function BucketList({ path, today }: { path: string; today: string | undefined }) {
+function LoadFailed({ cause, reload }: { cause: unknown; reload: () => Promise<boolean> }) {
+  const [pending, setPending] = useState(false);
+  const retry = async () => {
+    setPending(true);
+    await reload();
+    setPending(false);
+  };
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <Notice notice={{ kind: 'error', text: errorText(cause) }} />
+      <Button variant="outline" disabled={pending} onClick={() => void retry()}>
+        {pending ? <Spinner size="sm" label="다시 불러오는 중" /> : null}
+        다시 시도
+      </Button>
+    </div>
+  );
+}
+
+export function BucketList({ path }: { path: string }) {
   const params = useParams();
   const { items, loadError, reload } = useItems();
   const category = categories.find(({ key }) => key === params.category);
-  const { notice, error } = useNotice();
-  useEffect(() => {
-    if (loadError) error(loadError);
-  }, [loadError, error]);
   if (!category) return <Navigate to={`${path}/${categories[0].key}`} replace />;
 
   return (
@@ -451,23 +488,14 @@ export function BucketList({ path, today }: { path: string; today: string | unde
           ))}
         </ul>
       </nav>
-      {loadError ? (
-        <div className="flex flex-col items-start gap-3">
-          <Notice notice={notice} />
-          <Button variant="outline" onClick={() => void reload()}>
-            다시 시도
-          </Button>
-        </div>
-      ) : items === null ? (
-        <Spinner label="항목을 불러오는 중" />
+      {items === null ? (
+        loadError ? (
+          <LoadFailed cause={loadError} reload={reload} />
+        ) : (
+          <Spinner label="항목을 불러오는 중" />
+        )
       ) : (
-        <CategoryItems
-          key={category.key}
-          category={category}
-          items={items}
-          today={today}
-          reload={reload}
-        />
+        <CategoryItems key={category.key} category={category} items={items} reload={reload} />
       )}
     </div>
   );

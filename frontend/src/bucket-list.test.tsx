@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { beforeAll, expect, test, vi } from 'vitest';
+import { beforeAll, beforeEach, expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import type { Item } from './items';
@@ -14,10 +14,16 @@ beforeAll(() => {
   Element.prototype.scrollIntoView ??= () => {};
 });
 
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-31T03:00:00Z'));
+});
+
 const json = (body: unknown, status = 200) =>
   new Response(body === undefined ? null : JSON.stringify(body), { status });
 
-// An in-memory API with the rules the screen depends on. `failNext` answers the next change with an error.
+// An in-memory API with the rules the screen depends on. `failNext` answers the next change with an
+// error, and a `gate` holds requests until it resolves.
 function fakeApi(initial: Partial<Item>[] = []) {
   let nextId = 1;
   const row = (fields: Partial<Item>): Item => ({
@@ -37,46 +43,50 @@ function fakeApi(initial: Partial<Item>[] = []) {
     requests: [] as { method: string; path: string; body: Record<string, unknown> }[],
     failNext: null as { status: number; error: string } | null,
     failList: false,
+    gate: null as Promise<void> | null,
   };
   vi.stubGlobal(
     'fetch',
-    vi.fn((path: string, init: { method?: string; body?: string } = {}) => {
+    vi.fn(async (path: string, init: { method?: string; body?: string } = {}) => {
       const method = init.method ?? 'GET';
-      if (path === '/api/health') return Promise.resolve(json({ today: TODAY }));
+      if (path === '/api/health') return json({ today: TODAY });
+      if (api.gate) await api.gate;
       if (method === 'GET') {
-        return Promise.resolve(
-          api.failList
-            ? json({ error: '서버 오류가 발생했습니다' }, 500)
-            : json({ items: api.items }),
-        );
+        return api.failList
+          ? json({ error: '서버 오류가 발생했습니다' }, 500)
+          : json({ items: api.items });
       }
       const body = (init.body ? JSON.parse(init.body) : {}) as Record<string, unknown>;
       api.requests.push({ method, path, body });
       if (api.failNext) {
         const { status, error } = api.failNext;
         api.failNext = null;
-        return Promise.resolve(json({ error }, status));
+        return json({ error }, status);
       }
-      if (body.title === '') {
-        return Promise.resolve(json({ error: '제목을(를) 입력해 주세요' }, 400));
-      }
+      if (body.title === '') return json({ error: '제목을(를) 입력해 주세요' }, 400);
       if (method === 'POST') {
         const created = row(body);
         api.items.push(created);
-        return Promise.resolve(json(created, 201));
+        return json(created, 201);
       }
       const id = Number(path.split('/').pop());
       if (method === 'DELETE') {
         api.items = api.items.filter((item) => item.id !== id);
-        return Promise.resolve(json(undefined, 204));
+        return json(undefined, 204);
       }
-      api.items = api.items.map((item) =>
-        item.id === id ? { ...item, ...(body as Partial<Item>) } : item,
-      );
-      return Promise.resolve(json(api.items.find((item) => item.id === id)));
+      api.items = api.items.map((item) => (item.id === id ? { ...item, ...body } : item));
+      return json(api.items.find((item) => item.id === id));
     }),
   );
   return api;
+}
+
+function gate() {
+  let open = () => {};
+  const promise = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { promise, open };
 }
 
 function openAt(path: string) {
@@ -93,6 +103,9 @@ const dialogClosed = () => waitFor(() => expect(screen.queryByRole('dialog')).to
 
 const type = (dialog: ReturnType<typeof within>, label: string, value: string) =>
   fireEvent.change(dialog.getByLabelText(label), { target: { value } });
+
+const pressEscape = () =>
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
 
 async function choose(dialog: ReturnType<typeof within>, label: string, option: string) {
   fireEvent.click(dialog.getByRole('combobox', { name: label }));
@@ -203,16 +216,30 @@ test('each tab shows only the items of its category', async () => {
   expect(screen.queryByText('데미안')).toBeNull();
 });
 
-test('the main menu opens the first category, and an unknown category falls back to it', async () => {
+test('the main menu link opens the first category', async () => {
   fakeApi();
-  openAt('/bucket-list/no-such-category');
+  openAt('/');
+  const menu = screen.getByRole('navigation', { name: '주 메뉴' });
+  fireEvent.click(within(menu).getByRole('link', { name: '버킷리스트' }));
   expect(await screen.findByRole('heading', { level: 1, name: '버킷리스트' })).toBeInTheDocument();
   await waitFor(() => expect(window.location.pathname).toBe('/bucket-list/reading'));
-  const menu = screen.getByRole('navigation', { name: '주 메뉴' });
   expect(within(menu).getByRole('link', { name: '버킷리스트' })).toHaveAttribute(
     'aria-current',
     'page',
   );
+});
+
+test('an unknown category address falls back to the first category', async () => {
+  fakeApi();
+  openAt('/bucket-list/no-such-category');
+  await waitFor(() => expect(window.location.pathname).toBe('/bucket-list/reading'));
+  expect(await screen.findByText('독서 항목이 없습니다')).toBeInTheDocument();
+});
+
+test('item titles follow the page heading order', async () => {
+  fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading');
+  expect(await screen.findByRole('heading', { level: 2, name: /데미안/ })).toBeInTheDocument();
 });
 
 test('a server validation error stays in the open form in Korean', async () => {
@@ -227,18 +254,46 @@ test('a server validation error stays in the open form in Korean', async () => {
   expect(api.items).toHaveLength(0);
 });
 
-test('text that is not a number reaches the server, which explains it', async () => {
+test('every drink field is sent, and the vintage as a number', async () => {
   const api = fakeApi();
-  api.failNext = { status: 400, error: '비용은 0원 이상의 정수로 입력해 주세요' };
-  openAt('/bucket-list/reading');
+  openAt('/bucket-list/drink');
   const dialog = await openDialog('항목 추가');
-  type(dialog, '제목', '데미안');
-  type(dialog, '비용(원, 선택)', '비쌈');
+  type(dialog, '제목', '샤블리');
+  await choose(dialog, '세부 종류', '와인');
+  type(dialog, '생산자 (선택)', '도멘');
+  type(dialog, '산지 (선택)', '부르고뉴');
+  type(dialog, '빈티지 (선택)', '2019');
   fireEvent.click(dialog.getByRole('button', { name: '저장' }));
-  expect(await dialog.findByRole('alert')).toHaveTextContent(
-    '비용은 0원 이상의 정수로 입력해 주세요',
-  );
-  expect(api.requests.at(-1)?.body.costKrw).toBe('비쌈');
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body.details).toEqual({
+    producer: '도멘',
+    region: '부르고뉴',
+    vintage: 2019,
+  });
+});
+
+for (const text of ['비쌈', '15.000', '1e3', '1,5']) {
+  test(`a cost of ${text} is left for the server to explain`, async () => {
+    const api = fakeApi();
+    api.failNext = { status: 400, error: '비용은 0원 이상의 정수로 입력해 주세요' };
+    openAt('/bucket-list/reading');
+    const dialog = await openDialog('항목 추가');
+    type(dialog, '제목', '데미안');
+    type(dialog, '비용(원, 선택)', text);
+    fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+    expect(await dialog.findByRole('alert')).toHaveTextContent(
+      '비용은 0원 이상의 정수로 입력해 주세요',
+    );
+    expect(api.requests.at(-1)?.body.costKrw).toBe(text);
+  });
+}
+
+test('the completed date defaults to today in Asia/Seoul, not UTC', async () => {
+  vi.setSystemTime(new Date('2026-10-31T15:00:00Z'));
+  fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('데미안 완료 표시');
+  expect(dialog.getByLabelText('완료일')).toHaveValue('2026-11-01');
 });
 
 test('a rejected completed date stays in the completion dialog', async () => {
@@ -262,6 +317,53 @@ test('a done item edits its completed date in the form', async () => {
   expect(api.requests.at(-1)?.body.completedDate).toBe('2026-10-02');
 });
 
+test('the form cannot close while saving, so a failure is still shown', async () => {
+  const api = fakeApi();
+  const held = gate();
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('항목 추가');
+  type(dialog, '제목', '데미안');
+  api.gate = held.promise;
+  api.failNext = { status: 500, error: '서버 오류가 발생했습니다' };
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(dialog.getByRole('button', { name: /저장/ })).toBeDisabled());
+  pressEscape();
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  api.gate = null;
+  held.open();
+  expect(await dialog.findByRole('alert')).toHaveTextContent('서버 오류가 발생했습니다');
+  pressEscape();
+  await dialogClosed();
+});
+
+test('a change that succeeded is not reported as failed when the reload fails', async () => {
+  const api = fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('항목 추가');
+  type(dialog, '제목', '수레바퀴');
+  api.failList = true;
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  await dialogClosed();
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    '저장했습니다. 목록은 새로 불러오지 못했습니다',
+  );
+  expect(screen.getByText('데미안')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '다시 시도' })).toBeNull();
+});
+
+test('editing an item that is already gone reports it and refreshes the list', async () => {
+  const api = fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('데미안 수정');
+  api.items = [];
+  api.failNext = { status: 404, error: '항목을 찾을 수 없습니다' };
+  fireEvent.click(dialog.getByRole('button', { name: '저장' }));
+  expect(await dialog.findByRole('alert')).toHaveTextContent('항목을 찾을 수 없습니다');
+  fireEvent.click(dialog.getByRole('button', { name: '취소' }));
+  await dialogClosed();
+  expect(await screen.findByText('독서 항목이 없습니다')).toBeInTheDocument();
+});
+
 test('deleting an item that is already gone reports it and refreshes the list', async () => {
   const api = fakeApi([{ title: '데미안' }]);
   openAt('/bucket-list/reading');
@@ -274,13 +376,32 @@ test('deleting an item that is already gone reports it and refreshes the list', 
   expect(await screen.findByText('독서 항목이 없습니다')).toBeInTheDocument();
 });
 
-test('a failed list load is reported and can be retried', async () => {
+test('a failed list load is reported, and the retry button waits for its request', async () => {
   const api = fakeApi([{ title: '데미안' }]);
   api.failList = true;
   openAt('/bucket-list/reading');
   expect(await screen.findByText('서버 오류가 발생했습니다')).toHaveAttribute('role', 'alert');
+  const held = gate();
+  api.gate = held.promise;
   api.failList = false;
   fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+  expect(screen.getByRole('button', { name: /다시 시도/ })).toBeDisabled();
+  api.gate = null;
+  held.open();
   expect(await screen.findByText('데미안')).toBeInTheDocument();
   expect(screen.queryByRole('alert')).toBeNull();
 });
+
+for (const name of ['항목 추가', '데미안 수정', '데미안 완료 표시', '데미안 삭제']) {
+  test(`closing the dialog of "${name}" returns focus to its button`, async () => {
+    fakeApi([{ title: '데미안' }]);
+    openAt('/bucket-list/reading');
+    const button = await screen.findByRole('button', { name });
+    button.focus();
+    fireEvent.click(button);
+    await screen.findByRole('dialog');
+    pressEscape();
+    await dialogClosed();
+    await waitFor(() => expect(document.activeElement).toBe(button));
+  });
+}

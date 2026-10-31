@@ -85,10 +85,20 @@ export const categories: Category[] = [
   },
 ];
 
-// Text that is not a number goes to the server as it is, so the server's Korean message explains it.
+/** Today in the service time zone. The server rejects a completed date after its own today. */
+export function serviceToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+// Only plain integers such as 15000 or 15,000 become numbers. Anything else, such as 15.000 or 1e3,
+// goes to the server as it is, so the server's Korean message explains it.
 function numberOrText(value: string) {
-  const number = Number(value.replaceAll(',', ''));
-  return Number.isFinite(number) ? number : value;
+  return /^-?(\d+|\d{1,3}(,\d{3})+)$/.test(value) ? Number(value.replaceAll(',', '')) : value;
 }
 
 /** The request fields of the item form. Blank optional fields clear the stored value. */

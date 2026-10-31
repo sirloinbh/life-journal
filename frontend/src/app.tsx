@@ -95,10 +95,7 @@ export function App() {
                 description="하고 싶은 것을 분야별로 쌓고, 해낸 것은 완료로 표시합니다"
                 health={health}
               >
-                <BucketList
-                  path={pages.bucketList}
-                  today={health.state === 'ok' ? health.today : undefined}
-                />
+                <BucketList path={pages.bucketList} />
               </Page>
             }
           />
