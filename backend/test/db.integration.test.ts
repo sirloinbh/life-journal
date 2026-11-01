@@ -253,6 +253,14 @@ test('ratings of a done item are stored, kept, and cleared with it', { skip: !ur
 
       const edited = await patch({ title: '샤블리 2019' });
       assert.equal(edited.data.rating, 4.5, 'Another edit keeps the rating');
+      // zod 4 applies a default inside .optional(), which would overwrite these on every PATCH.
+      assert.equal(edited.data.status, created.data.status, 'Another edit keeps the status');
+      assert.deepEqual(edited.data.details, created.data.details, 'Another edit keeps the details');
+      assert.deepEqual(edited.data.subRatings, created.data.subRatings);
+
+      const empty = await patch({});
+      assert.equal(empty.status, 400);
+      assert.deepEqual(empty.data, { error: '수정할 내용이 없습니다' });
 
       const keptRating = await patch({ status: 'wishlist', completedDate: null });
       assert.equal(keptRating.status, 400);

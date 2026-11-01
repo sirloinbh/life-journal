@@ -25,6 +25,16 @@ const rejected: { name: string; body: unknown; error: string }[] = [
   { name: 'a blank title', body: { ...book, title: '   ' }, error: '제목을(를) 입력해 주세요' },
   { name: 'a missing title', body: { category: 'reading' }, error: '제목을(를) 입력해 주세요' },
   {
+    name: 'an empty array as the title',
+    body: { ...book, title: [] },
+    error: '제목은(는) 문자로 입력해 주세요',
+  },
+  {
+    name: 'a long array as the title',
+    body: { ...book, title: Array.from({ length: 201 }, () => 'x') },
+    error: '제목은(는) 문자로 입력해 주세요',
+  },
+  {
     name: 'an unknown status',
     body: { ...book, status: 'doing' },
     error: '상태는 하고 싶음(wishlist) 또는 완료(done)여야 합니다',
