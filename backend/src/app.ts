@@ -5,6 +5,7 @@ import { types } from 'pg';
 
 import { createItemsRouter } from './items.js';
 import { errorHandler, notFound } from './standard/http.js';
+import { createTermsRouter } from './terms.js';
 
 // DATE columns stay YYYY-MM-DD strings so the service time zone never shifts them.
 types.setTypeParser(1082, (value) => value);
@@ -44,6 +45,7 @@ export function createApp(pool: Pool, options: { today?: () => string } = {}) {
     res.json({ ok: true, service: 'life-journal', today: today() });
   });
   app.use('/api/items', createItemsRouter(pool, today));
+  app.use('/api/terms', createTermsRouter(pool));
   app.use('/api', notFound);
   app.use(errorHandler);
   return app;
