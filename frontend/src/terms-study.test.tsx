@@ -20,6 +20,8 @@ function fakeApi() {
     failNext: null as { status: number; error: string } | null,
     failList: false,
     changeGate: null as Promise<void> | null,
+    holdNextList: null as Promise<void> | null,
+    terms: [...TERMS],
   };
   vi.stubGlobal(
     'fetch',
@@ -28,13 +30,18 @@ function fakeApi() {
       if (path === '/api/health') return json({ today: '2026-11-02' });
       if (method === 'GET') {
         if (api.failList) return json({ error: '서버 오류가 발생했습니다' }, 500);
-        return json({
+        // A held list answers with what was true when it was asked.
+        const answer = json({
           domains: [
             { key: 'wine', label: '와인' },
             { key: 'opera', label: '오페라' },
           ],
-          terms: TERMS.map((term) => ({ ...term, learned: api.learned.has(term.id) })),
+          terms: api.terms.map((term) => ({ ...term, learned: api.learned.has(term.id) })),
         });
+        const hold = api.holdNextList;
+        api.holdNextList = null;
+        if (hold) await hold;
+        return answer;
       }
       api.requests.push({ method, path });
       if (api.changeGate) await api.changeGate;
@@ -178,14 +185,51 @@ test('a term gone from the server is reported and leaves the list', async () => 
   openAt('/terms/wine');
   const tannin = await box('타닌 외움');
   api.failNext = { status: 404, error: '용어를 찾을 수 없습니다' };
-  const removed = TERMS.shift();
-  try {
-    fireEvent.click(tannin);
-    expect(await screen.findByRole('alert')).toHaveTextContent('용어를 찾을 수 없습니다');
-    await waitFor(() => expect(screen.queryByText('타닌')).not.toBeInTheDocument());
-  } finally {
-    if (removed) TERMS.unshift(removed);
-  }
+  api.terms = api.terms.filter(({ id }) => id !== 'wine-tannin');
+  fireEvent.click(tannin);
+  expect(await screen.findByRole('alert')).toHaveTextContent('용어를 찾을 수 없습니다');
+  await waitFor(() => expect(screen.queryByText('타닌')).not.toBeInTheDocument());
+});
+
+test('a mark confirmed during a list on its way keeps both the mark and the refresh', async () => {
+  const api = fakeApi();
+  openAt('/terms/wine');
+  const tannin = await box('타닌 외움');
+  const terroir = await box('테루아 외움');
+  let open = () => {};
+  api.holdNextList = new Promise((resolve) => {
+    open = resolve;
+  });
+  api.failNext = { status: 404, error: '용어를 찾을 수 없습니다' };
+  api.terms = api.terms.filter(({ id }) => id !== 'wine-tannin');
+  fireEvent.click(tannin);
+  expect(await screen.findByRole('alert')).toHaveTextContent('용어를 찾을 수 없습니다');
+
+  // The held list was read before this mark.
+  fireEvent.click(terroir);
+  await waitFor(async () => expect(await box('테루아 외움')).toBeChecked());
+  await waitFor(() => expect(screen.queryByText('타닌')).not.toBeInTheDocument());
+
+  await act(async () => {
+    open();
+    await Promise.resolve();
+  });
+  expect(await box('테루아 외움')).toBeChecked();
+  expect(screen.getByText('와인 · 외운 용어 1/1개')).toBeInTheDocument();
+});
+
+test('a message about a mark goes away on another domain', async () => {
+  const api = fakeApi();
+  openAt('/terms/wine');
+  const tannin = await box('타닌 외움');
+  api.failNext = { status: 500, error: '서버 오류가 발생했습니다' };
+  fireEvent.click(tannin);
+  expect(await screen.findByRole('alert')).toHaveTextContent('서버 오류가 발생했습니다');
+  fireEvent.click(screen.getByRole('link', { name: '오페라' }));
+  await box('아리아 외움');
+  await waitFor(() =>
+    expect(screen.queryByText('서버 오류가 발생했습니다')).not.toBeInTheDocument(),
+  );
 });
 
 test('a failed list can be tried again', async () => {

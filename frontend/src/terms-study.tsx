@@ -28,32 +28,41 @@ function useTerms() {
   const [data, setData] = useState<TermsAnswer | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
   const latest = useRef(0);
+  const answered = useRef(0);
   const reload = useCallback(async () => {
     const request = ++latest.current;
     try {
       const answer = await requestJson<TermsAnswer>('/api/terms');
       if (request === latest.current) {
+        answered.current = request;
         setData(answer);
         setLoadError(null);
       }
     } catch (error) {
-      if (request === latest.current) setLoadError(error);
+      if (request === latest.current) {
+        answered.current = request;
+        setLoadError(error);
+      }
     }
   }, []);
   useEffect(() => {
     void reload();
   }, [reload]);
-  const keepLearned = useCallback((id: string, learned: boolean) => {
-    // A list still on its way was read before this change, so it must not replace it.
-    latest.current++;
-    setData(
-      (current) =>
-        current && {
-          ...current,
-          terms: current.terms.map((term) => (term.id === id ? { ...term, learned } : term)),
-        },
-    );
-  }, []);
+  const keepLearned = useCallback(
+    (id: string, learned: boolean) => {
+      setData(
+        (current) =>
+          current && {
+            ...current,
+            terms: current.terms.map((term) => (term.id === id ? { ...term, learned } : term)),
+          },
+      );
+      // A list still on its way may have been read before this change. Ask again, which drops that
+      // answer, because a refresh after a 404 still has to happen.
+      if (answered.current !== latest.current) void reload();
+    },
+    [reload],
+  );
   return { data, loadError, reload, keepLearned };
 }
 
@@ -148,6 +157,9 @@ export function TermsStudy({ path }: { path: string }) {
   // A mark on its way ignores more clicks, so the answers cannot arrive out of order. The box stays
   // enabled because disabling it would drop the keyboard focus.
   const saving = useRef(new Set<string>());
+
+  // A message about one domain's term does not belong on another domain's tab.
+  useEffect(() => clear(), [params.domain, clear]);
 
   const changeLearned = async (term: Term, learned: boolean) => {
     if (saving.current.has(term.id)) return;
