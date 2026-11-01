@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { Pool } from 'pg';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import { HttpError, parseId } from './standard/http.js';
 
@@ -17,8 +17,10 @@ const isStorable = (value: string) => !value.includes('\0') && !/\p{Cs}/u.test(v
 const text = (label: string, max: number) =>
   z
     .string({
-      required_error: `${label}을(를) 입력해 주세요`,
-      invalid_type_error: `${label}은(는) 문자로 입력해 주세요`,
+      error: (issue) =>
+        issue.input === undefined
+          ? `${label}을(를) 입력해 주세요`
+          : `${label}은(는) 문자로 입력해 주세요`,
     })
     .trim()
     .min(1, `${label}을(를) 입력해 주세요`)
@@ -33,35 +35,45 @@ const isRealDate = (value: string) => {
 
 const date = (label: string) => {
   const message = `${label}은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요`;
-  return z
-    .string({ required_error: message, invalid_type_error: message })
-    .refine(isRealDate, message);
+  return z.string({ error: message }).refine(isRealDate, message);
 };
 
+// One `error` answers both a wrong type and unknown keys, which zod 3 kept apart.
+const strictObject = <Shape extends z.ZodRawShape>(
+  fields: Shape,
+  unknownKeys: string,
+  otherwise: (input: unknown) => string,
+) =>
+  z.strictObject(fields, {
+    error: (issue) => (issue.code === 'unrecognized_keys' ? unknownKeys : otherwise(issue.input)),
+  });
+
 const details = (label: string, fields: z.ZodRawShape) =>
-  z
-    .object(fields, { invalid_type_error: `${label} 정보 형식이 올바르지 않습니다` })
-    .strict(`${label} 정보에 없는 항목이 있습니다`);
+  strictObject(
+    fields,
+    `${label} 정보에 없는 항목이 있습니다`,
+    () => `${label} 정보 형식이 올바르지 않습니다`,
+  );
 
 const score = (label: string) => {
   const message = `${label}은(는) 0.5점부터 5점까지 0.5점 단위로 입력해 주세요`;
   return z
-    .number({ invalid_type_error: message })
+    .number({ error: message })
     .refine((value) => value >= 0.5 && value <= 5 && Number.isInteger(value * 2), message);
 };
 
 const criteria = (label: string, names: Record<string, string>) =>
-  z
-    .object(
-      Object.fromEntries(Object.entries(names).map(([key, name]) => [key, score(name).optional()])),
-    )
-    .strict(`${label} 세부 평점에 없는 항목이 있습니다`);
+  strictObject(
+    Object.fromEntries(Object.entries(names).map(([key, name]) => [key, score(name).optional()])),
+    `${label} 세부 평점에 없는 항목이 있습니다`,
+    () => `${label} 세부 평점 형식이 올바르지 않습니다`,
+  );
 
 const MAX_REVIEW_LINES = 5;
 const MAX_REVIEW_LENGTH = 500;
 
 const reviewText = z
-  .string({ invalid_type_error: '감상문은 문자로 입력해 주세요' })
+  .string({ error: '감상문은 문자로 입력해 주세요' })
   .transform((value) => value.replace(/\r\n?|[\u0085\u2028\u2029]/g, '\n').trim())
   .refine(
     (value) => value.split('\n').length <= MAX_REVIEW_LINES,
@@ -82,7 +94,7 @@ const isWebLink = (value: string) => {
 const linkMessage = '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요';
 
 const linkText = z
-  .string({ invalid_type_error: linkMessage })
+  .string({ error: linkMessage })
   .trim()
   .max(2000, '링크는 2000자 이하로 입력해 주세요')
   .refine((value) => value === '' || isWebLink(value), linkMessage);
@@ -129,7 +141,7 @@ const CATEGORIES = {
       producer: text('생산자', 100).optional(),
       region: text('산지', 100).optional(),
       vintage: z
-        .number({ invalid_type_error: vintageMessage })
+        .number({ error: vintageMessage })
         .refine((year) => Number.isInteger(year) && year >= 1000 && year <= 9999, vintageMessage)
         .optional(),
     }),
@@ -168,47 +180,50 @@ const categoryMessage = '분야가 올바르지 않습니다';
 const statusMessage = '상태는 하고 싶음(wishlist) 또는 완료(done)여야 합니다';
 const costMessage = '비용은 0원 이상의 정수로 입력해 주세요';
 
-const itemFields = z
-  .object(
-    {
-      category: z.enum(['reading', 'screen', 'stage', 'drink', 'travel'], {
-        errorMap: () => ({ message: categoryMessage }),
-      }),
-      subtype: text('세부 종류', 50).nullable().optional(),
-      title: text('제목', 200),
-      status: z
-        .enum(['wishlist', 'done'], { errorMap: () => ({ message: statusMessage }) })
-        .default('wishlist'),
-      costKrw: z
-        .number({ invalid_type_error: costMessage })
-        .refine((cost) => Number.isInteger(cost) && cost >= 0, costMessage)
-        .refine((cost) => cost <= MAX_COST_KRW, `비용은 ${MAX_COST_KRW}원 이하로 입력해 주세요`)
-        .nullable()
-        .optional(),
-      plannedDate: date('예정일').nullable().optional(),
-      completedDate: date('완료일').nullable().optional(),
-      details: z
-        .record(z.string(), z.unknown(), {
-          invalid_type_error: '분야별 정보 형식이 올바르지 않습니다',
-        })
-        .default({}),
-      rating: score('전체 평점').nullable().optional(),
-      subRatings: z
-        .record(z.string(), z.unknown(), {
-          invalid_type_error: '세부 평점 형식이 올바르지 않습니다',
-        })
-        .default({}),
-      review: reviewText.nullable().optional(),
-      link: linkText.nullable().optional(),
-    },
-    {
-      required_error: '요청 본문이 필요합니다',
-      invalid_type_error: '요청 본문 형식이 올바르지 않습니다',
-    },
-  )
-  .strict('알 수 없는 항목이 있습니다');
+const status = z.enum(['wishlist', 'done'], { error: statusMessage });
+const detailsRecord = z.record(z.string(), z.unknown(), {
+  error: '분야별 정보 형식이 올바르지 않습니다',
+});
+const subRatingsRecord = z.record(z.string(), z.unknown(), {
+  error: '세부 평점 형식이 올바르지 않습니다',
+});
 
-const itemPatch = itemFields.partial();
+const itemShape = {
+  category: z.enum(['reading', 'screen', 'stage', 'drink', 'travel'], {
+    error: categoryMessage,
+  }),
+  subtype: text('세부 종류', 50).nullable().optional(),
+  title: text('제목', 200),
+  status,
+  costKrw: z
+    .number({ error: costMessage })
+    .refine((cost) => Number.isInteger(cost) && cost >= 0, costMessage)
+    .refine((cost) => cost <= MAX_COST_KRW, `비용은 ${MAX_COST_KRW}원 이하로 입력해 주세요`)
+    .nullable()
+    .optional(),
+  plannedDate: date('예정일').nullable().optional(),
+  completedDate: date('완료일').nullable().optional(),
+  details: detailsRecord,
+  rating: score('전체 평점').nullable().optional(),
+  subRatings: subRatingsRecord,
+  review: reviewText.nullable().optional(),
+  link: linkText.nullable().optional(),
+};
+
+const itemObject = <Shape extends z.ZodRawShape>(shape: Shape) =>
+  strictObject(shape, '알 수 없는 항목이 있습니다', (input) =>
+    input === undefined ? '요청 본문이 필요합니다' : '요청 본문 형식이 올바르지 않습니다',
+  );
+
+const itemFields = itemObject({
+  ...itemShape,
+  status: status.default('wishlist'),
+  details: detailsRecord.default({}),
+  subRatings: subRatingsRecord.default({}),
+});
+
+// No defaults here: zod 4 applies a default inside .optional(), so PATCH would overwrite fields it did not get.
+const itemPatch = itemObject(itemShape).partial();
 
 // Rules across fields. PATCH runs them on the merged row, so a partial change cannot break them.
 function parseItem(input: unknown, today: string) {
@@ -249,7 +264,7 @@ function parseItem(input: unknown, today: string) {
     costKrw: item.costKrw ?? null,
     plannedDate: item.plannedDate ?? null,
     completedDate,
-    details: category.details.parse(item.details) as Record<string, unknown>,
+    details: category.details.parse(item.details),
     rating,
     subRatings,
     review,
@@ -274,7 +289,7 @@ const SORT_COLUMNS = {
 const queryCost = (label: string) => {
   const message = `${label}은(는) ${MAX_COST_KRW}원 이하의 0 이상 정수로 입력해 주세요`;
   return z
-    .string({ invalid_type_error: message })
+    .string({ error: message })
     .refine((value) => /^\d{1,10}$/.test(value) && Number(value) <= MAX_COST_KRW, message)
     .transform(Number)
     .optional();
@@ -282,22 +297,20 @@ const queryCost = (label: string) => {
 
 const queryDate = (label: string) => date(label).optional();
 
-const listQuery = z
-  .object({
+const listQuery = strictObject(
+  {
     q: z
-      .string({ invalid_type_error: '검색어는 하나만 입력해 주세요' })
+      .string({ error: '검색어는 하나만 입력해 주세요' })
       .trim()
       .max(100, '검색어는 100자 이하로 입력해 주세요')
       .refine(isStorable, '검색어에 사용할 수 없는 문자가 있습니다')
       .optional(),
     category: z
       .enum(['reading', 'screen', 'stage', 'drink', 'travel'], {
-        errorMap: () => ({ message: categoryMessage }),
+        error: categoryMessage,
       })
       .optional(),
-    status: z
-      .enum(['wishlist', 'done'], { errorMap: () => ({ message: statusMessage }) })
-      .optional(),
+    status: z.enum(['wishlist', 'done'], { error: statusMessage }).optional(),
     from: queryDate('시작일'),
     to: queryDate('종료일'),
     costMin: queryCost('최소 비용'),
@@ -314,14 +327,14 @@ const listQuery = z
           'rating',
           'createdAt',
         ],
-        { errorMap: () => ({ message: '정렬 기준이 올바르지 않습니다' }) },
+        { error: '정렬 기준이 올바르지 않습니다' },
       )
       .default('createdAt'),
-    order: z
-      .enum(['asc', 'desc'], { errorMap: () => ({ message: '정렬 방향이 올바르지 않습니다' }) })
-      .default('desc'),
-  })
-  .strict('알 수 없는 검색 조건이 있습니다');
+    order: z.enum(['asc', 'desc'], { error: '정렬 방향이 올바르지 않습니다' }).default('desc'),
+  },
+  '알 수 없는 검색 조건이 있습니다',
+  () => '검색 조건 형식이 올바르지 않습니다',
+);
 
 function listSql(input: unknown) {
   const query = listQuery.parse(input);
