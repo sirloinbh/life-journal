@@ -10,7 +10,7 @@ import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { Spinner } from './components/ui/spinner';
 import { RequestError, requestJson } from './lib/api';
-import { useNotice } from './lib/use-notice';
+import { errorText, useNotice } from './lib/use-notice';
 import { LoadFailed } from './load-failed';
 
 type Term = {
@@ -171,7 +171,8 @@ export function TermsStudy({ path }: { path: string }) {
       });
       keepLearned(term.id, learned);
     } catch (cause) {
-      error(cause);
+      // The answer may arrive on another domain's tab, so the message says which term it is about.
+      error(`${term.term}: ${errorText(cause)}`);
       if (cause instanceof RequestError && cause.status === 404) void reload();
     } finally {
       saving.current.delete(term.id);

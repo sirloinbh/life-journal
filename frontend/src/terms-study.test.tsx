@@ -151,11 +151,29 @@ test('a failed mark shows the message and leaves the box as it was', async () =>
   const tannin = await box('타닌 외움');
   api.failNext = { status: 500, error: '서버 오류가 발생했습니다' };
   fireEvent.click(tannin);
-  expect(await screen.findByRole('alert')).toHaveTextContent('서버 오류가 발생했습니다');
+  expect(await screen.findByRole('alert')).toHaveTextContent('타닌: 서버 오류가 발생했습니다');
   expect(tannin).not.toBeChecked();
   fireEvent.click(tannin);
   await waitFor(() => expect(tannin).toBeChecked());
-  expect(screen.queryByText('서버 오류가 발생했습니다')).not.toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+test('a mark failing after a move to another domain names its term there', async () => {
+  const api = fakeApi();
+  let open = () => {};
+  api.changeGate = new Promise((resolve) => {
+    open = resolve;
+  });
+  api.failNext = { status: 500, error: '서버 오류가 발생했습니다' };
+  openAt('/terms/wine');
+  fireEvent.click(await box('타닌 외움'));
+  fireEvent.click(screen.getByRole('link', { name: '오페라' }));
+  await box('아리아 외움');
+  await act(async () => {
+    open();
+    await api.changeGate;
+  });
+  expect(await screen.findByRole('alert')).toHaveTextContent('타닌: 서버 오류가 발생했습니다');
 });
 
 test('more clicks during a mark on its way send nothing and keep the keyboard focus', async () => {
@@ -227,9 +245,7 @@ test('a message about a mark goes away on another domain', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('서버 오류가 발생했습니다');
   fireEvent.click(screen.getByRole('link', { name: '오페라' }));
   await box('아리아 외움');
-  await waitFor(() =>
-    expect(screen.queryByText('서버 오류가 발생했습니다')).not.toBeInTheDocument(),
-  );
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
 });
 
 test('a failed list can be tried again', async () => {
