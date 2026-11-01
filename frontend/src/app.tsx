@@ -1,4 +1,4 @@
-import { LayoutDashboard, ListChecks, Settings2, Table2 } from 'lucide-react';
+import { BookOpen, LayoutDashboard, ListChecks, Settings2, Table2 } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
@@ -8,12 +8,14 @@ import { EmptyState } from './components/ui/empty-state';
 import { Toaster } from './components/ui/sonner';
 import { type Health, healthText } from './health';
 import { ItemsTable } from './items-table';
+import { TermsStudy } from './terms-study';
 
 // Every page URL lives here (central docs/directory-rules.md).
 const pages = {
   overview: '/',
   bucketList: '/bucket-list',
   table: '/table',
+  terms: '/terms',
   settings: '/settings',
 } as const;
 
@@ -22,6 +24,7 @@ const nav: NavItem[] = [
   { to: pages.overview, label: '대시보드', icon: LayoutDashboard },
   { to: pages.bucketList, label: '버킷리스트', icon: ListChecks },
   { to: pages.table, label: '표 보기', icon: Table2 },
+  { to: pages.terms, label: '용어 공부', icon: BookOpen },
   { to: pages.settings, label: '설정', icon: Settings2 },
 ];
 
@@ -115,6 +118,18 @@ export function App() {
                 health={health}
               >
                 <ItemsTable bucketListPath={pages.bucketList} />
+              </Page>
+            }
+          />
+          <Route
+            path={`${pages.terms}/:domain?`}
+            element={
+              <Page
+                title="용어 공부"
+                description="분야별 용어와 뜻을 보고, 외운 용어를 표시합니다"
+                health={health}
+              >
+                <TermsStudy path={pages.terms} />
               </Page>
             }
           />

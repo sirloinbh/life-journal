@@ -36,6 +36,7 @@ test('the items migration can be applied again without errors', { skip: !url }, 
     '003_item_ratings.sql',
     '004_item_review.sql',
     '005_item_link.sql',
+    '006_learned_terms.sql',
   ]) {
     const sql = await readFile(
       new URL(`../../database/migrations/${file}`, import.meta.url),
@@ -78,6 +79,46 @@ test(
     ]);
   },
 );
+
+test('a learned mark on a term is stored, repeatable, and cleared', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(() => pool.end());
+  await pool.query('DELETE FROM learned_terms');
+  await withApi(pool, async (call) => {
+    const learned = async () => {
+      const { status, data } = await call('/api/terms');
+      assert.equal(status, 200);
+      return (data.terms as { id: string; learned: boolean }[])
+        .filter((term) => term.learned)
+        .map(({ id }) => id);
+    };
+    const mark = (method: string) => call('/api/terms/wine-tannin/learned', { method });
+    assert.deepEqual(await learned(), []);
+    assert.equal((await mark('PUT')).status, 204);
+    assert.equal((await mark('PUT')).status, 204);
+    assert.deepEqual(await learned(), ['wine-tannin']);
+    assert.equal((await mark('DELETE')).status, 204);
+    assert.equal((await mark('DELETE')).status, 204);
+    assert.deepEqual(await learned(), []);
+  });
+});
+
+test('a learned mark on a term that no longer exists is ignored', { skip: !url }, async (t) => {
+  const pool = new Pool({ connectionString: url });
+  t.after(async () => {
+    await pool.query('DELETE FROM learned_terms');
+    await pool.end();
+  });
+  await pool.query('DELETE FROM learned_terms');
+  await pool.query("INSERT INTO learned_terms (term_id) VALUES ('wine-removed-term')");
+  await withApi(pool, async (call) => {
+    const { status, data } = await call('/api/terms');
+    assert.equal(status, 200);
+    const terms = data.terms as { id: string; learned: boolean }[];
+    assert.ok(terms.length > 0);
+    assert.ok(terms.every((term) => !term.learned && term.id !== 'wine-removed-term'));
+  });
+});
 
 test('items of all five categories are stored and read back', { skip: !url }, async (t) => {
   const pool = new Pool({ connectionString: url });

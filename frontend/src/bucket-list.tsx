@@ -1,7 +1,8 @@
 import type { FormEvent, MouseEvent } from 'react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Navigate, NavLink, useParams } from 'react-router';
+import { Navigate, useParams } from 'react-router';
 
+import { CategoryTabs } from './category-tabs';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './components/ui/card';
@@ -45,8 +46,8 @@ import {
   serviceToday,
 } from './items';
 import { RequestError, requestJson } from './lib/api';
-import { errorText, useNotice } from './lib/use-notice';
-import { cn } from './lib/utils';
+import { useNotice } from './lib/use-notice';
+import { LoadFailed } from './load-failed';
 
 type SaveItem = (id: number | null, fields: object, done: string) => Promise<void>;
 
@@ -655,24 +656,6 @@ function CategoryItems({
   );
 }
 
-function LoadFailed({ cause, reload }: { cause: unknown; reload: () => Promise<void> }) {
-  const [pending, setPending] = useState(false);
-  const retry = async () => {
-    setPending(true);
-    await reload();
-    setPending(false);
-  };
-  return (
-    <div className="flex flex-col items-start gap-3">
-      <Notice notice={{ kind: 'error', text: errorText(cause) }} />
-      <Button variant="outline" disabled={pending} onClick={() => void retry()}>
-        {pending ? <Spinner size="sm" label="다시 불러오는 중" /> : null}
-        다시 시도
-      </Button>
-    </div>
-  );
-}
-
 export function BucketList({ path }: { path: string }) {
   const params = useParams();
   const { items, loadError, reload, update } = useItems();
@@ -681,27 +664,7 @@ export function BucketList({ path }: { path: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <nav aria-label="분야" className="-mx-1 overflow-x-auto border-b px-1">
-        <ul className="flex w-max gap-1">
-          {categories.map(({ key, label }) => (
-            <li key={key}>
-              <NavLink
-                to={`${path}/${key}`}
-                className={({ isActive }) =>
-                  cn(
-                    'inline-flex min-h-11 items-center border-b-2 px-3 text-body-sm font-medium whitespace-nowrap',
-                    isActive
-                      ? 'border-primary text-foreground'
-                      : 'border-transparent text-muted-foreground hover:text-foreground',
-                  )
-                }
-              >
-                {label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <CategoryTabs path={path} tabs={categories} />
       {items === null ? (
         loadError ? (
           <LoadFailed cause={loadError} reload={reload} />
