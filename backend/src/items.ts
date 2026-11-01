@@ -11,6 +11,11 @@ const COLUMNS = `id, category, subtype, title, status, cost_krw AS "costKrw",
   rating::float8 AS rating, sub_ratings AS "subRatings", review, link,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
+// Length checks as refinements: zod 4's .min() and .max() also run after a type failure on anything with
+// a length, such as an array, and would add a second message.
+const minLength = (min: number) => (value: string) => value.length >= min;
+const maxLength = (max: number) => (value: string) => value.length <= max;
+
 // PostgreSQL rejects NUL and lone surrogates inside jsonb, which would otherwise surface as a 500.
 const isStorable = (value: string) => !value.includes('\0') && !/\p{Cs}/u.test(value);
 
@@ -23,8 +28,8 @@ const text = (label: string, max: number) =>
           : `${label}은(는) 문자로 입력해 주세요`,
     })
     .trim()
-    .min(1, `${label}을(를) 입력해 주세요`)
-    .max(max, `${label}은(는) ${max}자 이하로 입력해 주세요`)
+    .refine(minLength(1), `${label}을(를) 입력해 주세요`)
+    .refine(maxLength(max), `${label}은(는) ${max}자 이하로 입력해 주세요`)
     .refine(isStorable, `${label}에 사용할 수 없는 문자가 있습니다`);
 
 const isRealDate = (value: string) => {
@@ -96,7 +101,7 @@ const linkMessage = '링크는 http:// 또는 https://로 시작하는 주소로
 const linkText = z
   .string({ error: linkMessage })
   .trim()
-  .max(2000, '링크는 2000자 이하로 입력해 주세요')
+  .refine(maxLength(2000), '링크는 2000자 이하로 입력해 주세요')
   .refine((value) => value === '' || isWebLink(value), linkMessage);
 
 const vintageMessage = '빈티지는 4자리 연도로 입력해 주세요';
@@ -302,7 +307,7 @@ const listQuery = strictObject(
     q: z
       .string({ error: '검색어는 하나만 입력해 주세요' })
       .trim()
-      .max(100, '검색어는 100자 이하로 입력해 주세요')
+      .refine(maxLength(100), '검색어는 100자 이하로 입력해 주세요')
       .refine(isStorable, '검색어에 사용할 수 없는 문자가 있습니다')
       .optional(),
     category: z
