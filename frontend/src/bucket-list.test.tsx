@@ -147,6 +147,7 @@ const cases = [
     detail: { producer: '헤세' },
   },
   { tab: '여행', key: 'travel', field: '도시 (선택)', detail: { city: '헤세' } },
+  { tab: '커피', key: 'coffee', field: '추출 방식 (선택)', detail: { brewMethod: '헤세' } },
 ] as const;
 
 for (const { tab, key, field, detail, ...rest } of cases) {
@@ -331,6 +332,7 @@ const criteriaByCategory = {
   stage: { 연기: 'acting', 연출: 'direction', 무대: 'stage', 음악: 'music' },
   drink: { 향: 'aroma', 맛: 'taste', 여운: 'finish', 가성비: 'value' },
   travel: { 풍경: 'scenery', 음식: 'food', 숙소: 'lodging', 교통: 'transport' },
+  coffee: { 향: 'aroma', 산미: 'acidity', 단맛: 'sweetness', 바디: 'body', 여운: 'finish' },
 };
 
 for (const [category, criteria] of Object.entries(criteriaByCategory)) {

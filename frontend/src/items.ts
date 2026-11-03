@@ -118,6 +118,24 @@ export const categories: Category[] = [
       { key: 'transport', label: '교통' },
     ],
   },
+  {
+    key: 'coffee',
+    label: '커피',
+    description: '마셔 보고 싶은 커피와 마신 커피',
+    subtypes: [],
+    fields: [
+      { key: 'roastery', label: '로스터리' },
+      { key: 'origin', label: '원산지' },
+      { key: 'brewMethod', label: '추출 방식' },
+    ],
+    criteria: [
+      { key: 'aroma', label: '향' },
+      { key: 'acidity', label: '산미' },
+      { key: 'sweetness', label: '단맛' },
+      { key: 'body', label: '바디' },
+      { key: 'finish', label: '여운' },
+    ],
+  },
 ];
 
 /** Today in the service time zone. The server rejects a completed date after its own today. */
