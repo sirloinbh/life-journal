@@ -93,9 +93,14 @@ test(
       readFile(new URL(`../../database/migrations/${file}`, import.meta.url), 'utf8');
     const schema = 'test_coffee_migration';
     t.after(async () => {
-      await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
-      client.release();
-      await pool.end();
+      // A failed 007 leaves its transaction open, which would block the DROP below.
+      await client.query('ROLLBACK').catch(() => {});
+      try {
+        await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+      } finally {
+        client.release();
+        await pool.end();
+      }
     });
     await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE; CREATE SCHEMA ${schema}`);
     await client.query(`SET search_path TO ${schema}`);
