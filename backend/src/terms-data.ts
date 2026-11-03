@@ -134,7 +134,7 @@ export const TERMS: StudyTerm[] = [
     term: '부르고뉴',
     original: 'Bourgogne / Burgundy',
     meaning:
-      '프랑스 동부의 와인 산지. 주로 피노 누아와 샤르도네 한 품종으로 만들고, 밭 단위로 등급을 나눈다.',
+      '프랑스 동부의 와인 산지. 레드는 피노 누아, 화이트는 샤르도네 한 품종만으로 만드는 일이 많고, 밭 단위로 등급을 나눈다.',
   },
   {
     id: 'wine-champagne',
@@ -193,7 +193,7 @@ export const TERMS: StudyTerm[] = [
     term: '원산지 명칭',
     original: 'Appellation',
     meaning:
-      '와인을 만든 지역을 라벨에 쓸 수 있게 법으로 정한 이름. 그 지역에서 쓸 수 있는 품종과 방식도 함께 정한다. 프랑스의 AOC가 대표적이다.',
+      '포도를 기른 지역을 라벨에 쓸 수 있게 법으로 정한 이름. 유럽에서는 그 지역에서 쓸 수 있는 품종과 방식도 함께 정한다. 프랑스의 AOC가 대표적이다.',
   },
   {
     id: 'wine-old-world',
@@ -240,7 +240,7 @@ export const TERMS: StudyTerm[] = [
     term: '젖산 발효',
     original: 'Malolactic Fermentation',
     meaning:
-      '날카로운 사과산을 부드러운 젖산으로 바꾸는 두 번째 발효. 산미가 둥글어지고 버터 같은 향이 생길 수 있다.',
+      '젖산균이 날카로운 사과산을 부드러운 젖산으로 바꾸는 과정. 보통 알코올 발효 뒤에 일어나며, 산미가 둥글어지고 버터 같은 향이 생길 수 있다.',
   },
   {
     id: 'wine-maceration',
@@ -264,7 +264,7 @@ export const TERMS: StudyTerm[] = [
     term: '쉬르 리',
     original: 'Sur Lie',
     meaning:
-      '발효가 끝난 뒤 가라앉은 효모 찌꺼기 위에 와인을 그대로 두고 숙성하는 방법. 질감이 풍부해지고 빵 같은 향이 생긴다.',
+      '발효가 끝난 뒤 가라앉은 효모 찌꺼기 위에 와인을 그대로 두고 숙성하는 방법. 질감이 풍부해지고 빵 같은 향이 생길 수 있다.',
   },
   {
     id: 'wine-traditional-method',
@@ -295,7 +295,7 @@ export const TERMS: StudyTerm[] = [
     term: '내추럴 와인',
     original: 'Natural Wine',
     meaning:
-      '포도밭과 양조장에서 사람의 개입과 첨가물을 최소로 줄여 만든 와인. 법으로 정한 기준은 아직 나라마다 다르다.',
+      '포도밭과 양조장에서 사람의 개입과 첨가물을 최소로 줄여 만든 와인. 법으로 정한 공통 기준은 아직 없다.',
   },
   {
     id: 'wine-sulfites',
@@ -303,7 +303,7 @@ export const TERMS: StudyTerm[] = [
     term: '아황산염',
     original: 'Sulfites',
     meaning:
-      '와인이 상하거나 산화하지 않도록 넣는 보존 성분. 발효 중에도 조금 생겨서 라벨에 함유 표시를 한다.',
+      '와인이 상하거나 산화하지 않도록 넣는 보존 성분. 발효 중에도 조금 생기며, 많은 나라에서 일정량을 넘으면 라벨에 표시하게 한다.',
   },
   // 와인 — 시음 표현: 맛과 향을 말하는 법
   {
@@ -333,7 +333,7 @@ export const TERMS: StudyTerm[] = [
     domain: 'wine',
     term: '드라이',
     original: 'Dry',
-    meaning: '남은 당분이 거의 없어 단맛이 느껴지지 않는 상태. 단맛의 반대말로 쓴다.',
+    meaning: '남은 당분이 거의 없어 단맛이 느껴지지 않는 상태. 스위트의 반대말로 쓴다.',
   },
   {
     id: 'wine-finish',

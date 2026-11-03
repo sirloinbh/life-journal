@@ -26,6 +26,7 @@ test('a term name appears only once in its domain', () => {
 });
 
 // One known term for each range of #70: grape varieties, regions, winemaking, tasting words.
+// Terms carry no range field, so this checks a sample term per range, not every term's range.
 const WINE_RANGES = {
   품종: 'wine-cabernet-sauvignon',
   산지: 'wine-bordeaux',
@@ -33,7 +34,7 @@ const WINE_RANGES = {
   시음: 'wine-finish',
 };
 
-test('the wine domain has 50 terms covering every range', () => {
+test('the wine domain has 50 terms with a sample term from each range', () => {
   const wine = TERMS.filter(({ domain }) => domain === 'wine');
   assert.equal(wine.length, 50);
   for (const [range, id] of Object.entries(WINE_RANGES)) {
@@ -42,6 +43,11 @@ test('the wine domain has 50 terms covering every range', () => {
       `${range}: ${id}`,
     );
   }
+});
+
+test('the wine ids that saved learned marks may point to are kept', () => {
+  const ids = new Set(TERMS.map(({ id }) => id));
+  for (const id of ['wine-tannin', 'wine-terroir']) assert.ok(ids.has(id), id);
 });
 
 test('the term list sends every wine term with its learned mark', async () => {
