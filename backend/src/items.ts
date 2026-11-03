@@ -106,6 +106,9 @@ const linkText = z
 
 const vintageMessage = '빈티지는 4자리 연도로 입력해 주세요';
 
+// Menu order. The CHECK constraint of items.category (database/migrations) lists the same keys.
+const CATEGORY_KEYS = ['reading', 'screen', 'stage', 'drink', 'travel', 'coffee'] as const;
+
 const CATEGORIES = {
   reading: {
     label: '독서',
@@ -171,8 +174,24 @@ const CATEGORIES = {
       transport: '교통',
     }),
   },
+  coffee: {
+    label: '커피',
+    subtypes: [],
+    details: details('커피', {
+      roastery: text('로스터리', 100).optional(),
+      origin: text('원산지', 100).optional(),
+      brewMethod: text('추출 방식', 50).optional(),
+    }),
+    criteria: criteria('커피', {
+      aroma: '향',
+      acidity: '산미',
+      sweetness: '단맛',
+      body: '바디',
+      finish: '여운',
+    }),
+  },
 } satisfies Record<
-  string,
+  (typeof CATEGORY_KEYS)[number],
   {
     label: string;
     subtypes: readonly string[];
@@ -194,7 +213,7 @@ const subRatingsRecord = z.record(z.string(), z.unknown(), {
 });
 
 const itemShape = {
-  category: z.enum(['reading', 'screen', 'stage', 'drink', 'travel'], {
+  category: z.enum(CATEGORY_KEYS, {
     error: categoryMessage,
   }),
   subtype: text('세부 종류', 50).nullable().optional(),
@@ -282,7 +301,7 @@ const notFound = () => new HttpError(404, '항목을 찾을 수 없습니다');
 const SORT_COLUMNS = {
   title: 'title',
   // Menu order: the keys are English, so their alphabetical order means nothing on screen.
-  category: "array_position(ARRAY['reading', 'screen', 'stage', 'drink', 'travel'], category)",
+  category: `array_position(ARRAY[${CATEGORY_KEYS.map((key) => `'${key}'`).join(', ')}], category)`,
   status: 'status',
   costKrw: 'cost_krw',
   plannedDate: 'planned_date',
@@ -311,7 +330,7 @@ const listQuery = strictObject(
       .refine(isStorable, '검색어에 사용할 수 없는 문자가 있습니다')
       .optional(),
     category: z
-      .enum(['reading', 'screen', 'stage', 'drink', 'travel'], {
+      .enum(CATEGORY_KEYS, {
         error: categoryMessage,
       })
       .optional(),

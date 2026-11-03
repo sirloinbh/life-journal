@@ -115,6 +115,21 @@ const rejected: { name: string; body: unknown; error: string }[] = [
     error: '독서 정보에 없는 항목이 있습니다',
   },
   {
+    name: 'a details field that coffee does not have',
+    body: { category: 'coffee', title: '에티오피아 예가체프', details: { vintage: 2024 } },
+    error: '커피 정보에 없는 항목이 있습니다',
+  },
+  {
+    name: 'a subtype on coffee, which has none',
+    body: { category: 'coffee', subtype: 'wine', title: '에티오피아 예가체프' },
+    error: '커피 분야에는 세부 종류를 넣을 수 없습니다',
+  },
+  {
+    name: 'a coffee details value that is not text',
+    body: { category: 'coffee', title: '에티오피아 예가체프', details: { brewMethod: 1 } },
+    error: '추출 방식은(는) 문자로 입력해 주세요',
+  },
+  {
     name: 'details that are not an object',
     body: { ...book, details: '헤세' },
     error: '분야별 정보 형식이 올바르지 않습니다',
@@ -158,6 +173,17 @@ const rejected: { name: string; body: unknown; error: string }[] = [
       subRatings: { acting: 4 },
     },
     error: '독서 세부 평점에 없는 항목이 있습니다',
+  },
+  {
+    name: 'a sub-rating criterion that coffee does not have',
+    body: {
+      category: 'coffee',
+      title: '에티오피아 예가체프',
+      status: 'done',
+      completedDate: '2026-10-01',
+      subRatings: { taste: 4 },
+    },
+    error: '커피 세부 평점에 없는 항목이 있습니다',
   },
   {
     name: 'sub-ratings that are not an object',
@@ -342,6 +368,7 @@ const criteriaByCategory = {
   stage: { subtype: 'opera', keys: ['acting', 'direction', 'stage', 'music'] },
   drink: { subtype: 'wine', keys: ['aroma', 'taste', 'finish', 'value'] },
   travel: { subtype: null, keys: ['scenery', 'food', 'lodging', 'transport'] },
+  coffee: { subtype: null, keys: ['aroma', 'acidity', 'sweetness', 'body', 'finish'] },
 };
 
 for (const [category, { subtype, keys }] of Object.entries(criteriaByCategory)) {

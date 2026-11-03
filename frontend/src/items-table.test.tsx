@@ -113,6 +113,23 @@ test('changing a filter asks the server again and refreshes the table', async ()
   expect(window.location.search).toBe('');
 });
 
+test('the coffee category is a table filter and names its rows', async () => {
+  const asked = fakeApi((search) =>
+    json({
+      items: search.includes('category=coffee')
+        ? [row(3, { category: 'coffee', title: '케냐 AA' })]
+        : [row(1, {})],
+    }),
+  );
+  openAt('/table');
+  await screen.findByRole('link', { name: '항목 1' });
+  await choose('분야', '커피');
+  const link = await screen.findByRole('link', { name: '케냐 AA' });
+  expect(link).toHaveAttribute('href', '/bucket-list/coffee');
+  expect(link.closest('tr')).toHaveTextContent('커피');
+  expect(asked.at(-1)).toBe('category=coffee');
+});
+
 test('filters in the address are used, shown, and kept', async () => {
   const search =
     'q=%ED%97%A4%EC%84%B8&status=done&from=2026-01-01&to=2026-12-31&costMin=1000&costMax=2000';

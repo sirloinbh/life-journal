@@ -37,6 +37,7 @@ test('the items migration can be applied again without errors', { skip: !url }, 
     '004_item_review.sql',
     '005_item_link.sql',
     '006_learned_terms.sql',
+    '007_coffee_category.sql',
   ]) {
     const sql = await readFile(
       new URL(`../../database/migrations/${file}`, import.meta.url),
@@ -76,6 +77,52 @@ test(
     assert.deepEqual(rows, [
       { rating: null, sub_ratings: {}, review: null, link: null },
       { rating: null, sub_ratings: {}, review: null, link: null },
+    ]);
+  },
+);
+
+test(
+  'the coffee migration applies twice to a table that already has rows',
+  { skip: !url },
+  async (t) => {
+    // One client for the whole test: pool.query drops its connection after an error, and with it
+    // the search_path below.
+    const pool = new Pool({ connectionString: url, max: 1 });
+    const client = await pool.connect();
+    const migration = (file: string) =>
+      readFile(new URL(`../../database/migrations/${file}`, import.meta.url), 'utf8');
+    const schema = 'test_coffee_migration';
+    t.after(async () => {
+      await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+      client.release();
+      await pool.end();
+    });
+    await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE; CREATE SCHEMA ${schema}`);
+    await client.query(`SET search_path TO ${schema}`);
+    for (const file of [
+      '002_items.sql',
+      '003_item_ratings.sql',
+      '004_item_review.sql',
+      '005_item_link.sql',
+    ]) {
+      await client.query(await migration(file));
+    }
+    await client.query(`INSERT INTO items (category, title) VALUES ('reading', '데미안');
+    INSERT INTO items (category, subtype, title) VALUES ('drink', 'wine', '샤블리')`);
+    await assert.rejects(
+      client.query("INSERT INTO items (category, title) VALUES ('coffee', '케냐')"),
+    );
+    await client.query(await migration('007_coffee_category.sql'));
+    await client.query(await migration('007_coffee_category.sql'));
+    await client.query("INSERT INTO items (category, title) VALUES ('coffee', '케냐')");
+    await assert.rejects(
+      client.query("INSERT INTO items (category, title) VALUES ('music', '재즈')"),
+    );
+    const { rows } = await client.query('SELECT category, title FROM items ORDER BY id');
+    assert.deepEqual(rows, [
+      { category: 'reading', title: '데미안' },
+      { category: 'drink', title: '샤블리' },
+      { category: 'coffee', title: '케냐' },
     ]);
   },
 );
@@ -120,7 +167,7 @@ test('a learned mark on a term that no longer exists is ignored', { skip: !url }
   });
 });
 
-test('items of all five categories are stored and read back', { skip: !url }, async (t) => {
+test('items of all six categories are stored and read back', { skip: !url }, async (t) => {
   const pool = new Pool({ connectionString: url });
   t.after(() => pool.end());
   await pool.query('DELETE FROM items');
@@ -153,6 +200,15 @@ test('items of all five categories are stored and read back', { skip: !url }, as
       title: '교토 단풍',
       costKrw: 0,
       details: { country: '일본', city: '교토' },
+    },
+    {
+      category: 'coffee',
+      title: '에티오피아 예가체프',
+      status: 'done',
+      completedDate: TODAY,
+      details: { roastery: '동네 로스터리', origin: '에티오피아', brewMethod: '핸드드립' },
+      rating: 4.5,
+      subRatings: { aroma: 5, acidity: 4.5, sweetness: 4, body: 3, finish: 4 },
     },
   ];
   await withApi(
