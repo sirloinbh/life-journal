@@ -401,6 +401,7 @@ export const TERMS: StudyTerm[] = [
     meaning:
       '오염된 코르크 때문에 젖은 종이나 곰팡이 냄새가 나는 상태. 마시기 전에 와인을 맛보는 이유 가운데 하나다.',
   },
+  // 위스키 — 종류: 원료와 섞는 방식
   {
     id: 'whisky-single-malt',
     domain: 'whisky',
@@ -409,11 +410,377 @@ export const TERMS: StudyTerm[] = [
     meaning: '한 증류소에서 맥아 보리만으로 만든 위스키.',
   },
   {
+    id: 'whisky-blended-malt',
+    domain: 'whisky',
+    term: '블렌디드 몰트',
+    original: 'Blended Malt',
+    meaning:
+      '여러 증류소의 몰트위스키만 섞은 위스키. 보리 맥아에 밀이나 옥수수 같은 다른 곡물을 더해 만든 그레인위스키는 넣지 않는다.',
+  },
+  {
+    id: 'whisky-blended',
+    domain: 'whisky',
+    term: '블렌디드 위스키',
+    original: 'Blended Whisky',
+    meaning: '몰트위스키와 그레인위스키를 섞어 만든 위스키. 맛이 고르고 부드러워 가장 많이 팔린다.',
+  },
+  {
+    id: 'whisky-grain',
+    domain: 'whisky',
+    term: '그레인위스키',
+    original: 'Grain Whisky',
+    meaning:
+      '밀이나 옥수수 같은 곡물을 연속식 증류기로 증류해 만든 위스키. 몰트위스키보다 맛이 가볍다.',
+  },
+  {
+    id: 'whisky-single-grain',
+    domain: 'whisky',
+    term: '싱글 그레인',
+    original: 'Single Grain',
+    meaning: '한 증류소에서 만든 그레인위스키만 담은 위스키.',
+  },
+  {
+    id: 'whisky-bourbon',
+    domain: 'whisky',
+    term: '버번',
+    original: 'Bourbon',
+    meaning:
+      '옥수수를 절반 넘게 쓰고, 안쪽을 불에 그을린 새 오크통에서 숙성한 미국 위스키. 단맛과 바닐라 향이 뚜렷하다.',
+  },
+  {
+    id: 'whisky-tennessee',
+    domain: 'whisky',
+    term: '테네시 위스키',
+    original: 'Tennessee Whiskey',
+    meaning:
+      '미국 테네시주에서 만드는 위스키. 대부분 숙성 전에 단풍나무 숯에 통과시켜 맛을 부드럽게 한다.',
+  },
+  {
+    id: 'whisky-rye',
+    domain: 'whisky',
+    term: '라이 위스키',
+    original: 'Rye Whiskey',
+    meaning:
+      '호밀을 많이 써서 만든 위스키. 미국에서는 호밀이 절반을 넘어야 하며, 알싸한 향신료 맛이 난다.',
+  },
+  {
+    id: 'whisky-single-pot-still',
+    domain: 'whisky',
+    term: '싱글 팟 스틸',
+    original: 'Single Pot Still',
+    meaning:
+      '싹을 틔운 보리와 싹을 틔우지 않은 보리를 섞어 한 증류소의 단식 증류기로 만든 아일랜드 위스키. 크림 같은 질감이 특징이다.',
+  },
+  {
+    id: 'whisky-single-cask',
+    domain: 'whisky',
+    term: '싱글 캐스크',
+    original: 'Single Cask',
+    meaning:
+      '통 하나에서 꺼낸 위스키를 다른 통과 섞지 않고 그대로 담은 것. 통 하나에서만 담아 병 수가 적고, 통마다 맛이 다르다.',
+  },
+  {
+    id: 'whisky-small-batch',
+    domain: 'whisky',
+    term: '스몰 배치',
+    original: 'Small Batch',
+    meaning:
+      '적은 수의 통만 골라 섞었다는 뜻으로 붙이는 말. 몇 통까지인지 법으로 정한 기준은 없다.',
+  },
+  {
+    id: 'whisky-bottled-in-bond',
+    domain: 'whisky',
+    term: '보틀드 인 본드',
+    original: 'Bottled-in-Bond',
+    meaning:
+      '한 증류소에서 한 철에 증류해 정부 감독 창고에서 4년 이상 숙성하고 100프루프로 담은 미국 위스키에 붙는 표시.',
+  },
+  // 위스키 — 산지: 나라와 지역
+  {
+    id: 'whisky-scotch',
+    domain: 'whisky',
+    term: '스카치위스키',
+    original: 'Scotch Whisky',
+    meaning: '스코틀랜드에서 증류하고 그곳의 오크통에서 3년 이상 숙성한 위스키.',
+  },
+  {
+    id: 'whisky-speyside',
+    domain: 'whisky',
+    term: '스페이사이드',
+    original: 'Speyside',
+    meaning:
+      '스코틀랜드 스페이강 주변 지역. 증류소가 가장 많이 모여 있고, 과일과 꽃 향이 나는 우아한 위스키가 많다.',
+  },
+  {
+    id: 'whisky-highland',
+    domain: 'whisky',
+    term: '하일랜드',
+    original: 'Highlands',
+    meaning:
+      '스코틀랜드 북부의 넓은 지역. 땅이 넓은 만큼 가벼운 맛부터 묵직한 맛까지 위스키 성격이 다양하다.',
+  },
+  {
+    id: 'whisky-islay',
+    domain: 'whisky',
+    term: '아일라',
+    original: 'Islay',
+    meaning: '스코틀랜드 서쪽의 섬. 피트 연기 향이 강한 위스키로 유명하다.',
+  },
+  {
+    id: 'whisky-lowland',
+    domain: 'whisky',
+    term: '로랜드',
+    original: 'Lowlands',
+    meaning: '스코틀랜드 남부 지역. 가볍고 부드러운 위스키가 많다.',
+  },
+  {
+    id: 'whisky-campbeltown',
+    domain: 'whisky',
+    term: '캠벨타운',
+    original: 'Campbeltown',
+    meaning:
+      '스코틀랜드 서남쪽 반도의 작은 항구 마을. 한때 증류소가 많았으나 지금은 몇 곳만 남았고, 짠맛과 기름진 질감이 특징으로 꼽힌다.',
+  },
+  {
+    id: 'whisky-islands',
+    domain: 'whisky',
+    term: '아일랜즈',
+    original: 'Islands',
+    meaning:
+      '아일라를 뺀 스코틀랜드의 섬들을 묶어 부르는 말. 공식 구분에서는 하일랜드에 속하지만 바닷바람 느낌의 위스키가 많아 따로 부르곤 한다.',
+  },
+  {
+    id: 'whisky-irish',
+    domain: 'whisky',
+    term: '아이리시위스키',
+    original: 'Irish Whiskey',
+    meaning: '아일랜드섬에서 만들고 3년 이상 숙성한 위스키. 세 번 증류해 부드러운 것이 많다.',
+  },
+  {
+    id: 'whisky-kentucky',
+    domain: 'whisky',
+    term: '켄터키',
+    original: 'Kentucky',
+    meaning: '미국 버번의 대부분을 만드는 주. 다만 버번은 미국 어디서 만들어도 된다.',
+  },
+  {
+    id: 'whisky-japanese',
+    domain: 'whisky',
+    term: '재패니즈위스키',
+    original: 'Japanese Whisky',
+    meaning:
+      '일본에서 만든 위스키. 스카치를 본보기로 시작했으며, 일본 업계는 2021년부터 일본에서 증류하고 숙성한 것에만 이 이름을 쓰도록 기준을 두었다.',
+  },
+  {
+    id: 'whisky-canadian',
+    domain: 'whisky',
+    term: '캐나디언위스키',
+    original: 'Canadian Whisky',
+    meaning: '캐나다에서 3년 이상 숙성한 위스키. 여러 곡물 원액을 섞어 가볍고 부드러운 것이 많다.',
+  },
+  {
+    id: 'whisky-world',
+    domain: 'whisky',
+    term: '월드 위스키',
+    original: 'World Whisky',
+    meaning:
+      '스코틀랜드, 아일랜드, 미국, 캐나다, 일본 같은 전통 산지 밖에서 만든 위스키를 묶어 부르는 말. 대만, 인도, 한국 위스키 등이 있다.',
+  },
+  // 위스키 — 증류와 숙성: 만드는 과정
+  {
+    id: 'whisky-malting',
+    domain: 'whisky',
+    term: '몰팅',
+    original: 'Malting',
+    meaning:
+      '보리를 물에 불려 싹을 틔운 뒤 말리는 과정. 녹말이 당분으로 바뀔 준비를 한다. 이때 피트를 태워 말리면 연기 향이 밴다.',
+  },
+  {
+    id: 'whisky-mashing',
+    domain: 'whisky',
+    term: '당화',
+    original: 'Mashing',
+    meaning:
+      '빻은 맥아를 뜨거운 물에 담가 당분을 우려내는 과정. 이렇게 얻은 단 액체를 워트라고 한다.',
+  },
+  {
+    id: 'whisky-wash',
+    domain: 'whisky',
+    term: '워시',
+    original: 'Wash',
+    meaning: '워트에 효모를 넣어 발효한 액체. 맥주와 비슷하며 이것을 증류해 위스키 원액을 얻는다.',
+  },
+  {
+    id: 'whisky-pot-still',
+    domain: 'whisky',
+    term: '단식 증류기',
+    original: 'Pot Still',
+    meaning:
+      '원료를 한 번에 정해진 양만큼 넣어 끓여 증류하는 구리 증류기. 맛 성분이 많이 남아 몰트위스키를 만들 때 쓴다.',
+  },
+  {
+    id: 'whisky-column-still',
+    domain: 'whisky',
+    term: '연속식 증류기',
+    original: 'Column Still',
+    meaning:
+      '기둥 모양의 증류기로, 쉬지 않고 원료를 넣어 연달아 증류한다. 도수가 높고 가벼운 원액을 많이 만들 수 있다.',
+  },
+  {
+    id: 'whisky-new-make',
+    domain: 'whisky',
+    term: '뉴 메이크',
+    original: 'New Make Spirit',
+    meaning:
+      '증류기에서 막 나와 아직 통에 넣지 않은 투명한 원액. 스코틀랜드 등에서는 정해진 기간 숙성을 거쳐야 위스키라고 부를 수 있다.',
+  },
+  {
+    id: 'whisky-angels-share',
+    domain: 'whisky',
+    term: '엔젤스 셰어',
+    original: "Angel's Share",
+    meaning:
+      '숙성하는 동안 통 밖으로 증발해 사라지는 위스키. 천사가 몫을 가져간다는 뜻으로 이렇게 부른다.',
+  },
+  {
+    id: 'whisky-bourbon-cask',
+    domain: 'whisky',
+    term: '버번 캐스크',
+    original: 'Ex-Bourbon Cask',
+    meaning:
+      '버번을 숙성하는 데 한 번 쓴 오크통. 스카치 숙성에 가장 많이 쓰며 바닐라와 꿀 같은 향을 더한다.',
+  },
+  {
+    id: 'whisky-sherry-cask',
+    domain: 'whisky',
+    term: '셰리 캐스크',
+    original: 'Sherry Cask',
+    meaning:
+      '스페인의 주정 강화 와인인 셰리를 담았던 오크통. 말린 과일, 견과, 향신료 같은 진한 맛을 더한다.',
+  },
+  {
+    id: 'whisky-cask-finish',
+    domain: 'whisky',
+    term: '캐스크 피니시',
+    original: 'Cask Finish',
+    meaning:
+      '한 통에서 숙성한 위스키를 다른 종류의 통으로 옮겨 짧게 더 익히는 방법. 마지막 통의 향을 덧입힌다.',
+  },
+  {
+    id: 'whisky-age-statement',
+    domain: 'whisky',
+    term: '숙성 연수 표기',
+    original: 'Age Statement',
+    meaning:
+      '라벨의 12년, 18년 같은 숫자. 병에 섞인 위스키 가운데 가장 짧게 숙성한 것의 햇수를 적는다.',
+  },
+  {
+    id: 'whisky-chill-filtration',
+    domain: 'whisky',
+    term: '냉각 여과',
+    original: 'Chill Filtration',
+    meaning:
+      '위스키를 차갑게 식혀 걸러 내는 일. 얼음이나 물을 넣었을 때 뿌옇게 흐려지지 않게 하지만, 맛 성분도 일부 빠진다는 의견이 있다.',
+  },
+  {
     id: 'whisky-cask-strength',
     domain: 'whisky',
     term: '캐스크 스트렝스',
     original: 'Cask Strength',
     meaning: '물을 타서 도수를 낮추지 않고, 통에서 꺼낸 도수 그대로 병에 담은 위스키.',
+  },
+  // 위스키 — 시음 표현과 마시는 법
+  {
+    id: 'whisky-nose',
+    domain: 'whisky',
+    term: '노즈',
+    original: 'Nose',
+    meaning: '잔에 코를 대고 맡는 향. 시음 기록에서 향을 적는 항목 이름으로도 쓴다.',
+  },
+  {
+    id: 'whisky-palate',
+    domain: 'whisky',
+    term: '팔레트',
+    original: 'Palate',
+    meaning: '입에 머금었을 때 느껴지는 맛. 시음 기록에서 맛을 적는 항목 이름으로도 쓴다.',
+  },
+  {
+    id: 'whisky-finish',
+    domain: 'whisky',
+    term: '피니시',
+    original: 'Finish',
+    meaning: '삼킨 뒤 입과 목에 남는 맛과 향, 그리고 그것이 이어지는 시간.',
+  },
+  {
+    id: 'whisky-peaty',
+    domain: 'whisky',
+    term: '피티',
+    original: 'Peaty',
+    meaning: '피트를 태운 연기에서 온 흙, 연기, 소독약 같은 향을 가리키는 표현.',
+  },
+  {
+    id: 'whisky-smoky',
+    domain: 'whisky',
+    term: '스모키',
+    original: 'Smoky',
+    meaning: '모닥불이나 훈제처럼 연기를 떠올리게 하는 향. 피트 말고 그을린 통에서 오기도 한다.',
+  },
+  {
+    id: 'whisky-sherried',
+    domain: 'whisky',
+    term: '셰리 풍미',
+    original: 'Sherried',
+    meaning: '셰리 캐스크에서 온 건포도, 무화과, 초콜릿 같은 달고 진한 맛을 가리키는 표현.',
+  },
+  {
+    id: 'whisky-mouthfeel',
+    domain: 'whisky',
+    term: '마우스필',
+    original: 'Mouthfeel',
+    meaning: '입안에서 느껴지는 질감. 가볍다, 기름지다, 크림 같다처럼 표현한다.',
+  },
+  {
+    id: 'whisky-neat',
+    domain: 'whisky',
+    term: '니트',
+    original: 'Neat',
+    meaning: '얼음이나 물을 넣지 않고 상온의 위스키를 그대로 마시는 방법.',
+  },
+  {
+    id: 'whisky-on-the-rocks',
+    domain: 'whisky',
+    term: '온 더 록',
+    original: 'On the Rocks',
+    meaning: '잔에 얼음을 넣고 위스키를 부어 차갑게 마시는 방법. 차가워지면서 향은 조금 약해진다.',
+  },
+  {
+    id: 'whisky-highball',
+    domain: 'whisky',
+    term: '하이볼',
+    original: 'Highball',
+    meaning: '위스키에 탄산수와 얼음을 넣어 길게 마시는 음료.',
+  },
+  {
+    id: 'whisky-adding-water',
+    domain: 'whisky',
+    term: '가수',
+    original: 'Adding Water',
+    meaning:
+      '위스키에 물을 몇 방울 떨어뜨리는 일. 도수가 조금 낮아지면서 숨어 있던 향이 올라오기도 한다.',
+  },
+  {
+    id: 'whisky-abv',
+    domain: 'whisky',
+    term: '알코올 도수',
+    original: 'ABV',
+    meaning: '술에 든 알코올의 부피 비율. 라벨에 40%처럼 적는다.',
+  },
+  {
+    id: 'whisky-proof',
+    domain: 'whisky',
+    term: '프루프',
+    original: 'Proof',
+    meaning: '미국에서 쓰는 도수 표기. 알코올 도수의 두 배로, 100프루프는 50%다.',
   },
   {
     id: 'literature-foreshadowing',
