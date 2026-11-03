@@ -1277,7 +1277,8 @@ export const TERMS: StudyTerm[] = [
     domain: 'movie',
     term: '페이드',
     original: 'Fade In / Fade Out',
-    meaning: '화면이 검은색에서 서서히 밝아지거나, 서서히 어두워져 검은색으로 사라지는 장면 전환.',
+    meaning:
+      '화면이 주로 검은색에서 서서히 밝아지거나, 서서히 어두워져 검은색으로 사라지는 장면 전환.',
   },
   {
     id: 'movie-cross-cutting',
@@ -1377,7 +1378,7 @@ export const TERMS: StudyTerm[] = [
     domain: 'movie',
     term: '세트',
     original: 'Set',
-    meaning: '촬영을 위해 스튜디오 안에 지어 놓은 가짜 공간.',
+    meaning: '촬영을 위해 스튜디오나 야외에 지어 놓은 가짜 공간.',
   },
   {
     id: 'movie-macguffin',
@@ -1635,7 +1636,7 @@ export const TERMS: StudyTerm[] = [
     domain: 'opera',
     term: '중창',
     original: 'Ensemble',
-    meaning: '셋 이상의 인물이 각자 다른 감정을 동시에 노래하는 부분.',
+    meaning: '셋 이상의 인물이 함께 노래하는 부분. 저마다 다른 감정을 동시에 노래하기도 한다.',
   },
   {
     id: 'opera-chorus',
@@ -1843,7 +1844,8 @@ export const TERMS: StudyTerm[] = [
     domain: 'opera',
     term: '바로크 오페라',
     original: 'Baroque Opera',
-    meaning: '17~18세기 초에 만든 초기 오페라. 신화를 많이 다루고 장식이 많은 노래가 특징이다.',
+    meaning:
+      '17세기 초부터 18세기 중반까지 만든 오페라. 신화나 고대 역사를 많이 다루고 장식이 많은 노래가 특징이다.',
   },
   {
     id: 'opera-castrato',
@@ -1901,7 +1903,8 @@ export const TERMS: StudyTerm[] = [
     domain: 'musical',
     term: '일레븐 어클락 넘버',
     original: "Eleven O'Clock Number",
-    meaning: '2막 끝 무렵 주인공이 부르는 큰 넘버. 공연이 밤 11시쯤 끝나던 시절에 생긴 말이다.',
+    meaning:
+      '2막 끝 무렵 주인공이 부르는 큰 넘버. 공연이 저녁 8시 반쯤 시작하던 시절, 이 넘버가 밤 11시 무렵에 나온 데서 생긴 말이다.',
   },
   {
     id: 'musical-reprise',
