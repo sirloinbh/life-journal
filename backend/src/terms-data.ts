@@ -415,7 +415,7 @@ export const TERMS: StudyTerm[] = [
     term: '블렌디드 몰트',
     original: 'Blended Malt',
     meaning:
-      '여러 증류소의 몰트위스키만 섞은 위스키. 보리 맥아 말고 다른 곡물로 만든 그레인위스키는 넣지 않는다.',
+      '여러 증류소의 몰트위스키만 섞은 위스키. 보리 맥아에 밀이나 옥수수 같은 다른 곡물을 더해 만든 그레인위스키는 넣지 않는다.',
   },
   {
     id: 'whisky-blended',
