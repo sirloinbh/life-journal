@@ -866,7 +866,7 @@ export const TERMS: StudyTerm[] = [
     term: '마술적 사실주의',
     original: 'Magical Realism',
     meaning:
-      '현실 속에서 초자연적인 일이 아무렇지 않게 일어나는 것처럼 그리는 기법. 라틴아메리카 소설에서 널리 쓰였다.',
+      '현실 속에서 초자연적인 일이 아무렇지 않게 일어나는 것처럼 그리는 소설 경향. 라틴아메리카 소설에서 널리 쓰였다.',
   },
   // 문학 — 서술 기법: 이야기를 전하는 방법
   {
@@ -969,7 +969,7 @@ export const TERMS: StudyTerm[] = [
     domain: 'literature',
     term: '플롯',
     original: 'Plot',
-    meaning: '사건을 일어난 순서가 아니라 원인과 결과에 따라 짜 놓은 이야기의 뼈대.',
+    meaning: '사건을 시간 순서만이 아니라 원인과 결과로 엮어 짜 놓은 이야기의 뼈대.',
   },
   {
     id: 'literature-exposition',
