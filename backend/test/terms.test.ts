@@ -25,9 +25,9 @@ test('a term name appears only once in its domain', () => {
   assert.equal(new Set(names).size, names.length);
 });
 
-// The filled domains: how many terms each has, one sample term for each range (#70 wine, #71 whisky)
-// and the ids from #69 that saved learned marks may point to. Terms carry no range field, so a
-// range is checked by its sample term, not by every term in it.
+// The filled domains (#70 wine, #71 whisky, #72 literature): how many terms each has, one sample
+// term for each range and the ids from #69 that saved learned marks may point to. Terms carry no
+// range field, so a range is checked by its sample term, not by every term in it.
 const FILLED_DOMAINS = {
   wine: {
     count: 50,
@@ -48,6 +48,16 @@ const FILLED_DOMAINS = {
       시음: 'whisky-peaty',
     },
     kept: ['whisky-single-malt', 'whisky-cask-strength'],
+  },
+  literature: {
+    count: 50,
+    ranges: {
+      갈래: 'literature-short-story',
+      '서술 기법': 'literature-omniscient',
+      구성: 'literature-climax',
+      수사법: 'literature-metaphor',
+    },
+    kept: ['literature-foreshadowing', 'literature-point-of-view'],
   },
 };
 
