@@ -25,45 +25,60 @@ test('a term name appears only once in its domain', () => {
   assert.equal(new Set(names).size, names.length);
 });
 
-// One known term for each range of #70: grape varieties, regions, winemaking, tasting words.
-// Terms carry no range field, so this checks a sample term per range, not every term's range.
-const WINE_RANGES = {
-  품종: 'wine-cabernet-sauvignon',
-  산지: 'wine-bordeaux',
-  양조: 'wine-malolactic-fermentation',
-  시음: 'wine-finish',
+// The filled domains: how many terms each has, one sample term for each range (#70 wine, #71 whisky)
+// and the ids from #69 that saved learned marks may point to. Terms carry no range field, so a
+// range is checked by its sample term, not by every term in it.
+const FILLED_DOMAINS = {
+  wine: {
+    count: 50,
+    ranges: {
+      품종: 'wine-cabernet-sauvignon',
+      산지: 'wine-bordeaux',
+      양조: 'wine-malolactic-fermentation',
+      시음: 'wine-finish',
+    },
+    kept: ['wine-tannin', 'wine-terroir'],
+  },
+  whisky: {
+    count: 50,
+    ranges: {
+      종류: 'whisky-bourbon',
+      산지: 'whisky-islay',
+      '증류와 숙성': 'whisky-pot-still',
+      시음: 'whisky-peaty',
+    },
+    kept: ['whisky-single-malt', 'whisky-cask-strength'],
+  },
 };
 
-test('the wine domain has 50 terms with a sample term from each range', () => {
-  const wine = TERMS.filter(({ domain }) => domain === 'wine');
-  assert.equal(wine.length, 50);
-  for (const [range, id] of Object.entries(WINE_RANGES)) {
-    assert.ok(
-      wine.some((term) => term.id === id),
-      `${range}: ${id}`,
-    );
-  }
-});
+for (const [domain, { count, ranges, kept }] of Object.entries(FILLED_DOMAINS)) {
+  test(`the ${domain} domain has ${count} terms with a sample term from each range`, () => {
+    const ids = new Set(TERMS.filter((term) => term.domain === domain).map(({ id }) => id));
+    assert.equal(ids.size, count);
+    for (const [range, id] of Object.entries(ranges)) assert.ok(ids.has(id), `${range}: ${id}`);
+  });
 
-test('the wine ids that saved learned marks may point to are kept', () => {
-  const ids = new Set(TERMS.map(({ id }) => id));
-  for (const id of ['wine-tannin', 'wine-terroir']) assert.ok(ids.has(id), id);
-});
+  test(`the ${domain} ids that saved learned marks may point to are kept`, () => {
+    const ids = new Set(TERMS.map(({ id }) => id));
+    for (const id of kept) assert.ok(ids.has(id), id);
+  });
+}
 
-test('the term list sends every wine term with its learned mark', async () => {
+test('the term list sends every filled domain with its learned marks', async () => {
   const pool = {
-    query: () => Promise.resolve({ rows: [{ term_id: 'wine-pinot-noir' }] }),
+    query: () =>
+      Promise.resolve({ rows: [{ term_id: 'wine-pinot-noir' }, { term_id: 'whisky-islay' }] }),
   } as unknown as Pool;
   await withApi(pool, async (call) => {
     const { status, data } = await call('/api/terms');
     assert.equal(status, 200);
-    const wine = (data.terms as { id: string; domain: string; learned: boolean }[]).filter(
-      ({ domain }) => domain === 'wine',
-    );
-    assert.equal(wine.length, 50);
+    const terms = data.terms as { id: string; domain: string; learned: boolean }[];
+    for (const [domain, { count }] of Object.entries(FILLED_DOMAINS)) {
+      assert.equal(terms.filter((term) => term.domain === domain).length, count, domain);
+    }
     assert.deepEqual(
-      wine.filter(({ learned }) => learned).map(({ id }) => id),
-      ['wine-pinot-noir'],
+      terms.filter(({ learned }) => learned).map(({ id }) => id),
+      ['wine-pinot-noir', 'whisky-islay'],
     );
   });
 });
