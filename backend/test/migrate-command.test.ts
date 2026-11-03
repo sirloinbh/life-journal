@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -117,5 +120,28 @@ test(
       failed.stderr,
       /적용된 마이그레이션 파일의 내용이 바뀌었습니다: 007_coffee_category\.sql/,
     );
+  },
+);
+
+test(
+  'a file that fails while applying is rolled back alone, and earlier files stay recorded',
+  { skip: !url },
+  async (t) => {
+    const client = await freshSchema(t, 'test_runner_failure');
+    const dir = await mkdtemp(join(tmpdir(), 'migrations-'));
+    t.after(() => rm(dir, { recursive: true, force: true }));
+    await writeFile(join(dir, '001_ok.sql'), 'CREATE TABLE IF NOT EXISTS ok_table (id int);');
+    // The table is created first, so a rollback is the only way it can be missing afterwards.
+    await writeFile(
+      join(dir, '002_bad.sql'),
+      'CREATE TABLE IF NOT EXISTS bad_table (id int);\nSELECT * FROM no_such_table;',
+    );
+    await assert.rejects(migrate(client, await readMigrations(dir)), /002_bad\.sql 적용 실패/);
+    const { rows } = await client.query('SELECT name FROM schema_migrations ORDER BY name');
+    assert.deepEqual(rows, [{ name: '001_ok.sql' }]);
+    const tables = await client.query(
+      "SELECT to_regclass('ok_table') IS NOT NULL AS ok, to_regclass('bad_table') IS NOT NULL AS bad",
+    );
+    assert.deepEqual(tables.rows, [{ ok: true, bad: false }]);
   },
 );
