@@ -93,7 +93,8 @@ test(
       readFile(new URL(`../../database/migrations/${file}`, import.meta.url), 'utf8');
     const schema = 'test_coffee_migration';
     t.after(async () => {
-      // A failed 007 leaves its transaction open, which would block the DROP below.
+      // An aborted transaction would block the DROP below. 007 opens none itself since #83, but a
+      // future change to this test might.
       await client.query('ROLLBACK').catch(() => {});
       try {
         await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
