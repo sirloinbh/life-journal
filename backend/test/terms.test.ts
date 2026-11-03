@@ -25,9 +25,10 @@ test('a term name appears only once in its domain', () => {
   assert.equal(new Set(names).size, names.length);
 });
 
-// The filled domains (#70 wine, #71 whisky, #72 literature): how many terms each has, one sample
-// term for each range and the ids from #69 that saved learned marks may point to. Terms carry no
-// range field, so a range is checked by its sample term, not by every term in it.
+// The filled domains (#70 wine, #71 whisky, #72 literature, #73 movie, opera and musical): how
+// many terms each has, one sample term for each range and the ids from #69 that saved learned
+// marks may point to. Terms carry no range field, so a range is checked by its sample term, not by
+// every term in it.
 const FILLED_DOMAINS = {
   wine: {
     count: 50,
@@ -59,7 +60,44 @@ const FILLED_DOMAINS = {
     },
     kept: ['literature-foreshadowing', 'literature-point-of-view'],
   },
+  movie: {
+    count: 50,
+    ranges: {
+      촬영: 'movie-close-up',
+      편집: 'movie-cross-cutting',
+      '연출과 이야기': 'movie-macguffin',
+      '소리와 제작': 'movie-foley',
+    },
+    kept: ['movie-mise-en-scene', 'movie-montage'],
+  },
+  opera: {
+    count: 50,
+    ranges: {
+      성부: 'opera-soprano',
+      형식: 'opera-overture',
+      '무대와 공연': 'opera-surtitles',
+      '갈래와 흐름': 'opera-verismo',
+    },
+    kept: ['opera-aria', 'opera-recitative'],
+  },
+  musical: {
+    count: 50,
+    ranges: {
+      넘버: 'musical-reprise',
+      무대: 'musical-turntable',
+      '배역과 관람': 'musical-swing',
+      '제작과 갈래': 'musical-jukebox-musical',
+    },
+    kept: ['musical-number', 'musical-ensemble'],
+  },
 };
+
+test('every domain is filled', () => {
+  assert.deepEqual(
+    Object.keys(FILLED_DOMAINS),
+    TERM_DOMAINS.map(({ key }) => key),
+  );
+});
 
 for (const [domain, { count, ranges, kept }] of Object.entries(FILLED_DOMAINS)) {
   test(`the ${domain} domain has ${count} terms with a sample term from each range`, () => {

@@ -9,7 +9,9 @@ const json = (body: unknown, status = 200) =>
 const TERMS = [
   { id: 'wine-tannin', domain: 'wine', term: '타닌', original: 'Tannin', meaning: '떫은 성분' },
   { id: 'wine-terroir', domain: 'wine', term: '테루아', original: 'Terroir', meaning: '자란 환경' },
+  { id: 'movie-montage', domain: 'movie', term: '몽타주', original: 'Montage', meaning: '편집' },
   { id: 'opera-aria', domain: 'opera', term: '아리아', original: 'Aria', meaning: '독창곡' },
+  { id: 'musical-number', domain: 'musical', term: '넘버', original: 'Number', meaning: '노래' },
 ];
 
 // An in-memory API. Its learned marks outlive a render, like the server's do across a reload.
@@ -34,7 +36,9 @@ function fakeApi() {
         const answer = json({
           domains: [
             { key: 'wine', label: '와인' },
+            { key: 'movie', label: '영화' },
             { key: 'opera', label: '오페라' },
+            { key: 'musical', label: '뮤지컬' },
           ],
           terms: api.terms.map((term) => ({ ...term, learned: api.learned.has(term.id) })),
         });
@@ -95,6 +99,28 @@ test('a domain shows only its own terms, with the original word and meaning', as
   expect(await screen.findByRole('heading', { level: 2, name: /아리아/ })).toBeInTheDocument();
   expect(screen.queryByText('타닌')).not.toBeInTheDocument();
   expect(window.location.pathname).toBe('/terms/opera');
+});
+
+// #73 fills three domains on the stage and screen; each shows its own terms only.
+test.each([
+  ['movie', '영화', '몽타주'],
+  ['opera', '오페라', '아리아'],
+  ['musical', '뮤지컬', '넘버'],
+])('the %s domain shows its own term', async (key, label, term) => {
+  fakeApi();
+  openAt('/terms/wine');
+  await box('타닌 외움');
+  fireEvent.click(screen.getByRole('link', { name: label }));
+  expect(
+    await screen.findByRole('heading', { level: 2, name: new RegExp(term) }),
+  ).toBeInTheDocument();
+  const others = ['타닌', '몽타주', '아리아', '넘버'].filter((name) => name !== term);
+  for (const name of others) {
+    expect(
+      screen.queryByRole('heading', { level: 2, name: new RegExp(name) }),
+    ).not.toBeInTheDocument();
+  }
+  expect(window.location.pathname).toBe(`/terms/${key}`);
 });
 
 test.each([
