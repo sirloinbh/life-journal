@@ -25,6 +25,43 @@ test('a term name appears only once in its domain', () => {
   assert.equal(new Set(names).size, names.length);
 });
 
+// One known term for each range of #70: grape varieties, regions, winemaking, tasting words.
+const WINE_RANGES = {
+  품종: 'wine-cabernet-sauvignon',
+  산지: 'wine-bordeaux',
+  양조: 'wine-malolactic-fermentation',
+  시음: 'wine-finish',
+};
+
+test('the wine domain has 50 terms covering every range', () => {
+  const wine = TERMS.filter(({ domain }) => domain === 'wine');
+  assert.equal(wine.length, 50);
+  for (const [range, id] of Object.entries(WINE_RANGES)) {
+    assert.ok(
+      wine.some((term) => term.id === id),
+      `${range}: ${id}`,
+    );
+  }
+});
+
+test('the term list sends every wine term with its learned mark', async () => {
+  const pool = {
+    query: () => Promise.resolve({ rows: [{ term_id: 'wine-pinot-noir' }] }),
+  } as unknown as Pool;
+  await withApi(pool, async (call) => {
+    const { status, data } = await call('/api/terms');
+    assert.equal(status, 200);
+    const wine = (data.terms as { id: string; domain: string; learned: boolean }[]).filter(
+      ({ domain }) => domain === 'wine',
+    );
+    assert.equal(wine.length, 50);
+    assert.deepEqual(
+      wine.filter(({ learned }) => learned).map(({ id }) => id),
+      ['wine-pinot-noir'],
+    );
+  });
+});
+
 for (const method of ['PUT', 'DELETE']) {
   for (const id of ['no-such-term', '__proto__', 'wine-tannin%00']) {
     test(`${method} on the unknown term ${id} is a Korean 404`, async () => {
