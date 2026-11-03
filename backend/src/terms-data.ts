@@ -414,7 +414,8 @@ export const TERMS: StudyTerm[] = [
     domain: 'whisky',
     term: '블렌디드 몰트',
     original: 'Blended Malt',
-    meaning: '여러 증류소의 몰트위스키만 섞은 위스키. 곡물로 만든 그레인위스키는 넣지 않는다.',
+    meaning:
+      '여러 증류소의 몰트위스키만 섞은 위스키. 보리 맥아 말고 다른 곡물로 만든 그레인위스키는 넣지 않는다.',
   },
   {
     id: 'whisky-blended',
@@ -476,7 +477,7 @@ export const TERMS: StudyTerm[] = [
     term: '싱글 캐스크',
     original: 'Single Cask',
     meaning:
-      '통 하나에서 꺼낸 위스키를 다른 통과 섞지 않고 그대로 담은 것. 통마다 맛이 달라 병 수가 적다.',
+      '통 하나에서 꺼낸 위스키를 다른 통과 섞지 않고 그대로 담은 것. 통 하나에서만 담아 병 수가 적고, 통마다 맛이 다르다.',
   },
   {
     id: 'whisky-small-batch',
@@ -492,7 +493,7 @@ export const TERMS: StudyTerm[] = [
     term: '보틀드 인 본드',
     original: 'Bottled-in-Bond',
     meaning:
-      '한 증류소에서 한 철에 증류해 정부 감독 창고에서 4년 넘게 숙성하고 100프루프로 담은 미국 위스키에 붙는 표시.',
+      '한 증류소에서 한 철에 증류해 정부 감독 창고에서 4년 이상 숙성하고 100프루프로 담은 미국 위스키에 붙는 표시.',
   },
   // 위스키 — 산지: 나라와 지역
   {
@@ -500,7 +501,7 @@ export const TERMS: StudyTerm[] = [
     domain: 'whisky',
     term: '스카치위스키',
     original: 'Scotch Whisky',
-    meaning: '스코틀랜드에서 증류하고 그곳의 오크통에서 3년 넘게 숙성한 위스키.',
+    meaning: '스코틀랜드에서 증류하고 그곳의 오크통에서 3년 이상 숙성한 위스키.',
   },
   {
     id: 'whisky-speyside',
@@ -553,7 +554,7 @@ export const TERMS: StudyTerm[] = [
     domain: 'whisky',
     term: '아이리시위스키',
     original: 'Irish Whiskey',
-    meaning: '아일랜드섬에서 만들고 3년 넘게 숙성한 위스키. 세 번 증류해 부드러운 것이 많다.',
+    meaning: '아일랜드섬에서 만들고 3년 이상 숙성한 위스키. 세 번 증류해 부드러운 것이 많다.',
   },
   {
     id: 'whisky-kentucky',
@@ -575,7 +576,7 @@ export const TERMS: StudyTerm[] = [
     domain: 'whisky',
     term: '캐나디언위스키',
     original: 'Canadian Whisky',
-    meaning: '캐나다에서 3년 넘게 숙성한 위스키. 여러 곡물 원액을 섞어 가볍고 부드러운 것이 많다.',
+    meaning: '캐나다에서 3년 이상 숙성한 위스키. 여러 곡물 원액을 섞어 가볍고 부드러운 것이 많다.',
   },
   {
     id: 'whisky-world',
@@ -615,7 +616,7 @@ export const TERMS: StudyTerm[] = [
     term: '단식 증류기',
     original: 'Pot Still',
     meaning:
-      '한 번에 한 통씩 끓여 증류하는 구리 증류기. 맛 성분이 많이 남아 몰트위스키를 만들 때 쓴다.',
+      '원료를 한 번에 정해진 양만큼 넣어 끓여 증류하는 구리 증류기. 맛 성분이 많이 남아 몰트위스키를 만들 때 쓴다.',
   },
   {
     id: 'whisky-column-still',
@@ -631,7 +632,7 @@ export const TERMS: StudyTerm[] = [
     term: '뉴 메이크',
     original: 'New Make Spirit',
     meaning:
-      '증류기에서 막 나와 아직 통에 넣지 않은 투명한 원액. 숙성을 거쳐야 위스키라고 부를 수 있다.',
+      '증류기에서 막 나와 아직 통에 넣지 않은 투명한 원액. 스코틀랜드 등에서는 정해진 기간 숙성을 거쳐야 위스키라고 부를 수 있다.',
   },
   {
     id: 'whisky-angels-share',
