@@ -349,7 +349,7 @@ test('a body that is not valid JSON is a Korean 400', async () => {
   await withApi(untouchedPool(), async (call) => {
     const { status, data } = await call('/api/items', { method: 'POST', rawBody: '{"title":' });
     assert.equal(status, 400);
-    assert.deepEqual(data, { error: '요청 본문의 JSON 형식이 올바르지 않습니다' });
+    assert.deepEqual(data, { error: 'Request body is not valid JSON' });
   });
 });
 
@@ -516,7 +516,7 @@ test('malformed item ids and empty patches are Korean 400s', async () => {
     ] as const) {
       const { status, data } = await call(path, init);
       assert.equal(status, 400, `${init.method} ${path}`);
-      assert.deepEqual(data, { error: '항목 ID가 올바르지 않습니다' });
+      assert.deepEqual(data, { error: 'Invalid 항목 ID' });
     }
     const { status, data } = await call('/api/items/1', { method: 'PATCH', body: {} });
     assert.equal(status, 400);

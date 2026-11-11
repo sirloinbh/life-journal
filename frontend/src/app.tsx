@@ -40,7 +40,7 @@ function useHealth() {
             : { state: 'error', message: data.error ?? '서버 상태를 확인할 수 없습니다' },
         );
       })
-      .catch(() => setHealth({ state: 'error', message: '서버에 연결할 수 없습니다' }));
+      .catch(() => setHealth({ state: 'error', message: 'Cannot reach the server' }));
   }, []);
   return health;
 }

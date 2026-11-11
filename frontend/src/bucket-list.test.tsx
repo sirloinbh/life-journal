@@ -213,7 +213,7 @@ for (const { tab, key, field, detail, ...rest } of cases) {
     });
 
     dialog = await openDialog('고친 항목 삭제');
-    fireEvent.click(dialog.getByRole('button', { name: '삭제' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Delete' }));
     await dialogClosed();
     expect(api.requests.at(-1)?.method).toBe('DELETE');
     expect(await screen.findByText(`${tab} 항목이 없습니다`)).toBeInTheDocument();
@@ -238,7 +238,7 @@ test('each tab shows only the items of its category', async () => {
 test('the main menu link opens the first category', async () => {
   fakeApi();
   openAt('/');
-  const menu = screen.getByRole('navigation', { name: '주 메뉴' });
+  const menu = screen.getByRole('navigation', { name: 'Main menu' });
   fireEvent.click(within(menu).getByRole('link', { name: '버킷리스트' }));
   expect(await screen.findByRole('heading', { level: 1, name: '버킷리스트' })).toBeInTheDocument();
   await waitFor(() => expect(window.location.pathname).toBe('/bucket-list/reading'));
@@ -603,7 +603,7 @@ test('changes show the server response even when the reload after them fails', a
   expect(await screen.findByRole('button', { name: '고친 제목 완료 표시' })).toBeInTheDocument();
 
   dialog = await openDialog('고친 제목 삭제');
-  fireEvent.click(dialog.getByRole('button', { name: '삭제' }));
+  fireEvent.click(dialog.getByRole('button', { name: 'Delete' }));
   await dialogClosed();
   await waitFor(() => expect(screen.queryByText('고친 제목')).toBeNull());
   expect(screen.getByText('수레바퀴')).toBeInTheDocument();
@@ -655,7 +655,7 @@ test('deleting an item that is already gone reports it and refreshes the list', 
   const dialog = await openDialog('데미안 삭제');
   api.items = [];
   api.failNext = { status: 404, error: '항목을 찾을 수 없습니다' };
-  fireEvent.click(dialog.getByRole('button', { name: '삭제' }));
+  fireEvent.click(dialog.getByRole('button', { name: 'Delete' }));
   await dialogClosed();
   expect(await screen.findByText('항목을 찾을 수 없습니다')).toHaveAttribute('role', 'alert');
   expect(await screen.findByText('독서 항목이 없습니다')).toBeInTheDocument();

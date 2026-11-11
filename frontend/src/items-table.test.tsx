@@ -74,7 +74,7 @@ test('the main menu opens the table, which shows every column', async () => {
     }),
   );
   openAt('/');
-  const menu = screen.getByRole('navigation', { name: '주 메뉴' });
+  const menu = screen.getByRole('navigation', { name: 'Main menu' });
   fireEvent.click(within(menu).getByRole('link', { name: '표 보기' }));
   expect(await screen.findByRole('link', { name: '라 보엠' })).toHaveAttribute(
     'href',

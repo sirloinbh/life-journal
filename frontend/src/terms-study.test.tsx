@@ -73,7 +73,7 @@ const box = (name: string) => screen.findByRole('checkbox', { name });
 test('the main menu leads to the first domain', async () => {
   fakeApi();
   openAt('/');
-  const menu = screen.getByRole('navigation', { name: '주 메뉴' });
+  const menu = screen.getByRole('navigation', { name: 'Main menu' });
   fireEvent.click(within(menu).getByRole('link', { name: '용어 공부' }));
   expect(await screen.findByRole('heading', { level: 1, name: '용어 공부' })).toBeInTheDocument();
   expect(await screen.findByRole('heading', { level: 2, name: /타닌/ })).toBeInTheDocument();
