@@ -1,8 +1,8 @@
 {
-  "name": "감상문·일기장",
-  "short_name": "감상문·일기장",
-  "description": "독서·영화 감상문, 일기, 연극·콘서트 등 경험을 기록하는 개인 서비스. 사용자는 본인 한 명이며 로그인은 없다. 외부 공개 전에는 사설 접속 또는 인증을 먼저 설계한다.",
-  "lang": "ko",
+  "name": "Reviews & Diary",
+  "short_name": "Reviews & Diary",
+  "description": "A personal service for recording book and film reviews, a diary, and experiences such as plays and concerts. There is one user (me) and no login. Before any public exposure, design private access or authentication first.",
+  "lang": "en",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

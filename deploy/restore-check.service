@@ -1,6 +1,6 @@
-# 중앙 관리 파일. 수정은 sirloinbh/project-standards의 templates/app/deploy/에서
+# Managed file. Edit it in sirloinbh/project-standards templates/app/deploy/
 [Unit]
-Description=감상문·일기장 weekly restore check of the newest database dump
+Description=Reviews & Diary weekly restore check of the newest database dump
 After=docker.service
 Requires=docker.service
 
