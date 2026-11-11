@@ -26,114 +26,128 @@ export type Category = {
 
 export const SCORES = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
 
+const krw = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'KRW' });
+const day = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** Won as shown on screen, e.g. `₩12,500`. */
+export const formatKrw = (amount: number) => krw.format(amount);
+
+/** A `YYYY-MM-DD` date as shown on screen, e.g. `October 22, 2026`. */
+export const formatDate = (date: string) => day.format(new Date(`${date}T00:00:00Z`));
+
 export const categories: Category[] = [
   {
     key: 'reading',
-    label: '독서',
-    description: '읽고 싶은 책과 읽은 책',
+    label: 'Reading',
+    description: 'Books to read and books read',
     subtypes: [],
     fields: [
-      { key: 'author', label: '저자' },
-      { key: 'publisher', label: '출판사' },
+      { key: 'author', label: 'Author' },
+      { key: 'publisher', label: 'Publisher' },
     ],
     criteria: [
-      { key: 'content', label: '내용' },
-      { key: 'prose', label: '문장' },
-      { key: 'afterglow', label: '여운' },
+      { key: 'content', label: 'Content' },
+      { key: 'prose', label: 'Prose' },
+      { key: 'afterglow', label: 'Lingering impression' },
     ],
   },
   {
     key: 'screen',
-    label: '영화·드라마',
-    description: '보고 싶은 영화·드라마와 본 작품',
+    label: 'Movies & TV',
+    description: 'Movies and TV dramas to watch and ones watched',
     subtypes: [
-      { value: 'movie', label: '영화' },
-      { value: 'drama', label: '드라마' },
+      { value: 'movie', label: 'Movie' },
+      { value: 'drama', label: 'TV drama' },
     ],
     fields: [
-      { key: 'director', label: '감독' },
-      { key: 'cast', label: '출연진' },
+      { key: 'director', label: 'Director' },
+      { key: 'cast', label: 'Cast' },
     ],
     criteria: [
-      { key: 'story', label: '스토리' },
-      { key: 'direction', label: '연출' },
-      { key: 'acting', label: '연기' },
+      { key: 'story', label: 'Story' },
+      { key: 'direction', label: 'Direction' },
+      { key: 'acting', label: 'Acting' },
     ],
   },
   {
     key: 'stage',
-    label: '공연',
-    description: '연극·공연·뮤지컬·오페라',
+    label: 'Stage',
+    description: 'Plays, performances, musicals, and operas',
     subtypes: [
-      { value: 'play', label: '연극' },
-      { value: 'performance', label: '공연' },
-      { value: 'musical', label: '뮤지컬' },
-      { value: 'opera', label: '오페라' },
+      { value: 'play', label: 'Play' },
+      { value: 'performance', label: 'Stage' },
+      { value: 'musical', label: 'Musical' },
+      { value: 'opera', label: 'Opera' },
     ],
     fields: [
-      { key: 'venue', label: '공연장' },
-      { key: 'cast', label: '출연진' },
+      { key: 'venue', label: 'Venue' },
+      { key: 'cast', label: 'Cast' },
     ],
     criteria: [
-      { key: 'acting', label: '연기' },
-      { key: 'direction', label: '연출' },
-      { key: 'stage', label: '무대' },
-      { key: 'music', label: '음악' },
+      { key: 'acting', label: 'Acting' },
+      { key: 'direction', label: 'Direction' },
+      { key: 'stage', label: 'Staging' },
+      { key: 'music', label: 'Music' },
     ],
   },
   {
     key: 'drink',
-    label: '주류',
-    description: '와인·위스키·사케',
+    label: 'Drinks',
+    description: 'Wine, whisky, and sake',
     subtypes: [
-      { value: 'wine', label: '와인' },
-      { value: 'whisky', label: '위스키' },
-      { value: 'sake', label: '사케' },
+      { value: 'wine', label: 'Wine' },
+      { value: 'whisky', label: 'Whisky' },
+      { value: 'sake', label: 'Sake' },
     ],
     fields: [
-      { key: 'producer', label: '생산자' },
-      { key: 'region', label: '산지' },
-      { key: 'vintage', label: '빈티지', numeric: true },
+      { key: 'producer', label: 'Producer' },
+      { key: 'region', label: 'Region' },
+      { key: 'vintage', label: 'Vintage', numeric: true },
     ],
     criteria: [
-      { key: 'aroma', label: '향' },
-      { key: 'taste', label: '맛' },
-      { key: 'finish', label: '여운' },
-      { key: 'value', label: '가성비' },
+      { key: 'aroma', label: 'Aroma' },
+      { key: 'taste', label: 'Taste' },
+      { key: 'finish', label: 'Lingering impression' },
+      { key: 'value', label: 'Value' },
     ],
   },
   {
     key: 'travel',
-    label: '여행',
-    description: '가고 싶은 곳과 다녀온 곳',
+    label: 'Travel',
+    description: 'Places to visit and places visited',
     subtypes: [],
     fields: [
-      { key: 'country', label: '나라' },
-      { key: 'city', label: '도시' },
+      { key: 'country', label: 'Country' },
+      { key: 'city', label: 'City' },
     ],
     criteria: [
-      { key: 'scenery', label: '풍경' },
-      { key: 'food', label: '음식' },
-      { key: 'lodging', label: '숙소' },
-      { key: 'transport', label: '교통' },
+      { key: 'scenery', label: 'Scenery' },
+      { key: 'food', label: 'Food' },
+      { key: 'lodging', label: 'Lodging' },
+      { key: 'transport', label: 'Transport' },
     ],
   },
   {
     key: 'coffee',
-    label: '커피',
-    description: '마셔 보고 싶은 커피와 마신 커피',
+    label: 'Coffee',
+    description: 'Coffee to try and coffee tried',
     subtypes: [],
     fields: [
-      { key: 'roastery', label: '로스터리' },
-      { key: 'origin', label: '원산지' },
-      { key: 'brewMethod', label: '추출 방식' },
+      { key: 'roastery', label: 'Roastery' },
+      { key: 'origin', label: 'Origin' },
+      { key: 'brewMethod', label: 'Brew method' },
     ],
     criteria: [
-      { key: 'aroma', label: '향' },
-      { key: 'acidity', label: '산미' },
-      { key: 'sweetness', label: '단맛' },
-      { key: 'body', label: '바디' },
-      { key: 'finish', label: '여운' },
+      { key: 'aroma', label: 'Aroma' },
+      { key: 'acidity', label: 'Acidity' },
+      { key: 'sweetness', label: 'Sweetness' },
+      { key: 'body', label: 'Body' },
+      { key: 'finish', label: 'Lingering impression' },
     ],
   },
 ];
@@ -181,9 +195,9 @@ export function itemSummary(item: Item, category: Category) {
     const value = item.details[key];
     return value === undefined ? [] : [`${label} ${value}`];
   });
-  if (item.costKrw !== null) parts.push(`비용 ${item.costKrw.toLocaleString('ko-KR')}원`);
-  if (item.plannedDate) parts.push(`예정일 ${item.plannedDate}`);
-  if (item.completedDate) parts.push(`완료일 ${item.completedDate}`);
+  if (item.costKrw !== null) parts.push(`Cost ${formatKrw(item.costKrw)}`);
+  if (item.plannedDate) parts.push(`Planned ${formatDate(item.plannedDate)}`);
+  if (item.completedDate) parts.push(`Completed ${formatDate(item.completedDate)}`);
   return parts;
 }
 
@@ -205,8 +219,8 @@ export function reviewPreview(review: string) {
 }
 
 export function reviewProblem({ lines, length }: { lines: number; length: number }) {
-  if (lines > MAX_REVIEW_LINES) return `감상문은 ${MAX_REVIEW_LINES}줄 이하로 입력해 주세요`;
-  if (length > MAX_REVIEW_LENGTH) return `감상문은 ${MAX_REVIEW_LENGTH}자 이하로 입력해 주세요`;
+  if (lines > MAX_REVIEW_LINES) return `Review must be ${MAX_REVIEW_LINES} lines or fewer`;
+  if (length > MAX_REVIEW_LENGTH) return `Review must be ${MAX_REVIEW_LENGTH} characters or fewer`;
   return null;
 }
 
@@ -235,5 +249,5 @@ export function ratingSummary(item: Item, category: Category) {
   if (scored.length === 0) return null;
   const average = scored.reduce((sum, { value }) => sum + value, 0) / scored.length;
   const parts = scored.map(({ label, value }) => `${label} ${value}`);
-  return `${parts.join(' · ')} (세부 평균 ${average.toFixed(1)}, 참고용)`;
+  return `${parts.join(' · ')} (sub-rating average ${average.toFixed(1)}, for reference)`;
 }

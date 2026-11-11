@@ -7,11 +7,35 @@ const json = (body: unknown, status = 200) =>
   new Response(body === undefined ? null : JSON.stringify(body), { status });
 
 const TERMS = [
-  { id: 'wine-tannin', domain: 'wine', term: '타닌', original: 'Tannin', meaning: '떫은 성분' },
-  { id: 'wine-terroir', domain: 'wine', term: '테루아', original: 'Terroir', meaning: '자란 환경' },
-  { id: 'movie-montage', domain: 'movie', term: '몽타주', original: 'Montage', meaning: '편집' },
-  { id: 'opera-aria', domain: 'opera', term: '아리아', original: 'Aria', meaning: '독창곡' },
-  { id: 'musical-number', domain: 'musical', term: '넘버', original: 'Number', meaning: '노래' },
+  {
+    id: 'wine-tannin',
+    domain: 'wine',
+    term: 'Tannin',
+    original: 'Tannin',
+    meaning: 'An astringent compound',
+  },
+  {
+    id: 'wine-terroir',
+    domain: 'wine',
+    term: 'Terroir',
+    original: 'Terroir',
+    meaning: 'The growing environment',
+  },
+  {
+    id: 'movie-montage',
+    domain: 'movie',
+    term: 'Montage',
+    original: 'Montage',
+    meaning: 'Editing',
+  },
+  { id: 'opera-aria', domain: 'opera', term: 'Aria', original: 'Aria', meaning: 'A solo song' },
+  {
+    id: 'musical-number',
+    domain: 'musical',
+    term: 'Number',
+    original: 'Number',
+    meaning: 'A song',
+  },
 ];
 
 // An in-memory API. Its learned marks outlive a render, like the server's do across a reload.
@@ -31,14 +55,14 @@ function fakeApi() {
       const method = init.method ?? 'GET';
       if (path === '/api/health') return json({ today: '2026-11-02' });
       if (method === 'GET') {
-        if (api.failList) return json({ error: '서버 오류가 발생했습니다' }, 500);
+        if (api.failList) return json({ error: 'A server error occurred' }, 500);
         // A held list answers with what was true when it was asked.
         const answer = json({
           domains: [
-            { key: 'wine', label: '와인' },
-            { key: 'movie', label: '영화' },
-            { key: 'opera', label: '오페라' },
-            { key: 'musical', label: '뮤지컬' },
+            { key: 'wine', label: 'Wine' },
+            { key: 'movie', label: 'Movie' },
+            { key: 'opera', label: 'Opera' },
+            { key: 'musical', label: 'Musical' },
           ],
           terms: api.terms.map((term) => ({ ...term, learned: api.learned.has(term.id) })),
         });
@@ -74,47 +98,47 @@ test('the main menu leads to the first domain', async () => {
   fakeApi();
   openAt('/');
   const menu = screen.getByRole('navigation', { name: 'Main menu' });
-  fireEvent.click(within(menu).getByRole('link', { name: '용어 공부' }));
-  expect(await screen.findByRole('heading', { level: 1, name: '용어 공부' })).toBeInTheDocument();
-  expect(await screen.findByRole('heading', { level: 2, name: /타닌/ })).toBeInTheDocument();
+  fireEvent.click(within(menu).getByRole('link', { name: 'Study terms' }));
+  expect(await screen.findByRole('heading', { level: 1, name: 'Study terms' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { level: 2, name: /Tannin/ })).toBeInTheDocument();
   expect(window.location.pathname).toBe('/terms/wine');
 });
 
 test('an unknown domain in the address goes to the first domain', async () => {
   fakeApi();
   openAt('/terms/no-such-domain');
-  expect(await screen.findByRole('heading', { level: 2, name: /타닌/ })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { level: 2, name: /Tannin/ })).toBeInTheDocument();
   expect(window.location.pathname).toBe('/terms/wine');
 });
 
 test('a domain shows only its own terms, with the original word and meaning', async () => {
   fakeApi();
   openAt('/terms/wine');
-  expect(await screen.findByRole('heading', { level: 2, name: /타닌/ })).toHaveTextContent(
+  expect(await screen.findByRole('heading', { level: 2, name: /Tannin/ })).toHaveTextContent(
     'Tannin',
   );
-  expect(screen.getByText('떫은 성분')).toBeInTheDocument();
-  expect(screen.queryByText('아리아')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('link', { name: '오페라' }));
-  expect(await screen.findByRole('heading', { level: 2, name: /아리아/ })).toBeInTheDocument();
-  expect(screen.queryByText('타닌')).not.toBeInTheDocument();
+  expect(screen.getByText('An astringent compound')).toBeInTheDocument();
+  expect(screen.queryByText('Aria')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('link', { name: 'Opera' }));
+  expect(await screen.findByRole('heading', { level: 2, name: /Aria/ })).toBeInTheDocument();
+  expect(screen.queryByText('Tannin')).not.toBeInTheDocument();
   expect(window.location.pathname).toBe('/terms/opera');
 });
 
 // #73 fills three domains on the stage and screen; each shows its own terms only.
 test.each([
-  ['movie', '영화', '몽타주'],
-  ['opera', '오페라', '아리아'],
-  ['musical', '뮤지컬', '넘버'],
+  ['movie', 'Movie', 'Montage'],
+  ['opera', 'Opera', 'Aria'],
+  ['musical', 'Musical', 'Number'],
 ])('the %s domain shows its own term', async (key, label, term) => {
   fakeApi();
   openAt('/terms/wine');
-  await box('타닌 외움');
+  await box('Tannin learned');
   fireEvent.click(screen.getByRole('link', { name: label }));
   expect(
     await screen.findByRole('heading', { level: 2, name: new RegExp(term) }),
   ).toBeInTheDocument();
-  const others = ['타닌', '몽타주', '아리아', '넘버'].filter((name) => name !== term);
+  const others = ['Tannin', 'Montage', 'Aria', 'Number'].filter((name) => name !== term);
   for (const name of others) {
     expect(
       screen.queryByRole('heading', { level: 2, name: new RegExp(name) }),
@@ -124,60 +148,60 @@ test.each([
 });
 
 test.each([
-  ['the term', '테루아'],
+  ['the term', 'Terroir'],
   ['the original word in any case', 'tERROIR'],
-  ['the meaning', '자란'],
-  ['a word with spaces around it', '  테루아  '],
+  ['the meaning', 'growing'],
+  ['a word with spaces around it', '  Terroir  '],
 ])('search finds a term by %s', async (_name, search) => {
   fakeApi();
   openAt('/terms/wine');
-  await box('타닌 외움');
-  fireEvent.change(screen.getByLabelText('용어 검색'), { target: { value: search } });
-  expect(screen.getByRole('heading', { level: 2, name: /테루아/ })).toBeInTheDocument();
-  expect(screen.queryByRole('heading', { level: 2, name: /타닌/ })).not.toBeInTheDocument();
+  await box('Tannin learned');
+  fireEvent.change(screen.getByLabelText('Search terms'), { target: { value: search } });
+  expect(screen.getByRole('heading', { level: 2, name: /Terroir/ })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { level: 2, name: /Tannin/ })).not.toBeInTheDocument();
 });
 
 test('a search without results says so, and another domain starts without the search', async () => {
   fakeApi();
   openAt('/terms/wine');
-  await box('타닌 외움');
+  await box('Tannin learned');
   // A term of another domain is not a result here.
-  fireEvent.change(screen.getByLabelText('용어 검색'), { target: { value: '아리아' } });
-  expect(screen.getByText('검색 결과가 없습니다')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('link', { name: '오페라' }));
-  expect(await screen.findByLabelText('용어 검색')).toHaveValue('');
-  expect(screen.getByRole('heading', { level: 2, name: /아리아/ })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Search terms'), { target: { value: 'Aria' } });
+  expect(screen.getByText('No results')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('link', { name: 'Opera' }));
+  expect(await screen.findByLabelText('Search terms')).toHaveValue('');
+  expect(screen.getByRole('heading', { level: 2, name: /Aria/ })).toBeInTheDocument();
 });
 
 test('a learned mark stays after a reload and can be taken back', async () => {
   const api = fakeApi();
   openAt('/terms/wine');
-  fireEvent.click(await box('타닌 외움'));
-  await waitFor(async () => expect(await box('타닌 외움')).toBeChecked());
+  fireEvent.click(await box('Tannin learned'));
+  await waitFor(async () => expect(await box('Tannin learned')).toBeChecked());
   expect(api.requests).toEqual([{ method: 'PUT', path: '/api/terms/wine-tannin/learned' }]);
-  expect(screen.getByText('와인 · 외운 용어 1/2개')).toBeInTheDocument();
+  expect(screen.getByText('Wine · 1/2 terms learned')).toBeInTheDocument();
 
   cleanup();
   openAt('/terms/wine');
-  expect(await box('타닌 외움')).toBeChecked();
-  expect(await box('테루아 외움')).not.toBeChecked();
+  expect(await box('Tannin learned')).toBeChecked();
+  expect(await box('Terroir learned')).not.toBeChecked();
 
-  fireEvent.click(await box('타닌 외움'));
-  await waitFor(async () => expect(await box('타닌 외움')).not.toBeChecked());
+  fireEvent.click(await box('Tannin learned'));
+  await waitFor(async () => expect(await box('Tannin learned')).not.toBeChecked());
   expect(api.requests.at(-1)).toEqual({
     method: 'DELETE',
     path: '/api/terms/wine-tannin/learned',
   });
-  expect(screen.getByText('와인 · 외운 용어 0/2개')).toBeInTheDocument();
+  expect(screen.getByText('Wine · 0/2 terms learned')).toBeInTheDocument();
 });
 
 test('a failed mark shows the message and leaves the box as it was', async () => {
   const api = fakeApi();
   openAt('/terms/wine');
-  const tannin = await box('타닌 외움');
-  api.failNext = { status: 500, error: '서버 오류가 발생했습니다' };
+  const tannin = await box('Tannin learned');
+  api.failNext = { status: 500, error: 'A server error occurred' };
   fireEvent.click(tannin);
-  expect(await screen.findByRole('alert')).toHaveTextContent('타닌: 서버 오류가 발생했습니다');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Tannin: A server error occurred');
   expect(tannin).not.toBeChecked();
   fireEvent.click(tannin);
   await waitFor(() => expect(tannin).toBeChecked());
@@ -190,16 +214,16 @@ test('a mark failing after a move to another domain names its term there', async
   api.changeGate = new Promise((resolve) => {
     open = resolve;
   });
-  api.failNext = { status: 500, error: '서버 오류가 발생했습니다' };
+  api.failNext = { status: 500, error: 'A server error occurred' };
   openAt('/terms/wine');
-  fireEvent.click(await box('타닌 외움'));
-  fireEvent.click(screen.getByRole('link', { name: '오페라' }));
-  await box('아리아 외움');
+  fireEvent.click(await box('Tannin learned'));
+  fireEvent.click(screen.getByRole('link', { name: 'Opera' }));
+  await box('Aria learned');
   await act(async () => {
     open();
     await api.changeGate;
   });
-  expect(await screen.findByRole('alert')).toHaveTextContent('타닌: 서버 오류가 발생했습니다');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Tannin: A server error occurred');
 });
 
 test('more clicks during a mark on its way send nothing and keep the keyboard focus', async () => {
@@ -209,7 +233,7 @@ test('more clicks during a mark on its way send nothing and keep the keyboard fo
     open = resolve;
   });
   openAt('/terms/wine');
-  const tannin = await box('타닌 외움');
+  const tannin = await box('Tannin learned');
   tannin.focus();
   fireEvent.click(tannin);
   fireEvent.click(tannin);
@@ -227,50 +251,50 @@ test('more clicks during a mark on its way send nothing and keep the keyboard fo
 test('a term gone from the server is reported and leaves the list', async () => {
   const api = fakeApi();
   openAt('/terms/wine');
-  const tannin = await box('타닌 외움');
-  api.failNext = { status: 404, error: '용어를 찾을 수 없습니다' };
+  const tannin = await box('Tannin learned');
+  api.failNext = { status: 404, error: 'Term not found' };
   api.terms = api.terms.filter(({ id }) => id !== 'wine-tannin');
   fireEvent.click(tannin);
-  expect(await screen.findByRole('alert')).toHaveTextContent('용어를 찾을 수 없습니다');
-  await waitFor(() => expect(screen.queryByText('타닌')).not.toBeInTheDocument());
+  expect(await screen.findByRole('alert')).toHaveTextContent('Term not found');
+  await waitFor(() => expect(screen.queryByText('Tannin')).not.toBeInTheDocument());
 });
 
 test('a mark confirmed during a list on its way keeps both the mark and the refresh', async () => {
   const api = fakeApi();
   openAt('/terms/wine');
-  const tannin = await box('타닌 외움');
-  const terroir = await box('테루아 외움');
+  const tannin = await box('Tannin learned');
+  const terroir = await box('Terroir learned');
   let open = () => {};
   api.holdNextList = new Promise((resolve) => {
     open = resolve;
   });
-  api.failNext = { status: 404, error: '용어를 찾을 수 없습니다' };
+  api.failNext = { status: 404, error: 'Term not found' };
   api.terms = api.terms.filter(({ id }) => id !== 'wine-tannin');
   fireEvent.click(tannin);
-  expect(await screen.findByRole('alert')).toHaveTextContent('용어를 찾을 수 없습니다');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Term not found');
 
   // The held list was read before this mark.
   fireEvent.click(terroir);
-  await waitFor(async () => expect(await box('테루아 외움')).toBeChecked());
-  await waitFor(() => expect(screen.queryByText('타닌')).not.toBeInTheDocument());
+  await waitFor(async () => expect(await box('Terroir learned')).toBeChecked());
+  await waitFor(() => expect(screen.queryByText('Tannin')).not.toBeInTheDocument());
 
   await act(async () => {
     open();
     await Promise.resolve();
   });
-  expect(await box('테루아 외움')).toBeChecked();
-  expect(screen.getByText('와인 · 외운 용어 1/1개')).toBeInTheDocument();
+  expect(await box('Terroir learned')).toBeChecked();
+  expect(screen.getByText('Wine · 1/1 terms learned')).toBeInTheDocument();
 });
 
 test('a message about a mark goes away on another domain', async () => {
   const api = fakeApi();
   openAt('/terms/wine');
-  const tannin = await box('타닌 외움');
-  api.failNext = { status: 500, error: '서버 오류가 발생했습니다' };
+  const tannin = await box('Tannin learned');
+  api.failNext = { status: 500, error: 'A server error occurred' };
   fireEvent.click(tannin);
-  expect(await screen.findByRole('alert')).toHaveTextContent('서버 오류가 발생했습니다');
-  fireEvent.click(screen.getByRole('link', { name: '오페라' }));
-  await box('아리아 외움');
+  expect(await screen.findByRole('alert')).toHaveTextContent('A server error occurred');
+  fireEvent.click(screen.getByRole('link', { name: 'Opera' }));
+  await box('Aria learned');
   await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
 });
 
@@ -278,8 +302,8 @@ test('a failed list can be tried again', async () => {
   const api = fakeApi();
   api.failList = true;
   openAt('/terms/wine');
-  expect(await screen.findByText('서버 오류가 발생했습니다')).toBeInTheDocument();
+  expect(await screen.findByText('A server error occurred')).toBeInTheDocument();
   api.failList = false;
-  fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
-  expect(await screen.findByRole('heading', { level: 2, name: /타닌/ })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(await screen.findByRole('heading', { level: 2, name: /Tannin/ })).toBeInTheDocument();
 });

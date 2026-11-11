@@ -11,7 +11,7 @@ export function CategoryTabs({
   tabs: readonly { key: string; label: string }[];
 }) {
   return (
-    <nav aria-label="분야" className="-mx-1 overflow-x-auto border-b px-1">
+    <nav aria-label="Category" className="-mx-1 overflow-x-auto border-b px-1">
       <ul className="flex w-max gap-1">
         {tabs.map(({ key, label }) => (
           <li key={key}>

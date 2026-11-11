@@ -96,11 +96,11 @@ function FormButtons({ pending, submitLabel }: { pending: boolean; submitLabel: 
     <DialogFooter>
       <DialogClose asChild>
         <Button type="button" variant="outline" disabled={pending}>
-          취소
+          Cancel
         </Button>
       </DialogClose>
       <Button type="submit" disabled={pending} aria-busy={pending || undefined}>
-        {pending ? <Spinner size="sm" label="저장하는 중" /> : null}
+        {pending ? <Spinner size="sm" label="Saving" /> : null}
         {submitLabel}
       </Button>
     </DialogFooter>
@@ -127,11 +127,11 @@ function ItemForm({
     const fields = itemFields(category, form);
     try {
       if (item === null) {
-        await save(null, { category: category.key, ...fields }, '저장했습니다');
+        await save(null, { category: category.key, ...fields }, 'Saved');
       } else {
         const completedDate = form.get('completedDate') || null;
         const body = item.status === 'done' ? { ...fields, completedDate } : fields;
-        await save(item.id, body, '저장했습니다');
+        await save(item.id, body, 'Saved');
       }
     } catch (cause) {
       error(cause);
@@ -142,17 +142,17 @@ function ItemForm({
     <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
       <Field
         id={`${id}-title`}
-        label="제목"
+        label="Title"
         name="title"
         defaultValue={item?.title}
         autoComplete="off"
       />
       {category.subtypes.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <Label htmlFor={`${id}-subtype`}>세부 종류</Label>
+          <Label htmlFor={`${id}-subtype`}>Subtype</Label>
           <Select name="subtype" defaultValue={item?.subtype ?? undefined}>
             <SelectTrigger id={`${id}-subtype`} className="w-full">
-              <SelectValue placeholder="선택해 주세요" />
+              <SelectValue placeholder="Choose one" />
             </SelectTrigger>
             <SelectContent>
               {category.subtypes.map(({ value, label }) => (
@@ -168,7 +168,7 @@ function ItemForm({
         <Field
           key={key}
           id={`${id}-${key}`}
-          label={`${label} (선택)`}
+          label={`${label} (optional)`}
           name={`details.${key}`}
           defaultValue={item?.details[key]}
           inputMode={numeric ? 'numeric' : undefined}
@@ -177,7 +177,7 @@ function ItemForm({
       ))}
       <Field
         id={`${id}-cost`}
-        label="비용(원, 선택)"
+        label="Cost (KRW, optional)"
         name="costKrw"
         defaultValue={item?.costKrw ?? undefined}
         inputMode="numeric"
@@ -185,14 +185,14 @@ function ItemForm({
       />
       <Field
         id={`${id}-planned`}
-        label="예정일 (선택)"
+        label="Planned date (optional)"
         name="plannedDate"
         type="date"
         defaultValue={item?.plannedDate ?? undefined}
       />
       <Field
         id={`${id}-link`}
-        label="링크 (선택)"
+        label="Link (optional)"
         name="link"
         defaultValue={item?.link ?? undefined}
         inputMode="url"
@@ -201,14 +201,14 @@ function ItemForm({
       {item?.status === 'done' ? (
         <Field
           id={`${id}-completed`}
-          label="완료일"
+          label="Completed date"
           name="completedDate"
           type="date"
           defaultValue={item.completedDate ?? undefined}
         />
       ) : null}
       <Notice notice={notice} />
-      <FormButtons pending={pending} submitLabel="저장" />
+      <FormButtons pending={pending} submitLabel="Save" />
     </form>
   );
 }
@@ -222,11 +222,7 @@ function CompleteForm({ item, pending, save }: { item: Item; pending: boolean; s
     event.preventDefault();
     const completedDate = new FormData(event.currentTarget).get('completedDate') || null;
     try {
-      await save(
-        item.id,
-        { status: 'done', completedDate },
-        `${item.title}을(를) 완료로 표시했습니다`,
-      );
+      await save(item.id, { status: 'done', completedDate }, `Marked ${item.title} as done`);
     } catch (cause) {
       error(cause);
     }
@@ -234,9 +230,9 @@ function CompleteForm({ item, pending, save }: { item: Item; pending: boolean; s
 
   return (
     <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
-      <Field id={id} label="완료일" name="completedDate" type="date" defaultValue={today} />
+      <Field id={id} label="Completed date" name="completedDate" type="date" defaultValue={today} />
       <Notice notice={notice} />
-      <FormButtons pending={pending} submitLabel="완료로 표시" />
+      <FormButtons pending={pending} submitLabel="Mark as done" />
     </form>
   );
 }
@@ -260,10 +256,10 @@ function ScoreField({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={NO_SCORE}>없음</SelectItem>
+          <SelectItem value={NO_SCORE}>None</SelectItem>
           {SCORES.map((score) => (
             <SelectItem key={score} value={String(score)}>
-              {score}점
+              {score}
             </SelectItem>
           ))}
         </SelectContent>
@@ -290,7 +286,7 @@ function RatingForm({
     event.preventDefault();
     const fields = ratingFields(category, new FormData(event.currentTarget));
     try {
-      await save(item.id, fields, '평점을 저장했습니다');
+      await save(item.id, fields, 'Saved the rating');
     } catch (cause) {
       error(cause);
     }
@@ -298,9 +294,10 @@ function RatingForm({
 
   return (
     <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
-      <ScoreField id={`${id}-rating`} label="전체 평점" name="rating" value={item.rating} />
+      <ScoreField id={`${id}-rating`} label="Overall rating" name="rating" value={item.rating} />
       <p className="text-body-sm text-muted-foreground">
-        세부 평점은 선택입니다. 평균은 참고로만 보여 주고, 전체 평점은 직접 매깁니다.
+        Sub-ratings are optional. The average is shown for reference only; you set the overall
+        rating yourself.
       </p>
       {category.criteria.map(({ key, label }) => (
         <ScoreField
@@ -312,7 +309,7 @@ function RatingForm({
         />
       ))}
       <Notice notice={notice} />
-      <FormButtons pending={pending} submitLabel="저장" />
+      <FormButtons pending={pending} submitLabel="Save" />
     </form>
   );
 }
@@ -331,7 +328,7 @@ function ReviewForm({ item, pending, save }: { item: Item; pending: boolean; sav
       return;
     }
     try {
-      await save(item.id, { review: measured.review || null }, '감상문을 저장했습니다');
+      await save(item.id, { review: measured.review || null }, 'Saved the review');
     } catch (cause) {
       error(cause);
     }
@@ -340,7 +337,7 @@ function ReviewForm({ item, pending, save }: { item: Item; pending: boolean; sav
   return (
     <form noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
       <div className="flex flex-col gap-2">
-        <Label htmlFor={id}>감상문</Label>
+        <Label htmlFor={id}>Review</Label>
         <textarea
           id={id}
           name="review"
@@ -354,11 +351,12 @@ function ReviewForm({ item, pending, save }: { item: Item; pending: boolean; sav
           className="w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-body-sm dark:bg-input/30"
         />
         <p id={`${id}-size`} className="text-caption text-muted-foreground">
-          {measured.lines}/{MAX_REVIEW_LINES}줄 · {measured.length}/{MAX_REVIEW_LENGTH}자
+          {measured.lines}/{MAX_REVIEW_LINES} lines · {measured.length}/{MAX_REVIEW_LENGTH}{' '}
+          characters
         </p>
       </div>
       <Notice notice={notice} />
-      <FormButtons pending={pending} submitLabel="저장" />
+      <FormButtons pending={pending} submitLabel="Save" />
     </form>
   );
 }
@@ -393,9 +391,9 @@ function ItemCard({
           <span className="min-w-0 wrap-anywhere">{item.title}</span>
           {subtype ? <Badge variant="outline">{subtype.label}</Badge> : null}
           <Badge variant={item.status === 'done' ? 'success' : 'secondary'}>
-            {item.status === 'done' ? '완료' : '하고 싶음'}
+            {item.status === 'done' ? 'Done' : 'Want to do'}
           </Badge>
-          {item.rating !== null ? <Badge variant="outline">평점 {item.rating}</Badge> : null}
+          {item.rating !== null ? <Badge variant="outline">Rating {item.rating}</Badge> : null}
         </CardTitle>
       </CardHeader>
       {summary.length > 0 || ratings || preview || item.link ? (
@@ -409,10 +407,10 @@ function ItemCard({
                 href={item.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`${item.title} 링크 열기`}
+                aria-label={`Open link for ${item.title}`}
                 className="text-primary underline underline-offset-4"
               >
-                링크 열기
+                Open link
               </a>
             </p>
           ) : null}
@@ -421,27 +419,27 @@ function ItemCard({
       <CardFooter className="flex flex-wrap gap-2">
         {item.status === 'done' ? (
           <>
-            <Button size="sm" variant="outline" aria-label={`${item.title} 평점`} onClick={onRate}>
-              평점
+            <Button size="sm" variant="outline" aria-label={`Rate ${item.title}`} onClick={onRate}>
+              Rate
             </Button>
             <Button
               size="sm"
               variant="outline"
-              aria-label={`${item.title} 감상문`}
+              aria-label={`Review ${item.title}`}
               onClick={onReview}
             >
-              감상문
+              Review
             </Button>
             <ConfirmDialog
-              title="완료를 취소할까요?"
-              description="상태가 하고 싶음으로 돌아가고 완료일과 평점, 감상문이 지워집니다."
-              confirmLabel="완료 취소"
-              cancelLabel="닫기"
+              title="Undo done?"
+              description="The status goes back to want to do, and the completed date, rating, and review are cleared."
+              confirmLabel="Undo done"
+              cancelLabel="Close"
               destructive={false}
               onConfirm={onReopen}
               trigger={
-                <Button size="sm" variant="outline" aria-label={`${item.title} 완료 취소`}>
-                  완료 취소
+                <Button size="sm" variant="outline" aria-label={`Undo done for ${item.title}`}>
+                  Undo done
                 </Button>
               }
             />
@@ -450,22 +448,22 @@ function ItemCard({
           <Button
             size="sm"
             variant="outline"
-            aria-label={`${item.title} 완료 표시`}
+            aria-label={`Mark ${item.title} as done`}
             onClick={onComplete}
           >
-            완료 표시
+            Mark as done
           </Button>
         )}
-        <Button size="sm" variant="outline" aria-label={`${item.title} 수정`} onClick={onEdit}>
-          수정
+        <Button size="sm" variant="outline" aria-label={`Edit ${item.title}`} onClick={onEdit}>
+          Edit
         </Button>
         <ConfirmDialog
-          title="항목을 삭제할까요?"
-          description={<span className="wrap-anywhere">{item.title}을(를) 삭제합니다.</span>}
+          title="Delete this item?"
+          description={<span className="wrap-anywhere">This deletes {item.title}.</span>}
           onConfirm={onDelete}
           trigger={
-            <Button size="sm" variant="outline" aria-label={`${item.title} 삭제`}>
-              삭제
+            <Button size="sm" variant="outline" aria-label={`Delete ${item.title}`}>
+              Delete
             </Button>
           }
         />
@@ -482,11 +480,11 @@ type FormModal =
   | { kind: 'review'; item: Item };
 
 const FORM_TITLES = {
-  new: '항목 추가',
-  edit: '항목 수정',
-  complete: '완료로 표시',
-  rate: '평점',
-  review: '감상문',
+  new: 'Add item',
+  edit: 'Edit item',
+  complete: 'Mark as done',
+  rate: 'Rating',
+  review: 'Review',
 };
 
 function CategoryItems({
@@ -560,17 +558,17 @@ function CategoryItems({
     <>
       <div className="flex items-center justify-between gap-4">
         <p className="text-body-sm text-muted-foreground">
-          {category.description} · {shown.length}개
+          {category.description} · {shown.length} items
         </p>
         <Button ref={addButton} onClick={(event) => openForm({ kind: 'new' }, event)}>
-          항목 추가
+          Add item
         </Button>
       </div>
       <Notice notice={notice} className="wrap-anywhere" />
       {shown.length === 0 ? (
         <EmptyState
-          title={`${category.label} 항목이 없습니다`}
-          description="항목 추가 버튼으로 첫 항목을 넣어 보세요."
+          title={`No ${category.label} items`}
+          description="Use the Add item button to add the first one."
         />
       ) : (
         <ul className="flex flex-col gap-3">
@@ -597,13 +595,13 @@ function CategoryItems({
                         },
                       }),
                     );
-                  }, '완료를 취소했습니다')
+                  }, 'Undid done')
                 }
                 onDelete={() =>
                   changeFromDialog(async () => {
                     await requestJson<void>(`/api/items/${item.id}`, { method: 'DELETE' });
                     update((current) => current.filter(({ id }) => id !== item.id));
-                  }, '삭제했습니다')
+                  }, 'Deleted')
                 }
               />
             </li>
@@ -669,7 +667,7 @@ export function BucketList({ path }: { path: string }) {
         loadError ? (
           <LoadFailed cause={loadError} reload={reload} />
         ) : (
-          <Spinner label="항목을 불러오는 중" />
+          <Spinner label="Loading items" />
         )
       ) : (
         <CategoryItems

@@ -94,11 +94,11 @@ function TermCard({
       <CardFooter className="flex items-center gap-2">
         <Checkbox
           id={id}
-          aria-label={`${term.term} 외움`}
+          aria-label={`${term.term} learned`}
           checked={term.learned}
           onCheckedChange={(checked) => onChange(term, checked === true)}
         />
-        <Label htmlFor={id}>외움</Label>
+        <Label htmlFor={id}>Learned</Label>
       </CardFooter>
     </Card>
   );
@@ -120,10 +120,10 @@ function DomainTerms({
   return (
     <>
       <p className="text-body-sm text-muted-foreground">
-        {label} · 외운 용어 {terms.filter((term) => term.learned).length}/{terms.length}개
+        {label} · {terms.filter((term) => term.learned).length}/{terms.length} terms learned
       </p>
       <div className="flex flex-col gap-2">
-        <Label htmlFor={id}>용어 검색</Label>
+        <Label htmlFor={id}>Search terms</Label>
         <Input
           id={id}
           type="search"
@@ -134,8 +134,8 @@ function DomainTerms({
       </div>
       {shown.length === 0 ? (
         <EmptyState
-          title={terms.length === 0 ? `${label} 용어가 없습니다` : '검색 결과가 없습니다'}
-          description={terms.length === 0 ? '용어를 채우는 중입니다.' : '다른 말로 찾아 보세요.'}
+          title={terms.length === 0 ? `No ${label} terms` : 'No results'}
+          description={terms.length === 0 ? 'The terms are being added.' : 'Try different words.'}
         />
       ) : (
         <ul className="flex flex-col gap-3">
@@ -183,7 +183,7 @@ export function TermsStudy({ path }: { path: string }) {
     return loadError ? (
       <LoadFailed cause={loadError} reload={reload} />
     ) : (
-      <Spinner label="용어를 불러오는 중" />
+      <Spinner label="Loading terms" />
     );
   }
   const domain = data.domains.find(({ key }) => key === params.domain);

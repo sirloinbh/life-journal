@@ -16,8 +16,8 @@ export function LoadFailed({ cause, reload }: { cause: unknown; reload: () => Pr
     <div className="flex flex-col items-start gap-3">
       <Notice notice={{ kind: 'error', text: errorText(cause) }} />
       <Button variant="outline" disabled={pending} onClick={() => void retry()}>
-        {pending ? <Spinner size="sm" label="다시 불러오는 중" /> : null}
-        다시 시도
+        {pending ? <Spinner size="sm" label="Reloading" /> : null}
+        Try again
       </Button>
     </div>
   );
