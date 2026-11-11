@@ -36,7 +36,7 @@ export function createApp(pool: Pool, options: { today?: () => string } = {}) {
       limit: 600,
       standardHeaders: 'draft-8',
       legacyHeaders: false,
-      message: { error: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요' },
+      message: { error: 'Too many requests. Please try again later' },
     }),
   );
   app.use(express.json({ limit: '256kb' }));

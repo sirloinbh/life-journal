@@ -57,7 +57,7 @@ async function freshSchema(t: { after: (fn: () => Promise<void>) => void }, sche
 test('the migrate command fails with a Korean message without DATABASE_URL', async () => {
   const { code, stderr } = await runCommand('');
   assert.equal(code, 1);
-  assert.match(stderr, /DATABASE_URL이 필요합니다/);
+  assert.match(stderr, /DATABASE_URL is required/);
 });
 
 test(
@@ -106,20 +106,17 @@ test(
     const client = await freshSchema(t, schema);
     const first = await runCommand(inSchema(schema));
     assert.equal(first.code, 0, first.stderr);
-    assert.match(first.stdout, /적용 완료: 001_initial\.sql/);
+    assert.match(first.stdout, /Applied: 001_initial\.sql/);
     const second = await runCommand(inSchema(schema));
     assert.equal(second.code, 0, second.stderr);
-    assert.match(second.stdout, /적용할 마이그레이션이 없습니다/);
+    assert.match(second.stdout, /No migrations to apply/);
 
     await client.query(
       "UPDATE schema_migrations SET checksum = 'changed' WHERE name = '007_coffee_category.sql'",
     );
     const failed = await runCommand(inSchema(schema));
     assert.equal(failed.code, 1);
-    assert.match(
-      failed.stderr,
-      /적용된 마이그레이션 파일의 내용이 바뀌었습니다: 007_coffee_category\.sql/,
-    );
+    assert.match(failed.stderr, /Applied migration file has changed: 007_coffee_category\.sql/);
   },
 );
 
@@ -136,7 +133,10 @@ test(
       join(dir, '002_bad.sql'),
       'CREATE TABLE IF NOT EXISTS bad_table (id int);\nSELECT * FROM no_such_table;',
     );
-    await assert.rejects(migrate(client, await readMigrations(dir)), /002_bad\.sql 적용 실패/);
+    await assert.rejects(
+      migrate(client, await readMigrations(dir)),
+      /Failed to apply 002_bad\.sql/,
+    );
     const { rows } = await client.query('SELECT name FROM schema_migrations ORDER BY name');
     assert.deepEqual(rows, [{ name: '001_ok.sql' }]);
     const tables = await client.query(

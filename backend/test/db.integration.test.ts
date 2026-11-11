@@ -283,7 +283,7 @@ test('items are updated, checked as a whole, and deleted', { skip: !url }, async
 
       const noDate = await patch({ status: 'done' });
       assert.equal(noDate.status, 400);
-      assert.deepEqual(noDate.data, { error: '완료한 항목에는 완료일을 입력해 주세요' });
+      assert.deepEqual(noDate.data, { error: 'Completed items need a completed date' });
 
       const done = await patch({ status: 'done', completedDate: '2026-10-30' });
       assert.equal(done.status, 200);
@@ -292,7 +292,7 @@ test('items are updated, checked as a whole, and deleted', { skip: !url }, async
       const keptDate = await patch({ status: 'wishlist' });
       assert.equal(keptDate.status, 400);
       assert.deepEqual(keptDate.data, {
-        error: '완료하지 않은 항목에는 완료일을 넣을 수 없습니다',
+        error: 'Items that are not done cannot have a completed date',
       });
 
       const reopened = await patch({ status: 'wishlist', completedDate: null });
@@ -323,7 +323,7 @@ test('items are updated, checked as a whole, and deleted', { skip: !url }, async
       ]) {
         const missing = await call(path, init);
         assert.equal(missing.status, 404, init.method);
-        assert.deepEqual(missing.data, { error: '항목을 찾을 수 없습니다' });
+        assert.deepEqual(missing.data, { error: 'Item not found' });
       }
     },
     { today: () => TODAY },
@@ -363,18 +363,18 @@ test('ratings of a done item are stored, kept, and cleared with it', { skip: !ur
 
       const empty = await patch({});
       assert.equal(empty.status, 400);
-      assert.deepEqual(empty.data, { error: '수정할 내용이 없습니다' });
+      assert.deepEqual(empty.data, { error: 'Nothing to update' });
 
       const keptRating = await patch({ status: 'wishlist', completedDate: null });
       assert.equal(keptRating.status, 400);
       assert.deepEqual(keptRating.data, {
-        error: '완료하지 않은 항목에는 평점을 넣을 수 없습니다',
+        error: 'Items that are not done cannot have a rating',
       });
 
       const wrongCriterion = await patch({ subRatings: { acting: 4 } });
       assert.equal(wrongCriterion.status, 400);
       assert.deepEqual(wrongCriterion.data, {
-        error: '와인·위스키·사케 세부 평점에 없는 항목이 있습니다',
+        error: 'Drinks ratings contain an unknown criterion',
       });
 
       const movedWithRatings = await patch({ category: 'travel', subtype: null });
@@ -434,12 +434,12 @@ test('a review of a done item is stored, kept, edited, and cleared', { skip: !ur
 
       const longer = await patch({ review: '줄\n줄\n줄\n줄\n줄\n줄' });
       assert.equal(longer.status, 400);
-      assert.deepEqual(longer.data, { error: '감상문은 5줄 이하로 입력해 주세요' });
+      assert.deepEqual(longer.data, { error: 'Review must be 5 lines or fewer' });
 
       const keptReview = await patch({ status: 'wishlist', completedDate: null });
       assert.equal(keptReview.status, 400);
       assert.deepEqual(keptReview.data, {
-        error: '완료하지 않은 항목에는 감상문을 넣을 수 없습니다',
+        error: 'Items that are not done cannot have a review',
       });
 
       const rewritten = await patch({ review: '고친 감상문' });
@@ -745,7 +745,7 @@ test('a patch cannot set a completed date after the service date', { skip: !url 
         body: { status: 'done', completedDate: '2026-11-01' },
       });
       assert.equal(status, 400);
-      assert.deepEqual(data, { error: '완료일은 오늘보다 뒤일 수 없습니다' });
+      assert.deepEqual(data, { error: 'Completed date cannot be after today' });
     },
     { today: () => TODAY },
   );

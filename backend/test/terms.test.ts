@@ -137,7 +137,7 @@ for (const method of ['PUT', 'DELETE']) {
       await withApi(noDatabase, async (call) => {
         const { status, data } = await call(`/api/terms/${id}/learned`, { method });
         assert.equal(status, 404);
-        assert.equal(data.error, '용어를 찾을 수 없습니다');
+        assert.equal(data.error, 'Term not found');
       });
     });
   }

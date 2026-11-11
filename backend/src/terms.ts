@@ -7,7 +7,7 @@ import { TERM_DOMAINS, TERMS } from './terms-data.js';
 const termIds = new Set(TERMS.map(({ id }) => id));
 
 function knownTermId(id: string) {
-  if (!termIds.has(id)) throw new HttpError(404, '용어를 찾을 수 없습니다');
+  if (!termIds.has(id)) throw new HttpError(404, 'Term not found');
   return id;
 }
 
