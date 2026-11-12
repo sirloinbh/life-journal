@@ -1,45 +1,45 @@
-# #71 위스키 용어 공부 내용 채우기
+# #71 Fill in the whisky terms for terms study
 
-- 이슈: [#71](https://github.com/sirloinbh/life-journal/issues/71)
-- 브랜치: `feat/71-whisky-terms`
+- Issue: [#71](https://github.com/sirloinbh/life-journal/issues/71)
+- Branch: `feat/71-whisky-terms`
 
-## 변경 — 2026-11-03
+## Changes — 2026-11-03
 
-용어 공부의 위스키 분야에 용어 48개를 더해 모두 50개로 만들었다. 개수는 착수할 때 사용자에게 확인했다(와인과 같은 50개).
+Added 48 terms to the whisky area of terms study, making 50 in total. We confirmed the number with the user when starting (50, the same as wine).
 
-- 범위 네 가지로 나누고 `backend/src/terms-data.ts`에 범위별 주석을 달았다. 화면에는 데이터 순서대로 보인다.
-  - 종류 12개: 싱글 몰트(기존), 블렌디드 몰트, 블렌디드 위스키, 그레인위스키, 싱글 그레인, 버번, 테네시 위스키, 라이 위스키, 싱글 팟 스틸, 싱글 캐스크, 스몰 배치, 보틀드 인 본드
-  - 산지 12개: 스카치위스키, 스페이사이드, 하일랜드, 아일라, 로랜드, 캠벨타운, 아일랜즈, 아이리시위스키, 켄터키, 재패니즈위스키, 캐나디언위스키, 월드 위스키
-  - 증류와 숙성 13개: 몰팅, 당화, 워시, 단식 증류기, 연속식 증류기, 뉴 메이크, 엔젤스 셰어, 버번 캐스크, 셰리 캐스크, 캐스크 피니시, 숙성 연수 표기, 냉각 여과, 캐스크 스트렝스(기존)
-  - 시음 표현과 마시는 법 13개: 노즈, 팔레트, 피니시, 피티, 스모키, 셰리 풍미, 마우스필, 니트, 온 더 록, 하이볼, 가수, 알코올 도수, 프루프
-- 기존 용어 `whisky-single-malt`, `whisky-cask-strength`의 ID와 내용은 그대로 두었다. 외운 표시가 이 ID를 가리킨다. 기존 순서는 바꾸지 않고 새 용어를 사이에 넣어, 캐스크 스트렝스가 증류와 숙성 범위 끝에 오게 했다.
-- 숙성 통 뒤에 짧게 더 익히는 방법은 시음의 "피니시"와 헷갈리지 않도록 "캐스크 피니시"로 이름 붙였다.
-- DB 스키마와 API는 바뀌지 않는다.
+- Split them into four scopes and added a comment per scope in `backend/src/terms-data.ts`. On screen they appear in data order. The term names below are the Korean data as stored.
+  - Types (12): 싱글 몰트(existing), 블렌디드 몰트, 블렌디드 위스키, 그레인위스키, 싱글 그레인, 버번, 테네시 위스키, 라이 위스키, 싱글 팟 스틸, 싱글 캐스크, 스몰 배치, 보틀드 인 본드
+  - Regions (12): 스카치위스키, 스페이사이드, 하일랜드, 아일라, 로랜드, 캠벨타운, 아일랜즈, 아이리시위스키, 켄터키, 재패니즈위스키, 캐나디언위스키, 월드 위스키
+  - Distilling and aging (13): 몰팅, 당화, 워시, 단식 증류기, 연속식 증류기, 뉴 메이크, 엔젤스 셰어, 버번 캐스크, 셰리 캐스크, 캐스크 피니시, 숙성 연수 표기, 냉각 여과, 캐스크 스트렝스(existing)
+  - Tasting words and how to drink (13): 노즈, 팔레트, 피니시, 피티, 스모키, 셰리 풍미, 마우스필, 니트, 온 더 록, 하이볼, 가수, 알코올 도수, 프루프
+- Kept the IDs and content of the existing terms `whisky-single-malt` and `whisky-cask-strength` as they are, because the memorized marks point to these IDs. We did not change the existing order and put the new terms between them, so cask strength comes at the end of the distilling and aging scope.
+- The method of maturing a little longer in another cask after aging is named "cask finish" so that it is not confused with the tasting "finish".
+- The DB schema and the API do not change.
 
-## 출처
+## Source
 
-뜻은 이 앱을 위해 직접 쓴 문장이다. 특정 용어집이나 책을 보며 옮기지 않았고, 널리 알려진 위스키 상식(종류별 원료 기준, 산지, 증류·숙성 과정)을 바탕으로 썼다. 따로 참고한 출처는 없다. 사실과 다른 설명을 찾으면 이 파일과 데이터를 함께 고친다.
+The meanings are sentences written directly for this app. We did not copy them from a particular glossary or book; we wrote them from widely known whisky knowledge (the raw material standard of each type, regions, and the distilling and aging process). There is no separate source. If you find an explanation that is wrong, fix this file and the data together.
 
-## 테스트
+## Tests
 
-- `backend/test/terms.test.ts`: #70의 와인 전용 테스트를 분야별 표(`FILLED_DOMAINS`)로 바꿨다. 분야마다 용어 개수, 범위별 대표 용어, 외운 표시가 가리키는 기존 ID를 확인한다. 위스키를 이 표에 더했고, #72·#73도 줄만 더하면 된다. `GET /api/terms`가 채운 분야의 용어 수와 외운 표시를 보내는지도 확인한다.
-- 범위 검사는 범위마다 정해 둔 대표 용어 하나가 있는지만 본다. 데이터에 범위 필드가 없어서다.
-- 화면에서 분야를 고르면 용어가 보이는지는 `frontend/src/terms-study.test.tsx`의 "a domain shows only its own terms" 테스트가 확인한다. 이 테스트는 가짜 API 데이터를 쓴다. 새 데이터는 백엔드 테스트로, 화면 동작은 가짜 데이터로 확인한다.
+- `backend/test/terms.test.ts`: changed the wine-only test of #70 into a per-area table (`FILLED_DOMAINS`). For each area it checks the number of terms, the representative term of each scope, and the existing IDs that memorized marks point to. We added whisky to this table, and #72 and #73 only need one more line. It also checks that `GET /api/terms` sends the number of terms of the filled areas and the memorized marks.
+- The scope check only looks at whether the one representative term chosen for each scope exists, because the data has no scope field.
+- That the terms show when you pick an area on screen is checked by the "a domain shows only its own terms" test in `frontend/src/terms-study.test.tsx`. This test uses fake API data. The new data is checked with the backend tests, and the screen behavior with fake data.
 
-## 검증
+## Verification
 
-- `npm run check`: 통과(백엔드 131개 통과, 0개 건너뜀, 프론트엔드 144개 통과, 2개 건너뜀, 스킬 4개 통과).
-- 브라우저 확인은 하지 않았다. 화면 코드는 바뀌지 않았고, 데이터 개수와 API 응답을 테스트로 확인했다.
+- `npm run check`: pass (backend 131 passed, 0 skipped, frontend 144 passed, 2 skipped, skills 4 passed).
+- We did not check in a browser. The screen code did not change, and we checked the number of data items and the API response with tests.
 
-## 리뷰
+## Review
 
-1차 지적 7건 가운데 6건을 반영했다.
+We applied 6 of the 7 findings of the first round.
 
-- 뜻 고침: 보틀드 인 본드, 스카치위스키, 아이리시위스키, 캐나디언위스키의 숙성 기준을 "넘게"에서 "이상"으로(법 기준은 최소 기간이다). 싱글 캐스크(병 수가 적은 이유), 단식 증류기("한 통씩"이 숙성 통으로 읽힘), 뉴 메이크(숙성 기준은 나라마다 다름), 블렌디드 몰트(그레인위스키 설명).
-- 이 문서의 캐스크 스트렝스 위치 설명을 실제 diff에 맞게 고쳤다.
-- 반영하지 않음: 화면 테스트를 위스키 데이터로 바꾸자는 선택 제안. 화면 동작은 분야와 상관없이 같고, 새 데이터는 백엔드 테스트가 확인한다는 한계를 테스트 절에 이미 적었다.
-- 1차 리뷰 반영 뒤 `npm run check`: 통과(백엔드 131개 통과, 0개 건너뜀, 프론트엔드 144개 통과, 2개 건너뜀, 스킬 4개 통과).
+- Meaning fixes (the Korean meaning text): the aging criterion of bottled-in-bond, Scotch whisky, Irish whisky, and Canadian whisky changed from "more than" to "at least" (the legal standard is a minimum period). Also single cask (why the number of bottles is small), pot still ("one cask at a time" could be read as the aging cask), new make (the aging criterion differs by country), and blended malt (the description of grain whisky).
+- Fixed the description of the position of cask strength in this document to match the real diff.
+- Not applied: the optional suggestion to change the screen test to whisky data. The screen behavior is the same regardless of the area, and the tests section already states the limit that the new data is checked by the backend tests.
+- After applying the first review, `npm run check`: pass (backend 131 passed, 0 skipped, frontend 144 passed, 2 skipped, skills 4 passed).
 
-2차 리뷰: 1차 지적 6건이 모두 반영됐다. 사소한 지적 1건을 반영했다. 블렌디드 몰트 설명에서 그레인위스키를 "보리 맥아 말고 다른 곡물로 만든"이라고 쓴 것을 고쳤다. 그레인위스키에도 보리 맥아가 일부 들어가므로 "보리 맥아에 밀이나 옥수수 같은 다른 곡물을 더해 만든"으로 바꿨다. 리뷰는 2회까지라 더 받지 않는다.
+Second review: all 6 first-round findings were applied. We applied 1 minor finding. In the blended malt description, the Korean text that described grain whisky as "made from grains other than malted barley" was fixed. Grain whisky also contains some malted barley, so it was changed to "made by adding other grains such as wheat or corn to malted barley". Reviews are at most 2, so we do not get another one.
 
-2차 리뷰 반영 뒤 `npm run check`: 통과(백엔드 131개 통과, 0개 건너뜀, 프론트엔드 144개 통과, 2개 건너뜀, 스킬 4개 통과).
+After applying the second review, `npm run check`: pass (backend 131 passed, 0 skipped, frontend 144 passed, 2 skipped, skills 4 passed).

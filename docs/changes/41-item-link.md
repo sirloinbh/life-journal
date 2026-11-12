@@ -1,47 +1,47 @@
-# #41 항목에 참고 링크 저장하기
+# #41 Save a reference link on an item
 
-- 이슈: [#41](https://github.com/sirloinbh/life-journal/issues/41)
-- 브랜치: `feat/41-item-link`
+- Issue: [#41](https://github.com/sirloinbh/life-journal/issues/41)
+- Branch: `feat/41-item-link`
 
-## 목적
+## Purpose
 
-주류 분야는 공식 API가 없어 수동 입력 + 링크로 정했다(#24). 사용자가 붙여넣은 참고 링크를 저장하고 눌러서 연다.
+The alcohol area has no official API, so we chose manual entry plus a link (#24). We save the reference link the user pastes and open it on click.
 
-## 결정
+## Decision
 
-사용자가 이슈 댓글에서 모든 분야에 링크 칸을 넣기로 정했다. 도수 같은 주류 입력 항목은 추가하지 않는다.
+The user decided in an issue comment to add a link field to every area. We do not add alcohol-specific input items such as alcohol content.
 
-구현하면서 정한 값은 다음과 같다.
+The values decided during implementation are as follows.
 
-- `http`, `https` 주소만 받는다. `javascript:` 같은 주소가 화면의 `href`에 들어가지 않게 하기 위해서다.
-- 2000자까지 받는다. 비우면 링크를 지운다.
-- 완료를 취소해도 링크는 남는다. 완료 기록이 아니라 항목의 참고 정보이기 때문이다.
-- 서버는 링크 주소로 요청을 보내지 않는다.
+- Only `http` and `https` addresses are accepted, so that an address such as `javascript:` does not end up in the `href` on screen.
+- Up to 2000 characters are accepted. Leaving it empty removes the link.
+- The link stays when completion is cancelled, because it is reference information of the item, not a completion record.
+- The server does not send requests to the link address.
 
-## 변경 — 2026-10-31
+## Changes — 2026-10-31
 
-- `database/migrations/005_item_link.sql`: `link` 컬럼. DB도 길이와 `http`, `https` 시작을 `CHECK`로 막는다.
-- `backend/src/items.ts`: 링크 검증, 저장·수정.
-- `frontend/src/bucket-list.tsx`, `frontend/src/items.ts`: 추가·수정 폼의 링크 칸, 카드의 "링크 열기"(새 탭, `noopener noreferrer`).
+- `database/migrations/005_item_link.sql`: `link` column. The DB also blocks the length and a start other than `http` or `https` with `CHECK`.
+- `backend/src/items.ts`: link validation, save, and update.
+- `frontend/src/bucket-list.tsx`, `frontend/src/items.ts`: the link field in the add and edit forms, and "링크 열기" (Open link) on the card (new tab, `noopener noreferrer`).
 
-## 테스트
+## Tests
 
-- `backend/test/items.test.ts`: `javascript:`, `data:`, `ftp:`, 주소가 아닌 값, 2001자가 한국어 400으로 거절된다. 저장할 때 `fetch`를 부르지 않는다.
-- `backend/test/db.integration.test.ts`: 마이그레이션 재적용과 행이 있는 테이블 적용, 저장·유지·수정·삭제, DB `CHECK`.
-- `frontend/src/bucket-list.test.tsx`: 저장, 새 탭 링크, 지우기, 거절 메시지.
+- `backend/test/items.test.ts`: `javascript:`, `data:`, `ftp:`, a value that is not an address, and 2001 characters are rejected with a Korean 400. `fetch` is not called when saving.
+- `backend/test/db.integration.test.ts`: re-applying the migration and applying it to a table with rows, save, keep, update, delete, and the DB `CHECK`.
+- `frontend/src/bucket-list.test.tsx`: save, the new-tab link, clearing, and the rejection message.
 
-## 다음 작업 문서
+## Next-steps document
 
-사용자 요청으로 남은 카드를 `docs/next-steps/README.md`에 내일 할 일로 정리했다.
+At the user's request, we organized the remaining cards as tasks for tomorrow in `docs/next-steps/README.md`.
 
-## 검증 — 2026-10-31
+## Verification — 2026-10-31
 
-임시 PostgreSQL 17.11을 `TEST_DATABASE_URL`로 지정해 Windows에서 실행했다.
+Ran on Windows with a temporary PostgreSQL 17.11 set as `TEST_DATABASE_URL`.
 
-- `npm run check`: 통과. 백엔드 114개 통과·건너뜀 0개, 프론트엔드 125개 통과·2개 건너뜀(다크 전용 앱 조건).
-- `npm run knip`: 통과.
-- 브라우저: 헤드리스 Chrome 156, 모바일 390×844(터치 없는 에뮬레이션)와 PC 1440×900. `javascript:` 링크의 한국어 오류, 카드의 링크 주소와 새 탭 속성을 확인했다. 기존 흐름도 다시 통과했다. 콘솔에는 일부러 일으킨 400 응답 기록만 있었다.
+- `npm run check`: pass. Backend 114 passed and 0 skipped, frontend 125 passed and 2 skipped (a condition of the dark-only app).
+- `npm run knip`: pass.
+- Browser: headless Chrome 156, mobile 390×844 (emulation without touch) and PC 1440×900. We checked the Korean error for a `javascript:` link, and the link address and new-tab attributes on the card. The existing flows passed again. The console had only the 400 response records that we triggered on purpose.
 
-## 리뷰 — 2026-10-31
+## Review — 2026-10-31
 
-head `4f86841`을 분리된 에이전트가 리뷰했다. 보완점이 없어 2차 리뷰는 하지 않는다. 리뷰어가 실제 라우터와 테스트 DB에 약 65개 입력을 보내 500 응답과 위험한 `href` 경로가 없는 것을 확인했다.
+A separate agent reviewed head `4f86841`. There was nothing to fix, so there is no second review. The reviewer sent about 65 inputs to the real router and the test DB and confirmed that there is no 500 response and no dangerous `href` path.

@@ -1,61 +1,61 @@
-# #73 영화, 오페라, 뮤지컬 용어 공부 내용 채우기
+# #73 Fill in the film, opera, and musical terms for terms study
 
-- 이슈: [#73](https://github.com/sirloinbh/life-journal/issues/73)
-- 브랜치: `feat/73-stage-screen-terms`
+- Issue: [#73](https://github.com/sirloinbh/life-journal/issues/73)
+- Branch: `feat/73-stage-screen-terms`
 
-## 변경 — 2026-11-03
+## Changes — 2026-11-03
 
-용어 공부의 영화, 오페라, 뮤지컬 분야에 용어를 144개 더해 분야마다 50개로 만들었다. 개수는 착수할 때 사용자에게 확인했다. 카드의 추천은 분야마다 30개였지만 사용자가 앞의 세 분야와 같은 50개를 골랐다. 이로써 용어 공부의 6개 분야가 모두 50개씩 채워졌다.
+Added 144 terms to the film, opera, and musical areas of terms study, making 50 per area. We confirmed the number with the user when starting. The card recommended 30 per area, but the user chose 50, the same as the first three areas. With this, all 6 areas of terms study are filled with 50 each.
 
-범위는 카드 추천(영화는 촬영과 편집, 오페라는 성부와 형식, 뮤지컬은 넘버와 무대)에 두 가지씩 더해 분야마다 네 개로 나눴다. `backend/src/terms-data.ts`에 범위별 주석을 달았고, 화면에는 데이터 순서대로 보인다.
+The scopes follow the card recommendation (cinematography and editing for film, voice types and forms for opera, and numbers and stage for musicals) plus two more each, so each area is split into four. We added a comment per scope in `backend/src/terms-data.ts`, and on screen they appear in data order. The term names below are the Korean data as stored.
 
-- 영화
-  - 촬영 13개: 롱 숏, 미디엄 숏, 클로즈업, 익스트림 클로즈업, 오버 더 숄더 숏, 시점 숏, 하이 앵글, 로 앵글, 팬, 틸트, 트래킹 숏, 핸드헬드, 심도
-  - 편집 12개: 몽타주(기존), 컷, 롱 테이크, 점프 컷, 디졸브, 페이드, 교차 편집, 매치 컷, 숏 리버스 숏, 180도 규칙, 인서트, 플래시백
-  - 연출과 이야기 13개: 미장센(기존), 시나리오, 스토리보드, 신, 시퀀스, 블로킹, 로케이션, 세트, 맥거핀, 오마주, 카메오, 필름 누아르, 다큐멘터리
-  - 소리와 제작 12개: 디제시스 사운드, 논디제시스 사운드, 폴리, 후시 녹음, 영화 음악, 프리 프로덕션, 포스트 프로덕션, 색 보정, 시각 효과, 감독판, 엔딩 크레디트, 쿠키 영상
-- 오페라
-  - 성부 12개: 소프라노, 메조소프라노, 콘트랄토, 카운터테너, 테너, 바리톤, 베이스, 콜로라투라, 리리코, 드라마티코, 프리마 돈나, 바지 역할
-  - 형식 13개: 아리아(기존), 레치타티보(기존), 서곡, 전주곡, 간주곡, 이중창, 중창, 합창, 카발레타, 다 카포 아리아, 라이트모티프, 리브레토, 막
-  - 무대와 공연 12개: 오페라 하우스, 오케스트라 피트, 지휘자, 프롬프터, 자막, 인터미션, 브라보, 레지테아터, 레퍼토리, 프로덕션, 콘서트 오페라, 커버
-  - 갈래와 흐름 13개: 오페라 세리아, 오페라 부파, 벨칸토, 베리스모, 그랑 오페라, 징슈필, 악극, 총체 예술, 오페레타, 바로크 오페라, 카스트라토, 실내 오페라, 사르수엘라
-- 뮤지컬
-  - 넘버 13개: 넘버(기존), 오프닝 넘버, 아이 원트 송, 쇼스토퍼, 일레븐 어클락 넘버, 리프라이즈, 듀엣, 피날레, 오버추어, 앙트락트, 언더스코어, 벨팅, 성스루
-  - 무대 12개: 프로시니엄, 돌출 무대, 회전 무대, 플라이, 암전, 팔로 스폿, 업스테이지와 다운스테이지, 무대 감독, 큐, 제4의 벽, 핀 마이크, 세트 전환
-  - 배역과 관람 12개: 앙상블(기존), 언더스터디, 스윙, 멀티 캐스팅, 캐스팅 보드, 프리뷰, 프레스콜, 커튼콜, 스페셜 커튼콜, 회전문 관람, 막공, 퇴근길
-  - 제작과 갈래 13개: 브로드웨이, 웨스트엔드, 대학로, 라이선스 뮤지컬, 창작 뮤지컬, 주크박스 뮤지컬, 북 뮤지컬, 콘셉트 뮤지컬, 리바이벌, 투어 공연, 트라이아웃, 워크숍 공연, 토니상
+- Film
+  - Cinematography (13): 롱 숏, 미디엄 숏, 클로즈업, 익스트림 클로즈업, 오버 더 숄더 숏, 시점 숏, 하이 앵글, 로 앵글, 팬, 틸트, 트래킹 숏, 핸드헬드, 심도
+  - Editing (12): 몽타주(existing), 컷, 롱 테이크, 점프 컷, 디졸브, 페이드, 교차 편집, 매치 컷, 숏 리버스 숏, 180도 규칙, 인서트, 플래시백
+  - Direction and story (13): 미장센(existing), 시나리오, 스토리보드, 신, 시퀀스, 블로킹, 로케이션, 세트, 맥거핀, 오마주, 카메오, 필름 누아르, 다큐멘터리
+  - Sound and production (12): 디제시스 사운드, 논디제시스 사운드, 폴리, 후시 녹음, 영화 음악, 프리 프로덕션, 포스트 프로덕션, 색 보정, 시각 효과, 감독판, 엔딩 크레디트, 쿠키 영상
+- Opera
+  - Voice types (12): 소프라노, 메조소프라노, 콘트랄토, 카운터테너, 테너, 바리톤, 베이스, 콜로라투라, 리리코, 드라마티코, 프리마 돈나, 바지 역할
+  - Forms (13): 아리아(existing), 레치타티보(existing), 서곡, 전주곡, 간주곡, 이중창, 중창, 합창, 카발레타, 다 카포 아리아, 라이트모티프, 리브레토, 막
+  - Stage and performance (12): 오페라 하우스, 오케스트라 피트, 지휘자, 프롬프터, 자막, 인터미션, 브라보, 레지테아터, 레퍼토리, 프로덕션, 콘서트 오페라, 커버
+  - Genres and trends (13): 오페라 세리아, 오페라 부파, 벨칸토, 베리스모, 그랑 오페라, 징슈필, 악극, 총체 예술, 오페레타, 바로크 오페라, 카스트라토, 실내 오페라, 사르수엘라
+- Musical
+  - Numbers (13): 넘버(existing), 오프닝 넘버, 아이 원트 송, 쇼스토퍼, 일레븐 어클락 넘버, 리프라이즈, 듀엣, 피날레, 오버추어, 앙트락트, 언더스코어, 벨팅, 성스루
+  - Stage (12): 프로시니엄, 돌출 무대, 회전 무대, 플라이, 암전, 팔로 스폿, 업스테이지와 다운스테이지, 무대 감독, 큐, 제4의 벽, 핀 마이크, 세트 전환
+  - Roles and viewing (12): 앙상블(existing), 언더스터디, 스윙, 멀티 캐스팅, 캐스팅 보드, 프리뷰, 프레스콜, 커튼콜, 스페셜 커튼콜, 회전문 관람, 막공, 퇴근길
+  - Production and genres (13): 브로드웨이, 웨스트엔드, 대학로, 라이선스 뮤지컬, 창작 뮤지컬, 주크박스 뮤지컬, 북 뮤지컬, 콘셉트 뮤지컬, 리바이벌, 투어 공연, 트라이아웃, 워크숍 공연, 토니상
 
-- 기존 용어 6개(`movie-mise-en-scene`, `movie-montage`, `opera-aria`, `opera-recitative`, `musical-number`, `musical-ensemble`)의 ID와 내용은 그대로 두었다. 외운 표시가 이 ID를 가리킨다. 범위별로 묶으면서 미장센은 연출과 이야기 첫머리로 옮겼다. 나머지는 기존 순서를 유지한 채 사이에 새 용어를 넣었다.
-- 뮤지컬의 막공, 회전문 관람, 퇴근길, 스페셜 커튼콜은 국내 관객이 쓰는 말이라 원어 칸에 가장 가까운 영어 표현을 적었다.
-- DB 스키마와 API는 바뀌지 않는다.
+- Kept the IDs and content of the 6 existing terms (`movie-mise-en-scene`, `movie-montage`, `opera-aria`, `opera-recitative`, `musical-number`, `musical-ensemble`) as they are, because the memorized marks point to these IDs. When grouping by scope, mise-en-scène was moved to the start of direction and story. The others keep the existing order, with the new terms placed between them.
+- For the musical terms closing night, repeat viewing, post-show exit, and special curtain call, which are words Korean audiences use, we put the closest English expression in the original-word field.
+- The DB schema and the API do not change.
 
-## 출처
+## Source
 
-뜻은 이 앱을 위해 직접 쓴 문장이다. 특정 용어집이나 책을 보며 옮기지 않았고, 널리 알려진 영화·오페라·뮤지컬 지식을 바탕으로 썼다. 따로 참고한 출처는 없다. 사실과 다른 설명을 찾으면 이 파일과 데이터를 함께 고친다.
+The meanings are sentences written directly for this app. We did not copy them from a particular glossary or book; we wrote them from widely known film, opera, and musical knowledge. There is no separate source. If you find an explanation that is wrong, fix this file and the data together.
 
-## 테스트
+## Tests
 
-- `backend/test/terms.test.ts`: 분야별 표 `FILLED_DOMAINS`에 영화, 오페라, 뮤지컬을 더했다. 분야마다 용어 50개, 범위별 대표 용어, 기존 ID 두 개를 확인하고, `GET /api/terms`가 분야마다 50개를 보내는지도 확인한다. 모든 분야가 표에 있는지 보는 테스트를 새로 넣었다.
-- `frontend/src/terms-study.test.tsx`: 카드의 완료 기준에 맞춰 영화, 오페라, 뮤지컬을 각각 골라 그 분야 용어만 보이는지 확인하는 테스트를 더했다. 가짜 API 데이터에 영화와 뮤지컬 분야와 용어를 하나씩 넣었다.
-- 범위 검사는 범위마다 정해 둔 대표 용어 하나가 있는지만 본다. 데이터에 범위 필드가 없어서다.
+- `backend/test/terms.test.ts`: added film, opera, and musical to the per-area table `FILLED_DOMAINS`. For each area it checks 50 terms, the representative term of each scope, and the two existing IDs, and also checks that `GET /api/terms` sends 50 per area. We added a new test that checks that every area is in the table.
+- `frontend/src/terms-study.test.tsx`: following the done criteria of the card, we added tests that pick film, opera, and musical in turn and check that only that area terms are shown. We put one film and one musical area and term into the fake API data.
+- The scope check only looks at whether the one representative term chosen for each scope exists, because the data has no scope field.
 
-## 검증
+## Verification
 
-- `npm run check`: 통과(백엔드 140개 통과, 0개 건너뜀, 프론트엔드 147개 통과, 2개 건너뜀, 스킬 4개 통과).
-- 브라우저 확인은 하지 않았다. 화면 코드는 바뀌지 않았고, 세 분야의 표시는 화면 테스트로, 데이터 개수와 API 응답은 백엔드 테스트로 확인했다.
+- `npm run check`: pass (backend 140 passed, 0 skipped, frontend 147 passed, 2 skipped, skills 4 passed).
+- We did not check in a browser. The screen code did not change; the display of the three areas was checked with the screen tests, and the number of data items and the API response with the backend tests.
 
-## 리뷰
+## Review
 
-용어가 많아 1차 리뷰를 영화(테스트·문서 포함), 오페라, 뮤지컬로 나눠 받았다. 지적 5건을 모두 반영했다.
+There were many terms, so we split the first review into film (including tests and docs), opera, and musical. We applied all 5 findings.
 
-- 오페라 바로크 오페라: "17~18세기 초"는 범위가 좁아 "17세기 초부터 18세기 중반까지"로 고쳤다. 18세기에 유행했다고 쓴 오페라 세리아와도 맞춘다.
-- 오페라 중창: 다른 감정을 노래하는 것이 조건처럼 읽혀, 함께 노래하는 부분이고 다른 감정을 동시에 노래하기도 한다고 고쳤다.
-- 뮤지컬 일레븐 어클락 넘버: 유래를 "공연이 11시에 끝나던 시절"에서 "8시 반쯤 시작한 공연에서 이 넘버가 11시 무렵에 나온 데서"로 고쳤다.
-- 영화 세트: 야외 오픈 세트도 있어 "스튜디오나 야외에"로 넓혔다.
-- 영화 페이드: 흰 화면 페이드도 있어 "주로 검은색"으로 고쳤다.
+- Opera, baroque opera: "17th to early 18th century" was too narrow, so we changed the Korean meaning text to "from the early 17th century to the mid 18th century". It now matches opera seria, which is written as popular in the 18th century.
+- Opera, ensemble (multi-voice piece): the idea of singing different emotions read like a condition, so we changed the Korean text to say it is a part sung together, and that different emotions may be sung at the same time.
+- Musical, eleven o'clock number: the origin was changed from "the days when shows ended at 11" to "from this number coming at about 11 o'clock in shows that started around 8:30".
+- Film, set: there are also outdoor open sets, so we widened the Korean text to "in a studio or outdoors".
+- Film, fade: there are also fades to white, so we changed the Korean text to "mostly black".
 
-참고만 한 점: 오페라의 "악극"은 한국의 1930~50년대 대중 음악극과 이름이 같지만, 뜻에 바그너가 나와 그대로 두었다.
+For reference only: the opera term "악극" (music drama) has the same name as a popular Korean musical theater form of the 1930s to 1950s, but its meaning mentions Wagner, so we left it as is.
 
-1차 리뷰 반영 뒤 `npm run check`: 통과(백엔드 140개 통과, 0개 건너뜀, 프론트엔드 147개 통과, 2개 건너뜀, 스킬 4개 통과).
+After applying the first review, `npm run check`: pass (backend 140 passed, 0 skipped, frontend 147 passed, 2 skipped, skills 4 passed).
 
-2차 리뷰: 1차 지적 5건이 모두 반영됐고 보완점이 없었다.
+Second review: all 5 first-round findings were applied and there was nothing to fix.

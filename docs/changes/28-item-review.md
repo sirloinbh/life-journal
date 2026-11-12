@@ -1,71 +1,71 @@
-# #28 완료한 항목에 짧은 감상문 남기기
+# #28 Leave a short review on a completed item
 
-- 이슈: [#28](https://github.com/sirloinbh/life-journal/issues/28)
-- 브랜치: `feat/28-item-review`
+- Issue: [#28](https://github.com/sirloinbh/life-journal/issues/28)
+- Branch: `feat/28-item-review`
 
-## 목적
+## Purpose
 
-완료한 항목에 짧은 감상문을 남긴다. 길어지지 않도록 줄 수와 글자 수를 서버와 화면에서 모두 제한한다.
+Leave a short review on a completed item. So that it does not get long, the number of lines and characters is limited on both the server and the screen.
 
-## 결정
+## Decision
 
-사용자가 이슈 댓글에서 최대 5줄, 전체 500자로 정했다. 처음 요구사항 "1~3줄"과 추천안 "3줄, 300자"보다 넉넉한 값이다.
+The user decided in an issue comment on 5 lines at most and 500 characters in total. This is more generous than the first requirement "1 to 3 lines" and the recommendation "3 lines, 300 characters".
 
-구현하면서 정한 값은 다음과 같다.
+The values decided during implementation are as follows.
 
-- 앞뒤 공백은 전체 글의 앞뒤에서만 지운다. 줄 안쪽과 줄 끝의 공백은 그대로 둔다.
-- 공백만 있으면 감상문을 지운 것으로 본다.
-- 글자 수는 JavaScript 문자열 길이로 센다. 이모지는 2자로 셀 수 있다.
-- 줄바꿈은 LF, CR, CRLF와 U+0085, U+2028, U+2029를 모두 한 줄로 센다.
-- 이슈의 "줄당 글자 수 제한"은 넣지 않았다. 사용자 결정이 줄 수와 전체 글자 수만 정했기 때문이다.
-- 카드 미리보기는 눈에 보이는 내용이 있는 첫 줄을 쓴다.
-- 감상문은 완료 항목에만 넣을 수 있다. 완료를 취소하면 함께 지워지고, 확인 창에 그 사실을 적었다.
+- Leading and trailing whitespace is removed only at the start and end of the whole text. Whitespace inside a line and at the end of a line is left as is.
+- Whitespace only counts as clearing the review.
+- The number of characters is counted as the JavaScript string length. An emoji can count as 2.
+- Line breaks LF, CR, CRLF, and U+0085, U+2028, and U+2029 all count as one line.
+- The issue's "limit on characters per line" was not added, because the user decision set only the number of lines and the total number of characters.
+- The card preview uses the first line that has visible content.
+- A review can be set only on a completed item. If completion is cancelled, it is cleared too, and the confirmation dialog says so.
 
-## 변경 — 2026-10-31
+## Changes — 2026-10-31
 
-- `database/migrations/004_item_review.sql`: `review` 컬럼. DB는 500자와 "완료 항목에만" 규칙을 `CHECK`로 막는다. 줄 수는 API가 검사한다.
-- `backend/src/items.ts`: 감상문 검증, 줄바꿈 정리, 저장·수정.
-- `frontend/src/bucket-list.tsx`, `frontend/src/items.ts`: 완료 항목의 감상문 버튼과 폼, 줄·글자 수 표시, 화면 검증, 카드의 첫 줄 미리보기.
-- 공통 `textarea` 컴포넌트가 없어 `Input`과 같은 스타일로 폼 안에 넣었다.
+- `database/migrations/004_item_review.sql`: `review` column. The DB blocks the 500 characters and the "completed items only" rule with `CHECK`. The API checks the number of lines.
+- `backend/src/items.ts`: review validation, line break cleanup, save, and update.
+- `frontend/src/bucket-list.tsx`, `frontend/src/items.ts`: the review button and form for completed items, the line and character count display, screen validation, and the first-line preview on the card.
+- There is no shared `textarea` component, so we put it in the form with the same style as `Input`.
 
-## 테스트
+## Tests
 
-- `backend/test/items.test.ts`: 6줄, Windows 줄바꿈 6줄, 501자, 문자가 아닌 값, NUL 문자, 완료 전 감상문이 한국어 400으로 거절된다. 5줄 500자와 공백 정리는 받아들인다.
-- `backend/test/db.integration.test.ts`: 마이그레이션 재적용과 행이 있는 테이블 적용, 저장·유지·수정·삭제, DB `CHECK`.
-- `frontend/src/bucket-list.test.tsx`: 작성, 첫 줄 미리보기, 수정, 지우기, 화면에서 막는 제한, 서버 오류 표시.
+- `backend/test/items.test.ts`: 6 lines, 6 lines with Windows line breaks, 501 characters, a non-string value, a NUL character, and a review before completion are rejected with a Korean 400. 5 lines and 500 characters and the whitespace cleanup are accepted.
+- `backend/test/db.integration.test.ts`: re-applying the migration and applying it to a table with rows, save, keep, update, delete, and the DB `CHECK`.
+- `frontend/src/bucket-list.test.tsx`: writing, the first-line preview, editing, clearing, the limits blocked on the screen, and showing a server error.
 
-## 검증 — 2026-10-31
+## Verification — 2026-10-31
 
-임시 PostgreSQL 17.11을 `TEST_DATABASE_URL`로 지정해 Windows에서 실행했다.
+Ran on Windows with a temporary PostgreSQL 17.11 set as `TEST_DATABASE_URL`.
 
-- `npm run check`: 통과. 백엔드 73개 통과·건너뜀 0개, 프론트엔드 92개 통과.
-- `npm run knip`: 통과.
-- 브라우저: 헤드리스 Chrome 156, 모바일 390×844(터치 없는 에뮬레이션)와 PC 1440×900. 6줄 입력의 한국어 오류, 첫 줄 미리보기, 새로고침 후 유지, 폼의 전체 내용, 완료 취소 시 삭제를 확인했다. 기존 버킷리스트와 평점 흐름도 다시 통과했다. 콘솔에는 일부러 일으킨 400 응답 기록만 있었다.
+- `npm run check`: pass. Backend 73 passed and 0 skipped, frontend 92 passed.
+- `npm run knip`: pass.
+- Browser: headless Chrome 156, mobile 390×844 (emulation without touch) and PC 1440×900. We checked the Korean error for a 6-line input, the first-line preview, keeping it after a reload, the full content in the form, and deleting it when completion is cancelled. The existing bucket list and rating flows passed again. The console had only the 400 response records that we triggered on purpose.
 
-## 1차 리뷰 반영 — 2026-10-31
+## First review applied — 2026-10-31
 
-head `7b33ae6`을 분리된 에이전트가 리뷰했다. 지적 5건(병합 차단 0, 보완 1, 사소함 4)을 모두 반영했다.
+A separate agent reviewed head `7b33ae6`. We applied all 5 findings (0 blocking the merge, 1 to fix, 4 minor).
 
-- 감상문을 다른 내용으로 고치는 경우와, 감상문이 있는 항목의 완료 취소를 실제 DB에서 확인하는 테스트를 넣었다.
-- U+2028 등 다른 줄 구분 문자도 서버와 화면에서 줄로 센다.
-- 첫 줄이 폭 없는 문자뿐이면 미리보기가 빈 줄이 되던 것을 고쳤다. 폭 없는 문자만 있는 감상문은 저장은 되지만 미리보기를 보여 주지 않는다.
-- 내용을 고치면 이전 오류 문구를 지운다.
-- 이모지 250·251개, 짝 없는 서로게이트, CR 줄바꿈, 완료 취소 UPDATE의 DB `CHECK` 테스트를 넣었다.
+- Added tests that check on a real DB editing a review to other content, and cancelling completion of an item that has a review.
+- Other line separator characters such as U+2028 are also counted as lines on the server and the screen.
+- Fixed the preview becoming an empty line when the first line had only zero-width characters. A review with only zero-width characters is saved, but the preview is not shown.
+- Editing the content clears the earlier error message.
+- Added tests for 250 and 251 emoji, an unpaired surrogate, CR line breaks, and the DB `CHECK` on the cancel-completion UPDATE.
 
-### 검증
+### Verification
 
-- `npm run check`: 통과. 백엔드 78개 통과·건너뜀 0개, 프론트엔드 95개 통과.
-- `npm run knip`: 통과.
-- 헤드리스 Chrome 156, 모바일 390×844와 PC 1440×900에서 전체 흐름을 다시 돌려 통과했다.
+- `npm run check`: pass. Backend 78 passed and 0 skipped, frontend 95 passed.
+- `npm run knip`: pass.
+- We ran the whole flow again in headless Chrome 156, at mobile 390×844 and PC 1440×900, and it passed.
 
-## 2차 리뷰 반영 — 2026-10-31
+## Second review applied — 2026-10-31
 
-head `3082054`를 분리된 에이전트가 리뷰했다. 지적 1건(사소함)을 반영했고, 1차 지적 5건이 반영된 것을 확인했다. 규칙대로 3차 리뷰는 하지 않는다.
+A separate agent reviewed head `3082054`. We applied the 1 finding (minor) and confirmed that the 5 first-round findings were applied. As the rule says, there is no third review.
 
-- 미리보기가 U+3164 같은 빈 글자와 서식 문자만 있는 줄도 건너뛴다. 유니코드 서식 문자(`Cf`)와 U+115F, U+1160, U+2800, U+3164, U+FFA0을 보이지 않는 문자로 본다.
+- The preview also skips a line that has only blank characters such as U+3164 and format characters. We treat Unicode format characters (`Cf`) and U+115F, U+1160, U+2800, U+3164, and U+FFA0 as invisible characters.
 
-### 검증
+### Verification
 
-- `npm run check`: 통과. 백엔드 78개 통과·건너뜀 0개, 프론트엔드 102개 통과.
-- `npm run knip`: 통과.
-- 이 커밋은 정규식과 화면 테스트만 바꿔 브라우저 확인은 다시 하지 않았다. 리뷰어가 같은 입력을 직전 커밋에서 브라우저로 재현했고, 고친 동작은 화면 테스트로 확인했다.
+- `npm run check`: pass. Backend 78 passed and 0 skipped, frontend 102 passed.
+- `npm run knip`: pass.
+- This commit changed only the regular expression and the screen tests, so we did not redo the browser check. The reviewer reproduced the same input in the browser on the previous commit, and the fixed behavior was checked with the screen tests.
