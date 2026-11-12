@@ -20,139 +20,139 @@ const rejected: { name: string; body: unknown; error: string }[] = [
   {
     name: 'an unknown category',
     body: { ...book, category: 'music' },
-    error: '분야가 올바르지 않습니다',
+    error: 'The category is not valid',
   },
-  { name: 'a blank title', body: { ...book, title: '   ' }, error: '제목을(를) 입력해 주세요' },
-  { name: 'a missing title', body: { category: 'reading' }, error: '제목을(를) 입력해 주세요' },
+  { name: 'a blank title', body: { ...book, title: '   ' }, error: 'Title is required' },
+  { name: 'a missing title', body: { category: 'reading' }, error: 'Title is required' },
   {
     name: 'an empty array as the title',
     body: { ...book, title: [] },
-    error: '제목은(는) 문자로 입력해 주세요',
+    error: 'Title must be text',
   },
   {
     name: 'a long array as the title',
     body: { ...book, title: Array.from({ length: 201 }, () => 'x') },
-    error: '제목은(는) 문자로 입력해 주세요',
+    error: 'Title must be text',
   },
   {
     name: 'an unknown status',
     body: { ...book, status: 'doing' },
-    error: '상태는 하고 싶음(wishlist) 또는 완료(done)여야 합니다',
+    error: 'Status must be wishlist or done',
   },
   {
     name: 'an unknown field',
     body: { ...book, nickname: '책' },
-    error: '알 수 없는 항목이 있습니다',
+    error: 'The request contains an unknown field',
   },
   {
     name: 'a date in the wrong format',
     body: { ...book, plannedDate: '2026/11/01' },
-    error: '예정일은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요',
+    error: 'Planned date must be a real date in YYYY-MM-DD format',
   },
   {
     name: 'a date that does not exist',
     body: { ...book, plannedDate: '2026-02-30' },
-    error: '예정일은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요',
+    error: 'Planned date must be a real date in YYYY-MM-DD format',
   },
   {
     name: 'a month that does not exist',
     body: { ...book, plannedDate: '2026-13-01' },
-    error: '예정일은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요',
+    error: 'Planned date must be a real date in YYYY-MM-DD format',
   },
   {
     name: 'year zero, which PostgreSQL cannot store',
     body: { ...book, plannedDate: '0000-01-01' },
-    error: '예정일은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요',
+    error: 'Planned date must be a real date in YYYY-MM-DD format',
   },
   {
     name: 'a negative cost',
     body: { ...book, costKrw: -1 },
-    error: '비용은 0원 이상의 정수로 입력해 주세요',
+    error: 'Cost must be a whole number of won, 0 or more',
   },
   {
     name: 'a fractional cost',
     body: { ...book, costKrw: 1000.5 },
-    error: '비용은 0원 이상의 정수로 입력해 주세요',
+    error: 'Cost must be a whole number of won, 0 or more',
   },
   {
     name: 'a negative fractional cost, with the message only once',
     body: { ...book, costKrw: -1.5 },
-    error: '비용은 0원 이상의 정수로 입력해 주세요',
+    error: 'Cost must be a whole number of won, 0 or more',
   },
   {
     name: 'a fractional vintage below the range, with the message only once',
     body: { category: 'drink', subtype: 'wine', title: '샤블리', details: { vintage: 1.5 } },
-    error: '빈티지는 4자리 연도로 입력해 주세요',
+    error: 'Vintage must be a 4-digit year',
   },
   {
     name: 'a cost given as text',
     body: { ...book, costKrw: '1000' },
-    error: '비용은 0원 이상의 정수로 입력해 주세요',
+    error: 'Cost must be a whole number of won, 0 or more',
   },
   {
     name: 'a cost too large for the column',
     body: { ...book, costKrw: 2_147_483_648 },
-    error: '비용은 2147483647원 이하로 입력해 주세요',
+    error: 'Cost must be 2147483647 won or less',
   },
   {
     name: 'a subtype on a category without subtypes',
     body: { ...book, subtype: 'novel' },
-    error: '독서 분야에는 세부 종류를 넣을 수 없습니다',
+    error: 'Reading items cannot have a subtype',
   },
   {
     name: 'a missing subtype on a category that needs one',
     body: { category: 'screen', title: '기생충' },
-    error: '영화·드라마 분야의 세부 종류가 올바르지 않습니다',
+    error: 'The subtype is not valid for Movies & TV items',
   },
   {
     name: 'a subtype of another category',
     body: { category: 'drink', subtype: 'opera', title: '샤블리' },
-    error: '와인·위스키·사케 분야의 세부 종류가 올바르지 않습니다',
+    error: 'The subtype is not valid for Drinks items',
   },
   {
     name: 'a details field of another category',
     body: { ...book, details: { director: '봉준호' } },
-    error: '독서 정보에 없는 항목이 있습니다',
+    error: 'Reading details contain an unknown field',
   },
   {
     name: 'a details field that coffee does not have',
     body: { category: 'coffee', title: '에티오피아 예가체프', details: { vintage: 2024 } },
-    error: '커피 정보에 없는 항목이 있습니다',
+    error: 'Coffee details contain an unknown field',
   },
   {
     name: 'a subtype on coffee, which has none',
     body: { category: 'coffee', subtype: 'wine', title: '에티오피아 예가체프' },
-    error: '커피 분야에는 세부 종류를 넣을 수 없습니다',
+    error: 'Coffee items cannot have a subtype',
   },
   {
     name: 'a coffee details value that is not text',
     body: { category: 'coffee', title: '에티오피아 예가체프', details: { brewMethod: 1 } },
-    error: '추출 방식은(는) 문자로 입력해 주세요',
+    error: 'Brew method must be text',
   },
   {
     name: 'details that are not an object',
     body: { ...book, details: '헤세' },
-    error: '분야별 정보 형식이 올바르지 않습니다',
+    error: 'Category details are not valid',
   },
   {
     name: 'a details value of the wrong type',
     body: { category: 'drink', subtype: 'wine', title: '샤블리', details: { vintage: '2019' } },
-    error: '빈티지는 4자리 연도로 입력해 주세요',
+    error: 'Vintage must be a 4-digit year',
   },
   {
     name: 'a NUL character in details, which jsonb cannot store',
     body: { ...book, details: { author: '헤\0세' } },
-    error: '저자에 사용할 수 없는 문자가 있습니다',
+    error: 'Author contains a character that is not allowed',
   },
   {
     name: 'a lone surrogate in details, which jsonb cannot store',
     body: { ...book, details: { author: '헤\ud800세' } },
-    error: '저자에 사용할 수 없는 문자가 있습니다',
+    error: 'Author contains a character that is not allowed',
   },
   ...[0, 5.5, 4.3, '4'].map((rating) => ({
     name: `an overall rating of ${JSON.stringify(rating)}`,
     body: { ...book, status: 'done', completedDate: '2026-10-01', rating },
-    error: '전체 평점은(는) 0.5점부터 5점까지 0.5점 단위로 입력해 주세요',
+    error: 'Overall rating must be from 0.5 to 5 in steps of 0.5',
   })),
   {
     name: 'a sub-rating out of range',
@@ -162,7 +162,7 @@ const rejected: { name: string; body: unknown; error: string }[] = [
       completedDate: '2026-10-01',
       subRatings: { content: 6 },
     },
-    error: '내용은(는) 0.5점부터 5점까지 0.5점 단위로 입력해 주세요',
+    error: 'Content must be from 0.5 to 5 in steps of 0.5',
   },
   {
     name: 'a sub-rating criterion of another category',
@@ -172,7 +172,7 @@ const rejected: { name: string; body: unknown; error: string }[] = [
       completedDate: '2026-10-01',
       subRatings: { acting: 4 },
     },
-    error: '독서 세부 평점에 없는 항목이 있습니다',
+    error: 'Reading ratings contain an unknown criterion',
   },
   {
     name: 'a sub-rating criterion that coffee does not have',
@@ -183,22 +183,22 @@ const rejected: { name: string; body: unknown; error: string }[] = [
       completedDate: '2026-10-01',
       subRatings: { taste: 4 },
     },
-    error: '커피 세부 평점에 없는 항목이 있습니다',
+    error: 'Coffee ratings contain an unknown criterion',
   },
   {
     name: 'sub-ratings that are not an object',
     body: { ...book, status: 'done', completedDate: '2026-10-01', subRatings: 4 },
-    error: '세부 평점 형식이 올바르지 않습니다',
+    error: 'Ratings are not valid',
   },
   {
     name: 'a rating on a wishlist item',
     body: { ...book, rating: 4 },
-    error: '완료하지 않은 항목에는 평점을 넣을 수 없습니다',
+    error: 'Items that are not done cannot have a rating',
   },
   {
     name: 'a sub-rating on a wishlist item',
     body: { ...book, subRatings: { content: 4 } },
-    error: '완료하지 않은 항목에는 평점을 넣을 수 없습니다',
+    error: 'Items that are not done cannot have a rating',
   },
   ...[
     'javascript:alert(1)',
@@ -212,17 +212,17 @@ const rejected: { name: string; body: unknown; error: string }[] = [
   ].map((link) => ({
     name: `a link of ${link}`,
     body: { ...book, link },
-    error: '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요',
+    error: 'Link must be an address that starts with http:// or https://',
   })),
   {
     name: 'a link that is not text',
     body: { ...book, link: 5 },
-    error: '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요',
+    error: 'Link must be an address that starts with http:// or https://',
   },
   {
     name: 'a link of 2001 characters',
     body: { ...book, link: `https://example.com/${'a'.repeat(1981)}` },
-    error: '링크는 2000자 이하로 입력해 주세요',
+    error: 'Link must be 2000 characters or fewer',
   },
   {
     name: 'a review of 6 lines',
@@ -232,7 +232,7 @@ const rejected: { name: string; body: unknown; error: string }[] = [
       completedDate: '2026-10-01',
       review: 'ㄱ\nㄴ\nㄷ\nㄹ\nㅁ\nㅂ',
     },
-    error: '감상문은 5줄 이하로 입력해 주세요',
+    error: 'Review must be 5 lines or fewer',
   },
   {
     name: 'a review of 6 lines with Windows line ends',
@@ -242,7 +242,7 @@ const rejected: { name: string; body: unknown; error: string }[] = [
       completedDate: '2026-10-01',
       review: 'ㄱ\r\nㄴ\r\nㄷ\r\nㄹ\r\nㅁ\r\nㅂ',
     },
-    error: '감상문은 5줄 이하로 입력해 주세요',
+    error: 'Review must be 5 lines or fewer',
   },
   ...[
     ['CR', 'ㄱ\rㄴ\rㄷ\rㄹ\rㅁ\rㅂ'],
@@ -250,52 +250,52 @@ const rejected: { name: string; body: unknown; error: string }[] = [
   ].map(([kind, review]) => ({
     name: `a review of 6 lines with ${kind} line separators`,
     body: { ...book, status: 'done', completedDate: '2026-10-01', review },
-    error: '감상문은 5줄 이하로 입력해 주세요',
+    error: 'Review must be 5 lines or fewer',
   })),
   {
     name: 'a review of 251 emoji, which count as 2 characters each',
     body: { ...book, status: 'done', completedDate: '2026-10-01', review: '😀'.repeat(251) },
-    error: '감상문은 500자 이하로 입력해 주세요',
+    error: 'Review must be 500 characters or fewer',
   },
   {
     name: 'a lone surrogate in a review',
     body: { ...book, status: 'done', completedDate: '2026-10-01', review: '좋\ud800음' },
-    error: '감상문에 사용할 수 없는 문자가 있습니다',
+    error: 'Review contains a character that is not allowed',
   },
   {
     name: 'a review of 501 characters',
     body: { ...book, status: 'done', completedDate: '2026-10-01', review: '가'.repeat(501) },
-    error: '감상문은 500자 이하로 입력해 주세요',
+    error: 'Review must be 500 characters or fewer',
   },
   {
     name: 'a review that is not text',
     body: { ...book, status: 'done', completedDate: '2026-10-01', review: 5 },
-    error: '감상문은 문자로 입력해 주세요',
+    error: 'Review must be text',
   },
   {
     name: 'a NUL character in a review',
     body: { ...book, status: 'done', completedDate: '2026-10-01', review: '좋\0음' },
-    error: '감상문에 사용할 수 없는 문자가 있습니다',
+    error: 'Review contains a character that is not allowed',
   },
   {
     name: 'a review on a wishlist item',
     body: { ...book, review: '좋았다' },
-    error: '완료하지 않은 항목에는 감상문을 넣을 수 없습니다',
+    error: 'Items that are not done cannot have a review',
   },
   {
     name: 'a done item without a completed date',
     body: { ...book, status: 'done' },
-    error: '완료한 항목에는 완료일을 입력해 주세요',
+    error: 'Completed items need a completed date',
   },
   {
     name: 'a wishlist item with a completed date',
     body: { ...book, completedDate: '2026-10-01' },
-    error: '완료하지 않은 항목에는 완료일을 넣을 수 없습니다',
+    error: 'Items that are not done cannot have a completed date',
   },
   {
     name: 'a completed date after the service date',
     body: { ...book, status: 'done', completedDate: '2026-11-01' },
-    error: '완료일은 오늘보다 뒤일 수 없습니다',
+    error: 'Completed date cannot be after today',
   },
 ];
 
@@ -313,28 +313,26 @@ for (const { name, body, error } of rejected) {
   });
 }
 
-const COST_MESSAGE = '0 이상 정수로 입력해 주세요';
-
 for (const [query, error] of [
-  ['category=music', '분야가 올바르지 않습니다'],
-  ['status=doing', '상태는 하고 싶음(wishlist) 또는 완료(done)여야 합니다'],
-  ['from=2026-02-30', '시작일은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요'],
-  ['to=tomorrow', '종료일은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요'],
-  ['from=2026-02-01&to=2026-01-01', '시작일은 종료일보다 뒤일 수 없습니다'],
-  ['costMin=-1', `최소 비용은(는) 2147483647원 이하의 ${COST_MESSAGE}`],
-  ['costMax=1.5', `최대 비용은(는) 2147483647원 이하의 ${COST_MESSAGE}`],
-  ['costMax=2147483648', `최대 비용은(는) 2147483647원 이하의 ${COST_MESSAGE}`],
-  ['costMin=2&costMax=1', '최소 비용은 최대 비용보다 클 수 없습니다'],
-  ['sort=password', '정렬 기준이 올바르지 않습니다'],
-  ['sort=title;DROP%20TABLE%20items', '정렬 기준이 올바르지 않습니다'],
-  ['order=sideways', '정렬 방향이 올바르지 않습니다'],
-  ['q=a&q=b', '검색어는 하나만 입력해 주세요'],
-  ['from=2026-01-01&from=2026-01-02', '시작일은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요'],
-  ['category=reading&category=travel', '분야가 올바르지 않습니다'],
-  ['costMin=1&costMin=2', `최소 비용은(는) 2147483647원 이하의 ${COST_MESSAGE}`],
-  [`q=${'가'.repeat(101)}`, '검색어는 100자 이하로 입력해 주세요'],
-  ['q=%00', '검색어에 사용할 수 없는 문자가 있습니다'],
-  ['nickname=x', '알 수 없는 검색 조건이 있습니다'],
+  ['category=music', 'The category is not valid'],
+  ['status=doing', 'Status must be wishlist or done'],
+  ['from=2026-02-30', 'Start date must be a real date in YYYY-MM-DD format'],
+  ['to=tomorrow', 'End date must be a real date in YYYY-MM-DD format'],
+  ['from=2026-02-01&to=2026-01-01', 'Start date cannot be after end date'],
+  ['costMin=-1', `Minimum cost must be a whole number from 0 to 2147483647`],
+  ['costMax=1.5', `Maximum cost must be a whole number from 0 to 2147483647`],
+  ['costMax=2147483648', `Maximum cost must be a whole number from 0 to 2147483647`],
+  ['costMin=2&costMax=1', 'Minimum cost cannot be greater than maximum cost'],
+  ['sort=password', 'Sort field is not valid'],
+  ['sort=title;DROP%20TABLE%20items', 'Sort field is not valid'],
+  ['order=sideways', 'Sort order is not valid'],
+  ['q=a&q=b', 'Search term must be a single value'],
+  ['from=2026-01-01&from=2026-01-02', 'Start date must be a real date in YYYY-MM-DD format'],
+  ['category=reading&category=travel', 'The category is not valid'],
+  ['costMin=1&costMin=2', `Minimum cost must be a whole number from 0 to 2147483647`],
+  [`q=${'가'.repeat(101)}`, 'Search term must be 100 characters or fewer'],
+  ['q=%00', 'Search term contains a character that is not allowed'],
+  ['nickname=x', 'The search contains an unknown filter'],
 ] as const) {
   test(`listing items with ${query.slice(0, 40)} is a Korean 400`, async () => {
     await withApi(untouchedPool(), async (call) => {
@@ -357,7 +355,7 @@ test('creating an item without a body is a Korean 400', async () => {
   await withApi(untouchedPool(), async (call) => {
     const { status, data } = await call('/api/items', { method: 'POST' });
     assert.equal(status, 400);
-    assert.deepEqual(data, { error: '요청 본문이 필요합니다' });
+    assert.deepEqual(data, { error: 'Request body is required' });
   });
 });
 
@@ -502,7 +500,7 @@ test('a failed ROLLBACK keeps the original error and discards the connection', a
       body: { title: '수정' },
     });
     assert.equal(status, 404);
-    assert.deepEqual(data, { error: '항목을 찾을 수 없습니다' });
+    assert.deepEqual(data, { error: 'Item not found' });
   });
   assert.deepEqual(released, [true]);
 });
@@ -516,10 +514,10 @@ test('malformed item ids and empty patches are Korean 400s', async () => {
     ] as const) {
       const { status, data } = await call(path, init);
       assert.equal(status, 400, `${init.method} ${path}`);
-      assert.deepEqual(data, { error: 'Invalid 항목 ID' });
+      assert.deepEqual(data, { error: 'Invalid item ID' });
     }
     const { status, data } = await call('/api/items/1', { method: 'PATCH', body: {} });
     assert.equal(status, 400);
-    assert.deepEqual(data, { error: '수정할 내용이 없습니다' });
+    assert.deepEqual(data, { error: 'Nothing to update' });
   });
 });

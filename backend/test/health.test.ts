@@ -60,7 +60,7 @@ test('API requests beyond 600 per minute get a Korean 429', async () => {
       }
       const { status, data } = await call('/api/does-not-exist');
       assert.equal(status, 429);
-      assert.deepEqual(data, { error: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요' });
+      assert.deepEqual(data, { error: 'Too many requests. Please try again later' });
     },
   );
 });

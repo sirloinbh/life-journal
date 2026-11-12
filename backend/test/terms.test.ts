@@ -33,60 +33,60 @@ const FILLED_DOMAINS = {
   wine: {
     count: 50,
     ranges: {
-      품종: 'wine-cabernet-sauvignon',
-      산지: 'wine-bordeaux',
-      양조: 'wine-malolactic-fermentation',
-      시음: 'wine-finish',
+      Grapes: 'wine-cabernet-sauvignon',
+      Regions: 'wine-bordeaux',
+      Winemaking: 'wine-malolactic-fermentation',
+      Tasting: 'wine-finish',
     },
     kept: ['wine-tannin', 'wine-terroir'],
   },
   whisky: {
     count: 50,
     ranges: {
-      종류: 'whisky-bourbon',
-      산지: 'whisky-islay',
-      '증류와 숙성': 'whisky-pot-still',
-      시음: 'whisky-peaty',
+      Types: 'whisky-bourbon',
+      Regions: 'whisky-islay',
+      'Distilling and aging': 'whisky-pot-still',
+      Tasting: 'whisky-peaty',
     },
     kept: ['whisky-single-malt', 'whisky-cask-strength'],
   },
   literature: {
     count: 50,
     ranges: {
-      갈래: 'literature-short-story',
-      '서술 기법': 'literature-omniscient',
-      구성: 'literature-climax',
-      수사법: 'literature-metaphor',
+      Genres: 'literature-short-story',
+      Narration: 'literature-omniscient',
+      Structure: 'literature-climax',
+      Rhetoric: 'literature-metaphor',
     },
     kept: ['literature-foreshadowing', 'literature-point-of-view'],
   },
   movie: {
     count: 50,
     ranges: {
-      촬영: 'movie-close-up',
-      편집: 'movie-cross-cutting',
-      '연출과 이야기': 'movie-macguffin',
-      '소리와 제작': 'movie-foley',
+      Shooting: 'movie-close-up',
+      Editing: 'movie-cross-cutting',
+      'Direction and story': 'movie-macguffin',
+      'Sound and production': 'movie-foley',
     },
     kept: ['movie-mise-en-scene', 'movie-montage'],
   },
   opera: {
     count: 50,
     ranges: {
-      성부: 'opera-soprano',
-      형식: 'opera-overture',
-      '무대와 공연': 'opera-surtitles',
-      '갈래와 흐름': 'opera-verismo',
+      Voices: 'opera-soprano',
+      Forms: 'opera-overture',
+      'Stage and performance': 'opera-surtitles',
+      'Genres and movements': 'opera-verismo',
     },
     kept: ['opera-aria', 'opera-recitative'],
   },
   musical: {
     count: 50,
     ranges: {
-      넘버: 'musical-reprise',
-      무대: 'musical-turntable',
-      '배역과 관람': 'musical-swing',
-      '제작과 갈래': 'musical-jukebox-musical',
+      Numbers: 'musical-reprise',
+      Stage: 'musical-turntable',
+      'Roles and viewing': 'musical-swing',
+      'Production and genres': 'musical-jukebox-musical',
     },
     kept: ['musical-number', 'musical-ensemble'],
   },
@@ -133,11 +133,11 @@ test('the term list sends every filled domain with its learned marks', async () 
 
 for (const method of ['PUT', 'DELETE']) {
   for (const id of ['no-such-term', '__proto__', 'wine-tannin%00']) {
-    test(`${method} on the unknown term ${id} is a Korean 404`, async () => {
+    test(`${method} on the unknown term ${id} is a 404`, async () => {
       await withApi(noDatabase, async (call) => {
         const { status, data } = await call(`/api/terms/${id}/learned`, { method });
         assert.equal(status, 404);
-        assert.equal(data.error, '용어를 찾을 수 없습니다');
+        assert.equal(data.error, 'Term not found');
       });
     });
   }

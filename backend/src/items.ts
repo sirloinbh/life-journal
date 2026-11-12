@@ -23,14 +23,12 @@ const text = (label: string, max: number) =>
   z
     .string({
       error: (issue) =>
-        issue.input === undefined
-          ? `${label}을(를) 입력해 주세요`
-          : `${label}은(는) 문자로 입력해 주세요`,
+        issue.input === undefined ? `${label} is required` : `${label} must be text`,
     })
     .trim()
-    .refine(minLength(1), `${label}을(를) 입력해 주세요`)
-    .refine(maxLength(max), `${label}은(는) ${max}자 이하로 입력해 주세요`)
-    .refine(isStorable, `${label}에 사용할 수 없는 문자가 있습니다`);
+    .refine(minLength(1), `${label} is required`)
+    .refine(maxLength(max), `${label} must be ${max} characters or fewer`)
+    .refine(isStorable, `${label} contains a character that is not allowed`);
 
 const isRealDate = (value: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value < '0001-01-01') return false;
@@ -39,7 +37,7 @@ const isRealDate = (value: string) => {
 };
 
 const date = (label: string) => {
-  const message = `${label}은(는) YYYY-MM-DD 형식의 실제 날짜로 입력해 주세요`;
+  const message = `${label} must be a real date in YYYY-MM-DD format`;
   return z.string({ error: message }).refine(isRealDate, message);
 };
 
@@ -56,12 +54,12 @@ const strictObject = <Shape extends z.ZodRawShape>(
 const details = (label: string, fields: z.ZodRawShape) =>
   strictObject(
     fields,
-    `${label} 정보에 없는 항목이 있습니다`,
-    () => `${label} 정보 형식이 올바르지 않습니다`,
+    `${label} details contain an unknown field`,
+    () => `${label} details are not valid`,
   );
 
 const score = (label: string) => {
-  const message = `${label}은(는) 0.5점부터 5점까지 0.5점 단위로 입력해 주세요`;
+  const message = `${label} must be from 0.5 to 5 in steps of 0.5`;
   return z
     .number({ error: message })
     .refine((value) => value >= 0.5 && value <= 5 && Number.isInteger(value * 2), message);
@@ -70,25 +68,25 @@ const score = (label: string) => {
 const criteria = (label: string, names: Record<string, string>) =>
   strictObject(
     Object.fromEntries(Object.entries(names).map(([key, name]) => [key, score(name).optional()])),
-    `${label} 세부 평점에 없는 항목이 있습니다`,
-    () => `${label} 세부 평점 형식이 올바르지 않습니다`,
+    `${label} ratings contain an unknown criterion`,
+    () => `${label} ratings are not valid`,
   );
 
 const MAX_REVIEW_LINES = 5;
 const MAX_REVIEW_LENGTH = 500;
 
 const reviewText = z
-  .string({ error: '감상문은 문자로 입력해 주세요' })
+  .string({ error: 'Review must be text' })
   .transform((value) => value.replace(/\r\n?|[\u0085\u2028\u2029]/g, '\n').trim())
   .refine(
     (value) => value.split('\n').length <= MAX_REVIEW_LINES,
-    `감상문은 ${MAX_REVIEW_LINES}줄 이하로 입력해 주세요`,
+    `Review must be ${MAX_REVIEW_LINES} lines or fewer`,
   )
   .refine(
     (value) => value.length <= MAX_REVIEW_LENGTH,
-    `감상문은 ${MAX_REVIEW_LENGTH}자 이하로 입력해 주세요`,
+    `Review must be ${MAX_REVIEW_LENGTH} characters or fewer`,
   )
-  .refine(isStorable, '감상문에 사용할 수 없는 문자가 있습니다');
+  .refine(isStorable, 'Review contains a character that is not allowed');
 
 // The user opens this link in a browser, so only web addresses may reach an href. The server only stores it.
 const isWebLink = (value: string) => {
@@ -96,98 +94,102 @@ const isWebLink = (value: string) => {
   return URL.canParse(value);
 };
 
-const linkMessage = '링크는 http:// 또는 https://로 시작하는 주소로 입력해 주세요';
+const linkMessage = 'Link must be an address that starts with http:// or https://';
 
 const linkText = z
   .string({ error: linkMessage })
   .trim()
-  .refine(maxLength(2000), '링크는 2000자 이하로 입력해 주세요')
+  .refine(maxLength(2000), 'Link must be 2000 characters or fewer')
   .refine((value) => value === '' || isWebLink(value), linkMessage);
 
-const vintageMessage = '빈티지는 4자리 연도로 입력해 주세요';
+const vintageMessage = 'Vintage must be a 4-digit year';
 
 // Menu order. The CHECK constraint of items.category (database/migrations) lists the same keys.
 const CATEGORY_KEYS = ['reading', 'screen', 'stage', 'drink', 'travel', 'coffee'] as const;
 
 const CATEGORIES = {
   reading: {
-    label: '독서',
+    label: 'Reading',
     subtypes: [],
-    details: details('독서', {
-      author: text('저자', 100).optional(),
-      publisher: text('출판사', 100).optional(),
+    details: details('Reading', {
+      author: text('Author', 100).optional(),
+      publisher: text('Publisher', 100).optional(),
     }),
-    criteria: criteria('독서', { content: '내용', prose: '문장', afterglow: '여운' }),
+    criteria: criteria('Reading', {
+      content: 'Content',
+      prose: 'Prose',
+      afterglow: 'Lingering impression',
+    }),
   },
   screen: {
-    label: '영화·드라마',
+    label: 'Movies & TV',
     subtypes: ['movie', 'drama'],
-    details: details('영화·드라마', {
-      director: text('감독', 100).optional(),
-      cast: text('출연진', 200).optional(),
+    details: details('Movies & TV', {
+      director: text('Director', 100).optional(),
+      cast: text('Cast', 200).optional(),
     }),
-    criteria: criteria('영화·드라마', { story: '스토리', direction: '연출', acting: '연기' }),
+    criteria: criteria('Movies & TV', { story: 'Story', direction: 'Direction', acting: 'Acting' }),
   },
   stage: {
-    label: '연극·공연·뮤지컬·오페라',
+    label: 'Stage',
     subtypes: ['play', 'performance', 'musical', 'opera'],
-    details: details('연극·공연·뮤지컬·오페라', {
-      venue: text('공연장', 100).optional(),
-      cast: text('출연진', 200).optional(),
+    details: details('Stage', {
+      venue: text('Venue', 100).optional(),
+      cast: text('Cast', 200).optional(),
     }),
-    criteria: criteria('연극·공연·뮤지컬·오페라', {
-      acting: '연기',
-      direction: '연출',
-      stage: '무대',
-      music: '음악',
+    criteria: criteria('Stage', {
+      acting: 'Acting',
+      direction: 'Direction',
+      stage: 'Staging',
+      music: 'Music',
     }),
   },
   drink: {
-    label: '와인·위스키·사케',
+    label: 'Drinks',
     subtypes: ['wine', 'whisky', 'sake'],
-    details: details('와인·위스키·사케', {
-      producer: text('생산자', 100).optional(),
-      region: text('산지', 100).optional(),
+    details: details('Drinks', {
+      producer: text('Producer', 100).optional(),
+      region: text('Region', 100).optional(),
       vintage: z
         .number({ error: vintageMessage })
         .refine((year) => Number.isInteger(year) && year >= 1000 && year <= 9999, vintageMessage)
         .optional(),
     }),
-    criteria: criteria('와인·위스키·사케', {
-      aroma: '향',
-      taste: '맛',
-      finish: '여운',
-      value: '가성비',
+    criteria: criteria('Drinks', {
+      aroma: 'Aroma',
+      taste: 'Taste',
+      finish: 'Lingering impression',
+      value: 'Value',
     }),
   },
   travel: {
-    label: '여행',
+    label: 'Travel',
     subtypes: [],
-    details: details('여행', {
-      country: text('나라', 100).optional(),
-      city: text('도시', 100).optional(),
+    details: details('Travel', {
+      country: text('Country', 100).optional(),
+      city: text('City', 100).optional(),
     }),
-    criteria: criteria('여행', {
-      scenery: '풍경',
-      food: '음식',
-      lodging: '숙소',
-      transport: '교통',
+    criteria: criteria('Travel', {
+      scenery: 'Scenery',
+      food: 'Food',
+      lodging: 'Lodging',
+      transport: 'Transport',
     }),
   },
   coffee: {
-    label: '커피',
+    label: 'Coffee',
     subtypes: [],
-    details: details('커피', {
-      roastery: text('로스터리', 100).optional(),
-      origin: text('원산지', 100).optional(),
-      brewMethod: text('추출 방식', 50).optional(),
+    details: details('Coffee', {
+      roastery: text('Roastery', 100).optional(),
+      origin: text('Origin', 100).optional(),
+      brewMethod: text('Brew method', 50).optional(),
     }),
-    criteria: criteria('커피', {
-      aroma: '향',
-      acidity: '산미',
-      sweetness: '단맛',
-      body: '바디',
-      finish: '여운',
+    criteria: criteria('Coffee', {
+      aroma: 'Aroma',
+      acidity: 'Acidity',
+      sweetness: 'Sweetness',
+      body: 'Body',
+      finish: 'Lingering impression',
     }),
   },
 } satisfies Record<
@@ -200,43 +202,43 @@ const CATEGORIES = {
   }
 >;
 
-const categoryMessage = '분야가 올바르지 않습니다';
-const statusMessage = '상태는 하고 싶음(wishlist) 또는 완료(done)여야 합니다';
-const costMessage = '비용은 0원 이상의 정수로 입력해 주세요';
+const categoryMessage = 'The category is not valid';
+const statusMessage = 'Status must be wishlist or done';
+const costMessage = 'Cost must be a whole number of won, 0 or more';
 
 const status = z.enum(['wishlist', 'done'], { error: statusMessage });
 const detailsRecord = z.record(z.string(), z.unknown(), {
-  error: '분야별 정보 형식이 올바르지 않습니다',
+  error: 'Category details are not valid',
 });
 const subRatingsRecord = z.record(z.string(), z.unknown(), {
-  error: '세부 평점 형식이 올바르지 않습니다',
+  error: 'Ratings are not valid',
 });
 
 const itemShape = {
   category: z.enum(CATEGORY_KEYS, {
     error: categoryMessage,
   }),
-  subtype: text('세부 종류', 50).nullable().optional(),
-  title: text('제목', 200),
+  subtype: text('Subtype', 50).nullable().optional(),
+  title: text('Title', 200),
   status,
   costKrw: z
     .number({ error: costMessage })
     .refine((cost) => Number.isInteger(cost) && cost >= 0, costMessage)
-    .refine((cost) => cost <= MAX_COST_KRW, `비용은 ${MAX_COST_KRW}원 이하로 입력해 주세요`)
+    .refine((cost) => cost <= MAX_COST_KRW, `Cost must be ${MAX_COST_KRW} won or less`)
     .nullable()
     .optional(),
-  plannedDate: date('예정일').nullable().optional(),
-  completedDate: date('완료일').nullable().optional(),
+  plannedDate: date('Planned date').nullable().optional(),
+  completedDate: date('Completed date').nullable().optional(),
   details: detailsRecord,
-  rating: score('전체 평점').nullable().optional(),
+  rating: score('Overall rating').nullable().optional(),
   subRatings: subRatingsRecord,
   review: reviewText.nullable().optional(),
   link: linkText.nullable().optional(),
 };
 
 const itemObject = <Shape extends z.ZodRawShape>(shape: Shape) =>
-  strictObject(shape, '알 수 없는 항목이 있습니다', (input) =>
-    input === undefined ? '요청 본문이 필요합니다' : '요청 본문 형식이 올바르지 않습니다',
+  strictObject(shape, 'The request contains an unknown field', (input) =>
+    input === undefined ? 'Request body is required' : 'Request body is not valid',
   );
 
 const itemFields = itemObject({
@@ -256,29 +258,29 @@ function parseItem(input: unknown, today: string) {
   const subtype = item.subtype ?? null;
   const subtypes: readonly string[] = category.subtypes;
   if (subtypes.length === 0 && subtype !== null) {
-    throw new HttpError(400, `${category.label} 분야에는 세부 종류를 넣을 수 없습니다`);
+    throw new HttpError(400, `${category.label} items cannot have a subtype`);
   }
   if (subtypes.length > 0 && (subtype === null || !subtypes.includes(subtype))) {
-    throw new HttpError(400, `${category.label} 분야의 세부 종류가 올바르지 않습니다`);
+    throw new HttpError(400, `The subtype is not valid for ${category.label} items`);
   }
   const completedDate = item.completedDate ?? null;
   if (item.status === 'done' && completedDate === null) {
-    throw new HttpError(400, '완료한 항목에는 완료일을 입력해 주세요');
+    throw new HttpError(400, 'Completed items need a completed date');
   }
   if (item.status === 'wishlist' && completedDate !== null) {
-    throw new HttpError(400, '완료하지 않은 항목에는 완료일을 넣을 수 없습니다');
+    throw new HttpError(400, 'Items that are not done cannot have a completed date');
   }
   if (completedDate !== null && completedDate > today) {
-    throw new HttpError(400, '완료일은 오늘보다 뒤일 수 없습니다');
+    throw new HttpError(400, 'Completed date cannot be after today');
   }
   const rating = item.rating ?? null;
   const subRatings = category.criteria.parse(item.subRatings) as Record<string, unknown>;
   if (item.status === 'wishlist' && (rating !== null || Object.keys(subRatings).length > 0)) {
-    throw new HttpError(400, '완료하지 않은 항목에는 평점을 넣을 수 없습니다');
+    throw new HttpError(400, 'Items that are not done cannot have a rating');
   }
   const review = item.review || null;
   if (item.status === 'wishlist' && review !== null) {
-    throw new HttpError(400, '완료하지 않은 항목에는 감상문을 넣을 수 없습니다');
+    throw new HttpError(400, 'Items that are not done cannot have a review');
   }
   return {
     category: item.category,
@@ -296,7 +298,7 @@ function parseItem(input: unknown, today: string) {
   };
 }
 
-const notFound = () => new HttpError(404, '항목을 찾을 수 없습니다');
+const notFound = () => new HttpError(404, 'Item not found');
 
 const SORT_COLUMNS = {
   title: 'title',
@@ -311,7 +313,7 @@ const SORT_COLUMNS = {
 };
 
 const queryCost = (label: string) => {
-  const message = `${label}은(는) ${MAX_COST_KRW}원 이하의 0 이상 정수로 입력해 주세요`;
+  const message = `${label} must be a whole number from 0 to ${MAX_COST_KRW}`;
   return z
     .string({ error: message })
     .refine((value) => /^\d{1,10}$/.test(value) && Number(value) <= MAX_COST_KRW, message)
@@ -324,10 +326,10 @@ const queryDate = (label: string) => date(label).optional();
 const listQuery = strictObject(
   {
     q: z
-      .string({ error: '검색어는 하나만 입력해 주세요' })
+      .string({ error: 'Search term must be a single value' })
       .trim()
-      .refine(maxLength(100), '검색어는 100자 이하로 입력해 주세요')
-      .refine(isStorable, '검색어에 사용할 수 없는 문자가 있습니다')
+      .refine(maxLength(100), 'Search term must be 100 characters or fewer')
+      .refine(isStorable, 'Search term contains a character that is not allowed')
       .optional(),
     category: z
       .enum(CATEGORY_KEYS, {
@@ -335,10 +337,10 @@ const listQuery = strictObject(
       })
       .optional(),
     status: z.enum(['wishlist', 'done'], { error: statusMessage }).optional(),
-    from: queryDate('시작일'),
-    to: queryDate('종료일'),
-    costMin: queryCost('최소 비용'),
-    costMax: queryCost('최대 비용'),
+    from: queryDate('Start date'),
+    to: queryDate('End date'),
+    costMin: queryCost('Minimum cost'),
+    costMax: queryCost('Maximum cost'),
     sort: z
       .enum(
         [
@@ -351,22 +353,22 @@ const listQuery = strictObject(
           'rating',
           'createdAt',
         ],
-        { error: '정렬 기준이 올바르지 않습니다' },
+        { error: 'Sort field is not valid' },
       )
       .default('createdAt'),
-    order: z.enum(['asc', 'desc'], { error: '정렬 방향이 올바르지 않습니다' }).default('desc'),
+    order: z.enum(['asc', 'desc'], { error: 'Sort order is not valid' }).default('desc'),
   },
-  '알 수 없는 검색 조건이 있습니다',
-  () => '검색 조건 형식이 올바르지 않습니다',
+  'The search contains an unknown filter',
+  () => 'Search filters are not valid',
 );
 
 function listSql(input: unknown) {
   const query = listQuery.parse(input);
   if (query.from && query.to && query.from > query.to) {
-    throw new HttpError(400, '시작일은 종료일보다 뒤일 수 없습니다');
+    throw new HttpError(400, 'Start date cannot be after end date');
   }
   if (query.costMin !== undefined && query.costMax !== undefined && query.costMin > query.costMax) {
-    throw new HttpError(400, '최소 비용은 최대 비용보다 클 수 없습니다');
+    throw new HttpError(400, 'Minimum cost cannot be greater than maximum cost');
   }
   const params: unknown[] = [];
   const where: string[] = [];
@@ -429,16 +431,16 @@ export function createItemsRouter(pool: Pool, today: () => string) {
   });
 
   router.get('/:id', async (req, res) => {
-    const id = parseId(req.params.id, '항목');
+    const id = parseId(req.params.id, 'item');
     const { rows } = await pool.query(`SELECT ${COLUMNS} FROM items WHERE id = $1`, [id]);
     if (rows.length === 0) throw notFound();
     res.json(rows[0]);
   });
 
   router.patch('/:id', async (req, res) => {
-    const id = parseId(req.params.id, '항목');
+    const id = parseId(req.params.id, 'item');
     const patch = itemPatch.parse(req.body);
-    if (Object.keys(patch).length === 0) throw new HttpError(400, '수정할 내용이 없습니다');
+    if (Object.keys(patch).length === 0) throw new HttpError(400, 'Nothing to update');
     const client = await pool.connect();
     // pg-pool stops listening while a client is checked out, and an unheard socket error would end
     // the process. The pending query still rejects, so the request answers with a 500.
@@ -524,7 +526,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
   });
 
   router.delete('/:id', async (req, res) => {
-    const id = parseId(req.params.id, '항목');
+    const id = parseId(req.params.id, 'item');
     const { rowCount } = await pool.query('DELETE FROM items WHERE id = $1', [id]);
     if (rowCount === 0) throw notFound();
     res.status(204).end();

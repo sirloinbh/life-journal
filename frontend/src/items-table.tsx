@@ -14,23 +14,23 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
-import { categories, type Item } from './items';
+import { categories, formatDate, formatKrw, type Item } from './items';
 import { requestJson } from './lib/api';
 import { errorText } from './lib/use-notice';
 
 const ANY = 'any';
 
 const COLUMNS = [
-  { key: 'title', label: '제목' },
-  { key: 'category', label: '분야' },
-  { key: 'status', label: '상태' },
-  { key: 'costKrw', label: '비용' },
-  { key: 'plannedDate', label: '예정일' },
-  { key: 'completedDate', label: '완료일' },
-  { key: 'rating', label: '평점' },
+  { key: 'title', label: 'Title' },
+  { key: 'category', label: 'Category' },
+  { key: 'status', label: 'Status' },
+  { key: 'costKrw', label: 'Cost' },
+  { key: 'plannedDate', label: 'Planned date' },
+  { key: 'completedDate', label: 'Completed date' },
+  { key: 'rating', label: 'Rating' },
 ];
 
-const STATUS_LABELS = { wishlist: '하고 싶음', done: '완료' };
+const STATUS_LABELS = { wishlist: 'Want to do', done: 'Done' };
 
 type Result = { items: Item[] | null; failure: unknown; request: string | null };
 
@@ -82,7 +82,7 @@ function ChoiceFilter({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={ANY}>전체</SelectItem>
+          <SelectItem value={ANY}>All</SelectItem>
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
@@ -180,28 +180,28 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <InputFilter
           id="table-q"
-          label="검색(제목, 분야별 정보)"
+          label="Search (title, category details)"
           value={filterValue('q')}
           resetCount={resetCount}
           onChange={(value) => setFilter('q', value)}
         />
         <ChoiceFilter
           id="table-category"
-          label="분야"
+          label="Category"
           value={params.get('category') ?? ANY}
           options={categories.map(({ key, label }) => ({ value: key, label }))}
           onChange={(value) => setFilter('category', value === ANY ? '' : value)}
         />
         <ChoiceFilter
           id="table-status"
-          label="상태"
+          label="Status"
           value={params.get('status') ?? ANY}
           options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
           onChange={(value) => setFilter('status', value === ANY ? '' : value)}
         />
         <InputFilter
           id="table-from"
-          label="기간 시작"
+          label="Period start"
           type="date"
           value={filterValue('from')}
           resetCount={resetCount}
@@ -209,7 +209,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
         />
         <InputFilter
           id="table-to"
-          label="기간 끝"
+          label="Period end"
           type="date"
           value={filterValue('to')}
           resetCount={resetCount}
@@ -217,7 +217,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
         />
         <InputFilter
           id="table-cost-min"
-          label="최소 비용(원)"
+          label="Minimum cost (KRW)"
           inputMode="numeric"
           value={filterValue('costMin')}
           resetCount={resetCount}
@@ -225,7 +225,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
         />
         <InputFilter
           id="table-cost-max"
-          label="최대 비용(원)"
+          label="Maximum cost (KRW)"
           inputMode="numeric"
           value={filterValue('costMax')}
           resetCount={resetCount}
@@ -233,12 +233,12 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
         />
       </div>
       <p className="text-caption text-muted-foreground">
-        기간은 완료일, 없으면 예정일로 찾습니다. 글자와 날짜는 Enter를 누르거나 칸을 벗어나면
-        적용됩니다.
+        The period matches the completed date, or the planned date if there is none. Text and dates
+        apply when you press Enter or leave the field.
       </p>
       <div className="flex min-h-9 items-center justify-between gap-4">
         <p role="status" className="text-body-sm text-muted-foreground">
-          {loading ? '불러오는 중…' : items ? `${items.length}개` : ''}
+          {loading ? 'Loading…' : items ? `${items.length} items` : ''}
         </p>
         {search ? (
           <Button
@@ -251,7 +251,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
               document.getElementById('table-q')?.focus();
             }}
           >
-            조건 지우기
+            Clear filters
           </Button>
         ) : null}
       </div>
@@ -260,23 +260,23 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           <Notice notice={{ kind: 'error', text: errorText(failure) }} />
           {/* Stays on screen while retrying, so the keyboard focus is not lost. */}
           <Button variant="outline" size="sm" aria-busy={loading || undefined} onClick={retry}>
-            다시 시도
+            Try again
           </Button>
         </div>
       ) : null}
       {items === null ? (
         loading ? (
-          <Spinner label="항목을 불러오는 중" />
+          <Spinner label="Loading items" />
         ) : null
       ) : items.length === 0 ? (
         loading || failure ? null : (
           <EmptyState
-            title="조건에 맞는 항목이 없습니다"
-            description="조건을 바꾸거나 버킷리스트에서 항목을 추가해 보세요."
+            title="No items match the filters"
+            description="Change the filters or add an item from the bucket list."
           />
         )
       ) : (
-        <div className="overflow-x-auto rounded-md border" role="region" aria-label="항목 표">
+        <div className="overflow-x-auto rounded-md border" role="region" aria-label="Items table">
           <table className="w-full min-w-[44rem] text-left text-body-sm">
             <thead className="border-b bg-muted/50">
               <tr>
@@ -317,10 +317,14 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">{STATUS_LABELS[item.status]}</td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    {item.costKrw === null ? '' : `${item.costKrw.toLocaleString('ko-KR')}원`}
+                    {item.costKrw === null ? '' : formatKrw(item.costKrw)}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{item.plannedDate}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{item.completedDate}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {item.plannedDate ? formatDate(item.plannedDate) : null}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {item.completedDate ? formatDate(item.completedDate) : null}
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap">{item.rating}</td>
                 </tr>
               ))}
