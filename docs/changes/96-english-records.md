@@ -6,7 +6,7 @@
 
 ## Changes — 2026-11-13
 
-Translated the past records to English: 33 files in `docs/changes/` and 3 files in `docs/daily/` (`2026-10-19.md`, `2026-11-01.md`, `2026-11-02.md`). Headings, command output, file paths, identifiers, dates, and issue and PR numbers were kept. There is no `docs/adr/` folder in this repository.
+Translated the past records to English: 25 files in `docs/changes/` and 3 files in `docs/daily/` (`2026-10-19.md`, `2026-11-01.md`, `2026-11-02.md`). Headings, command output, file paths, identifiers, dates, and issue and PR numbers were kept. There is no `docs/adr/` folder in this repository.
 
 The README files of `docs/changes/` and `docs/daily/` are index pages and are translated in #97.
 
