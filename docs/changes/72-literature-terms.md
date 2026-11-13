@@ -1,46 +1,46 @@
-# #72 문학작품 용어 공부 내용 채우기
+# #72 Fill in the literature terms for terms study
 
-- 이슈: [#72](https://github.com/sirloinbh/life-journal/issues/72)
-- 브랜치: `feat/72-literature-terms`
+- Issue: [#72](https://github.com/sirloinbh/life-journal/issues/72)
+- Branch: `feat/72-literature-terms`
 
-## 변경 — 2026-11-03
+## Changes — 2026-11-03
 
-용어 공부의 문학 분야에 용어 48개를 더해 모두 50개로 만들었다. 개수는 착수할 때 사용자에게 확인했다(와인·위스키와 같은 50개).
+Added 48 terms to the literature area of terms study, making 50 in total. We confirmed the number with the user when starting (50, the same as wine and whisky).
 
-- 범위 네 가지로 나누고 `backend/src/terms-data.ts`에 범위별 주석을 달았다. 화면에는 데이터 순서대로 보인다.
-  - 갈래 12개: 서사시, 서정시, 산문시, 단편소설, 중편소설, 희곡, 수필, 비극, 희극, 성장소설, 디스토피아 소설, 마술적 사실주의
-  - 서술 기법 13개: 시점(기존), 서술자, 1인칭 주인공 시점, 1인칭 관찰자 시점, 3인칭 관찰자 시점, 전지적 작가 시점, 믿을 수 없는 서술자, 의식의 흐름, 내적 독백, 자유 간접 화법, 보여 주기와 말하기, 서간체, 어조
-  - 구성 13개: 플롯, 발단, 갈등, 절정, 대단원, 복선(기존), 회상, 액자식 구성, 인 메디아스 레스, 피카레스크식 구성, 열린 결말, 주동 인물, 반동 인물
-  - 수사법 12개: 직유법, 은유법, 의인법, 상징, 반어법, 역설법, 과장법, 대구법, 반복법, 도치법, 설의법, 인유법
-- 기존 용어 `literature-foreshadowing`, `literature-point-of-view`의 ID와 내용은 그대로 두었다. 외운 표시가 이 ID를 가리킨다. 기존 데이터에서 복선이 시점보다 앞에 있었는데, 범위별로 묶으면서 시점은 서술 기법 첫머리로, 복선은 구성 가운데로 옮겼다.
-- 범위 경계: 상징은 국어 교육의 수사법 구분(비유하기·강조하기·변화 주기)에 따로 들지 않고 비유와 나란히 다루지만, 표현 방법이라 수사법 범위에 함께 넣었다. 주동 인물과 반동 인물은 인물 유형이지만 소설 구성의 3요소(인물·사건·배경)로 보아 구성 범위에 넣었다.
-- 예문은 넣지 않았다. 실제 작품의 구절을 옮기지 않기 위해서다.
-- DB 스키마와 API는 바뀌지 않는다.
+- Split them into four scopes and added a comment per scope in `backend/src/terms-data.ts`. On screen they appear in data order. The term names below are the Korean data as stored.
+  - Genres (12): 서사시, 서정시, 산문시, 단편소설, 중편소설, 희곡, 수필, 비극, 희극, 성장소설, 디스토피아 소설, 마술적 사실주의
+  - Narrative techniques (13): 시점(existing), 서술자, 1인칭 주인공 시점, 1인칭 관찰자 시점, 3인칭 관찰자 시점, 전지적 작가 시점, 믿을 수 없는 서술자, 의식의 흐름, 내적 독백, 자유 간접 화법, 보여 주기와 말하기, 서간체, 어조
+  - Structure (13): 플롯, 발단, 갈등, 절정, 대단원, 복선(existing), 회상, 액자식 구성, 인 메디아스 레스, 피카레스크식 구성, 열린 결말, 주동 인물, 반동 인물
+  - Rhetorical devices (12): 직유법, 은유법, 의인법, 상징, 반어법, 역설법, 과장법, 대구법, 반복법, 도치법, 설의법, 인유법
+- Kept the IDs and content of the existing terms `literature-foreshadowing` and `literature-point-of-view` as they are, because the memorized marks point to these IDs. In the existing data foreshadowing came before point of view; when grouping by scope, we moved point of view to the start of narrative techniques and foreshadowing into the middle of structure.
+- Scope boundaries: symbol is not listed separately in the rhetoric classification used in Korean language education (making comparisons, emphasizing, and varying) and is treated alongside figures of comparison, but it is a way of expression, so we put it in the rhetorical devices scope too. Protagonist and antagonist are character types, but we put them in the structure scope because they count as a story element of the three elements of a novel (characters, events, setting).
+- We did not add example passages, so that no lines from real works are copied.
+- The DB schema and the API do not change.
 
-## 출처
+## Source
 
-뜻은 이 앱을 위해 직접 쓴 문장이다. 특정 용어집, 교과서, 책을 보며 옮기지 않았고, 널리 알려진 문학 개념(국어 교육에서 쓰는 시점·구성 단계·수사법 구분 포함)을 바탕으로 썼다. 따로 참고한 출처는 없다. 사실과 다른 설명을 찾으면 이 파일과 데이터를 함께 고친다.
+The meanings are sentences written directly for this app. We did not copy them from a particular glossary, textbook, or book; we wrote them from widely known literary concepts (including the point of view, plot stage, and rhetoric classifications used in Korean language education). There is no separate source. If you find an explanation that is wrong, fix this file and the data together.
 
-## 테스트
+## Tests
 
-- `backend/test/terms.test.ts`: 분야별 표 `FILLED_DOMAINS`에 문학을 더했다. 용어 50개, 범위별 대표 용어(단편소설, 전지적 작가 시점, 절정, 은유법), 기존 ID 두 개를 확인하고, `GET /api/terms`가 문학 50개를 보내는지도 확인한다.
-- 범위 검사는 범위마다 정해 둔 대표 용어 하나가 있는지만 본다. 데이터에 범위 필드가 없어서다.
-- 화면에서 분야를 고르면 용어가 보이는지는 `frontend/src/terms-study.test.tsx`의 "a domain shows only its own terms" 테스트가 확인한다. 이 테스트는 가짜 API 데이터를 쓴다. 새 데이터는 백엔드 테스트로, 화면 동작은 가짜 데이터로 확인한다.
+- `backend/test/terms.test.ts`: added literature to the per-area table `FILLED_DOMAINS`. It checks the 50 terms, the representative term of each scope (short story, omniscient narrator point of view, climax, metaphor), and the two existing IDs, and also checks that `GET /api/terms` sends the 50 literature terms.
+- The scope check only looks at whether the one representative term chosen for each scope exists, because the data has no scope field.
+- That the terms show when you pick an area on screen is checked by the "a domain shows only its own terms" test in `frontend/src/terms-study.test.tsx`. This test uses fake API data. The new data is checked with the backend tests, and the screen behavior with fake data.
 
-## 검증
+## Verification
 
-- `npm run check`: 통과(백엔드 133개 통과, 0개 건너뜀, 프론트엔드 144개 통과, 2개 건너뜀, 스킬 4개 통과).
-- 브라우저 확인은 하지 않았다. 화면 코드는 바뀌지 않았고, 데이터 개수와 API 응답을 테스트로 확인했다.
-- `docs/next-steps/README.md`는 #73만 남기면서 칸이 넓어져 Prettier가 표 전체의 줄 맞춤을 다시 했다. 내용은 그 한 줄만 바뀌었다.
+- `npm run check`: pass (backend 133 passed, 0 skipped, frontend 144 passed, 2 skipped, skills 4 passed).
+- We did not check in a browser. The screen code did not change, and we checked the number of data items and the API response with tests.
+- Only #73 remains in `docs/next-steps/README.md`, so the cells got wider and Prettier realigned the whole table. Only that one line changed in content.
 
-## 리뷰
+## Review
 
-1차 지적 4건을 모두 반영했다.
+We applied all 4 findings of the first round.
 
-- 플롯: "일어난 순서가 아니라"는 시간 순서를 따르는 구성을 빼는 것처럼 읽혀 "시간 순서만이 아니라 원인과 결과로 엮어"로 고쳤다.
-- 마술적 사실주의: 갈래 범위인데 뜻이 "기법"으로 끝나 "소설 경향"으로 고쳤다.
-- 상징, 주동·반동 인물: 범위에 넣은 이유를 변경 절에 적었다.
+- Plot: "not in the order that things happened" could be read as excluding structures that follow time order, so the Korean meaning text was changed to "linked by cause and effect, not only by time order".
+- Magical realism: it is in the genre scope but its meaning ended in "technique", so the Korean meaning text was changed to "a trend in fiction".
+- Symbol, and protagonist and antagonist: wrote the reason for putting them in their scope in the changes section.
 
-1차 리뷰 반영 뒤 `npm run check`: 통과(백엔드 133개 통과, 0개 건너뜀, 프론트엔드 144개 통과, 2개 건너뜀, 스킬 4개 통과).
+After applying the first review, `npm run check`: pass (backend 133 passed, 0 skipped, frontend 144 passed, 2 skipped, skills 4 passed).
 
-2차 리뷰: 1차 지적이 모두 반영됐고 보완점이 없었다.
+Second review: all first-round findings were applied and there was nothing to fix.

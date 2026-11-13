@@ -1,42 +1,42 @@
-# #70 와인 용어 공부 내용 채우기
+# #70 Fill in the wine terms for terms study
 
-- 이슈: [#70](https://github.com/sirloinbh/life-journal/issues/70)
-- 브랜치: `feat/70-wine-terms`
+- Issue: [#70](https://github.com/sirloinbh/life-journal/issues/70)
+- Branch: `feat/70-wine-terms`
 
-## 변경 — 2026-11-03
+## Changes — 2026-11-03
 
-용어 공부의 와인 분야에 용어 48개를 더해 모두 50개로 만들었다. 개수는 착수할 때 사용자에게 확인했다(50개).
+Added 48 terms to the wine area of terms study, making 50 in total. We confirmed the number with the user when starting (50).
 
-- 범위 네 가지로 나누고 `backend/src/terms-data.ts`에 범위별 주석을 달았다. 화면에는 데이터 순서대로 보인다.
-  - 품종 12개: 카베르네 소비뇽, 메를로, 피노 누아, 시라, 그르나슈, 산지오베제, 네비올로, 템프라니요, 말벡, 샤르도네, 소비뇽 블랑, 리슬링
-  - 산지 13개: 테루아(기존), 보르도, 부르고뉴, 샹파뉴, 론, 토스카나, 피에몬테, 리오하, 모젤, 나파 밸리, 원산지 명칭, 구대륙, 신대륙
-  - 양조 12개: 빈티지, 블렌딩, 알코올 발효, 젖산 발효, 침용, 오크 숙성, 쉬르 리, 전통 방식, 귀부, 주정 강화 와인, 내추럴 와인, 아황산염
-  - 시음 표현 13개: 타닌(기존), 바디, 산도, 드라이, 여운, 아로마, 부케, 균형, 미네랄리티, 레그, 스월링, 디캔팅, 부쇼네
-- 기존 용어 `wine-tannin`, `wine-terroir`의 ID와 내용은 그대로 두었다. 외운 표시가 이 ID를 가리킨다. 순서만 범위에 맞게 옮겼다.
-- DB 스키마와 API는 바뀌지 않는다.
+- Split them into four scopes and added a comment per scope in `backend/src/terms-data.ts`. On screen they appear in data order. The term names below are the Korean data as stored.
+  - Varieties (12): 카베르네 소비뇽, 메를로, 피노 누아, 시라, 그르나슈, 산지오베제, 네비올로, 템프라니요, 말벡, 샤르도네, 소비뇽 블랑, 리슬링
+  - Regions (13): 테루아(existing), 보르도, 부르고뉴, 샹파뉴, 론, 토스카나, 피에몬테, 리오하, 모젤, 나파 밸리, 원산지 명칭, 구대륙, 신대륙
+  - Winemaking (12): 빈티지, 블렌딩, 알코올 발효, 젖산 발효, 침용, 오크 숙성, 쉬르 리, 전통 방식, 귀부, 주정 강화 와인, 내추럴 와인, 아황산염
+  - Tasting words (13): 타닌(existing), 바디, 산도, 드라이, 여운, 아로마, 부케, 균형, 미네랄리티, 레그, 스월링, 디캔팅, 부쇼네
+- Kept the IDs and content of the existing terms `wine-tannin` and `wine-terroir` as they are, because the memorized marks point to these IDs. Only the order was moved to fit the scopes.
+- The DB schema and the API do not change.
 
-## 출처
+## Source
 
-뜻은 이 앱을 위해 직접 쓴 문장이다. 특정 용어집이나 책을 보며 옮기지 않았고, 널리 알려진 와인 상식(품종 특징, 산지, 양조 과정)을 바탕으로 썼다. 따로 참고한 출처는 없다. 사실과 다른 설명을 찾으면 이 파일과 데이터를 함께 고친다.
+The meanings are sentences written directly for this app. We did not copy them from a particular glossary or book; we wrote them from widely known wine knowledge (grape characteristics, regions, and the winemaking process). There is no separate source. If you find an explanation that is wrong, fix this file and the data together.
 
-## 테스트
+## Tests
 
-- `backend/test/terms.test.ts`: 와인 용어가 50개이고 범위마다 대표 용어가 있는지, `GET /api/terms`가 와인 용어 50개와 외운 표시를 함께 보내는지 확인한다. 기존 테스트가 ID 형식, 이름 중복, 빈 칸을 검사한다.
-- 화면에서 와인 분야를 고르면 용어가 보이는지는 `frontend/src/terms-study.test.tsx`의 "a domain shows only its own terms" 테스트가 이미 확인한다. 이 테스트는 가짜 API 데이터(타닌, 테루아)를 쓴다. 새 데이터는 백엔드 테스트로, 화면 동작은 가짜 데이터로 확인한다.
-- 범위 검사는 범위마다 정해 둔 대표 용어 하나가 있는지만 본다. 데이터에 범위 필드가 없어서다.
+- `backend/test/terms.test.ts`: checks that there are 50 wine terms and that each scope has a representative term, and that `GET /api/terms` sends the 50 wine terms together with the memorized marks. The existing tests check the ID format, duplicate names, and blanks.
+- That the terms show when you pick the wine area on screen is already checked by the "a domain shows only its own terms" test in `frontend/src/terms-study.test.tsx`. This test uses fake API data (tannin, terroir). The new data is checked with the backend tests, and the screen behavior with fake data.
+- The scope check only looks at whether the one representative term chosen for each scope exists, because the data has no scope field.
 
-## 검증
+## Verification
 
-- `npm run check`: 통과(백엔드 128개 통과, 0개 건너뜀, 프론트엔드 144개 통과, 2개 건너뜀, 스킬 4개 통과).
-- 1차 리뷰 반영 뒤 `npm run check`: 통과(백엔드 129개 통과, 0개 건너뜀, 프론트엔드 144개 통과, 2개 건너뜀, 스킬 4개 통과).
-- 브라우저 확인은 하지 않았다. 화면 코드는 바뀌지 않았고, 데이터 개수와 API 응답을 테스트로 확인했다.
+- `npm run check`: pass (backend 128 passed, 0 skipped, frontend 144 passed, 2 skipped, skills 4 passed).
+- After applying the first review, `npm run check`: pass (backend 129 passed, 0 skipped, frontend 144 passed, 2 skipped, skills 4 passed).
+- We did not check in a browser. The screen code did not change, and we checked the number of data items and the API response with tests.
 
-## 리뷰
+## Review
 
-1차 지적 9건을 반영했다.
+We applied the 9 findings of the first round.
 
-- 뜻 고침: 아황산염(표시 이유를 법 기준으로), 내추럴 와인(공통 법 기준이 없음), 부르고뉴(레드·화이트를 각각 한 품종으로), 드라이(스위트의 반대말), 젖산 발효(젖산균이 하는 일, 병 속 두 번째 발효와 구분), 원산지 명칭(포도를 기른 지역, 품종·방식은 유럽 제도), 쉬르 리(향은 생길 수 있다로).
-- 테스트: 범위 검사 테스트 이름과 주석에 대표 용어만 본다는 한계를 밝혔다. 외운 표시가 가리키는 `wine-tannin`, `wine-terroir`가 남아 있는지 단위 테스트를 더했다.
-- 이 문서의 테스트 절에 화면 테스트가 가짜 데이터를 쓴다는 점을 적었다.
+- Meaning fixes (the Korean meaning text): sulfites (explain the labeling reason by the legal standard), natural wine (there is no common legal standard), Burgundy (red and white each from one grape variety), dry (the opposite of sweet), malolactic fermentation (what lactic acid bacteria do, kept apart from the second fermentation in the bottle), appellation (the region where the grapes were grown; the varieties and methods are a European system), and sur lie (flavor "can" develop).
+- Tests: the scope-check test name and comment now state that it only looks at the representative term. We added a unit test that `wine-tannin` and `wine-terroir`, which the memorized marks point to, still exist.
+- Wrote in the tests section of this document that the screen test uses fake data.
 
-2차 리뷰: 1차 지적이 모두 반영됐고 보완점이 없었다.
+Second review: all first-round findings were applied and there was nothing to fix.

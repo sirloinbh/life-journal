@@ -1,103 +1,103 @@
-# #23 분야별 버킷리스트 화면
+# #23 Bucket list screen per area
 
-- 이슈: [#23](https://github.com/sirloinbh/life-journal/issues/23)
-- 브랜치: `feat/23-bucket-list`
+- Issue: [#23](https://github.com/sirloinbh/life-journal/issues/23)
+- Branch: `feat/23-bucket-list`
 
-## 목적
+## Purpose
 
-#22의 항목 API를 화면에서 쓸 수 있게 해 분야별 버킷리스트를 쌓고 완료로 표시한다.
+Make the item API of #22 usable from the screen, so that you can build a bucket list per area and mark items complete.
 
-## 변경 — 2026-10-31
+## Changes — 2026-10-31
 
-- `frontend/src/app.tsx`: 메뉴와 주소 `/bucket-list/:category` 추가. 분야가 없거나 모르는 값이면 `/bucket-list/reading`으로 옮긴다.
-- `frontend/src/bucket-list.tsx`: 분야 탭 5개, 항목 목록, 추가·수정 폼, 완료 표시, 완료 취소, 삭제 확인.
-- `frontend/src/items.ts`: 분야별 세부 종류·입력 항목 정의와 폼 값을 요청으로 바꾸는 코드.
-- 탭은 분야마다 주소가 달라 새로고침해도 같은 분야가 열린다. 항목은 `GET /api/items`로 한 번에 받아 화면에서 나눈다. 검색·필터는 #26 범위다.
-- 긴 분야 이름은 탭에서 "공연", "주류"로 줄이고 설명 줄에 "연극·공연·뮤지컬·오페라", "와인·위스키·사케"를 적는다.
-- 검증은 서버에 맡긴다. 숫자가 아닌 비용·빈티지도 그대로 보내 서버의 한국어 메시지를 폼에 보여 준다. 저장 실패 시 폼은 열린 채 입력값을 유지한다.
-- 이슈에 없는 "완료 취소"를 넣었다. 잘못 누른 완료 표시를 되돌릴 방법이 필요해서다. 완료일이 지워지므로 먼저 확인을 받는다.
-- 분야는 폼에서 바꿀 수 없다. 분야마다 세부 종류와 입력 항목이 달라서다. API는 분야 변경을 지원한다.
+- `frontend/src/app.tsx`: added the menu and the address `/bucket-list/:category`. If the area is missing or unknown, it moves to `/bucket-list/reading`.
+- `frontend/src/bucket-list.tsx`: 5 area tabs, the item list, the add and edit form, marking complete, cancelling completion, and the delete confirmation.
+- `frontend/src/items.ts`: the per-area subtype and input item definitions, and the code that turns form values into a request.
+- Each area has its own address for its tab, so the same area opens even after a reload. Items are received at once with `GET /api/items` and split on the screen. Search and filters are in the scope of #26.
+- Long area names are shortened in the tabs to "공연" (performances) and "주류" (alcohol), and the description line says "연극·공연·뮤지컬·오페라" (plays, performances, musicals, opera) and "와인·위스키·사케" (wine, whisky, sake).
+- Validation is left to the server. A non-numeric cost or vintage is sent as it is, and the Korean message from the server is shown in the form. If saving fails, the form stays open and keeps the input values.
+- We added "cancel completion", which is not in the issue, because you need a way to undo a completion mark pressed by mistake. It clears the completion date, so we ask for confirmation first.
+- The area cannot be changed in the form, because each area has different subtypes and input items. The API supports changing the area.
 
-## 테스트
+## Tests
 
-`frontend/src/bucket-list.test.tsx`(메모리 가짜 API):
+`frontend/src/bucket-list.test.tsx` (an in-memory fake API):
 
-- 5개 분야 각각 추가·수정·완료 표시·완료 취소·삭제와 보낸 요청 내용.
-- 탭별 항목 분리, 메뉴 이동, 모르는 분야 주소.
-- 서버 검증 오류가 폼에 한국어로 남는 것, 완료일 거절, 완료 항목의 완료일 수정.
-- 이미 지워진 항목 삭제, 목록 불러오기 실패와 다시 시도.
+- For each of the 5 areas, add, edit, mark complete, cancel completion, delete, and the content of the request sent.
+- Separation of items per tab, menu navigation, and an unknown area address.
+- A server validation error stays in the form in Korean, completion date rejection, and editing the completion date of a completed item.
+- Deleting an item that was already deleted, and a list load failure and retry.
 
-## 검증 — 2026-10-31
+## Verification — 2026-10-31
 
-임시 PostgreSQL 17.11을 `TEST_DATABASE_URL`로 지정해 Windows에서 실행했다.
+Ran on Windows with a temporary PostgreSQL 17.11 set as `TEST_DATABASE_URL`.
 
-- `npm run check`: 통과. 백엔드 45개 통과·건너뜀 0개, 프론트엔드 65개 통과.
-- `npm run knip`: 통과.
+- `npm run check`: pass. Backend 45 passed and 0 skipped, frontend 65 passed.
+- `npm run knip`: pass.
 
-### 브라우저 확인
+### Browser check
 
-실제 API·Vite·임시 DB를 띄우고 헤드리스 Chrome 156을 DevTools 프로토콜로 조작했다. 사용자의 Chrome 프로필은 쓰지 않았다. Claude in Chrome 확장은 연결돼 있지 않아 쓰지 못했다.
+We started the real API, Vite, and a temporary DB and drove headless Chrome 156 through the DevTools protocol. We did not use the user's Chrome profile. The Claude in Chrome extension was not connected, so we could not use it.
 
-모바일 390×844(터치 없는 모바일 에뮬레이션)와 PC 1440×900에서 같은 흐름을 돌려 모두 통과했다.
+We ran the same flow at mobile 390×844 (mobile emulation without touch) and PC 1440×900, and everything passed.
 
-- `/bucket-list`가 첫 분야로 열리고, 5개 탭 모두 페이지 가로 넘침이 없다.
-- 공연 분야에서 빈 제목, 세부 종류 누락, 숫자가 아닌 비용, 미래 완료일이 실제 서버의 한국어 메시지로 표시된다.
-- 추가, 새로고침 후 유지, 수정, 완료 표시, 완료 취소, 삭제가 동작한다.
-- 콘솔에는 위 검증에서 일부러 일으킨 400 응답 기록만 있고, 다른 오류와 예외는 없다.
-- 목록·폼 오류·완료 화면의 스크린샷을 눈으로 확인했다. 깨진 곳은 없었다. 임시 파일이라 저장소에는 넣지 않았다.
+- `/bucket-list` opens on the first area, and none of the 5 tabs overflows the page horizontally.
+- In the performance area, an empty title, a missing subtype, a non-numeric cost, and a future completion date are shown with the real server Korean messages.
+- Adding, keeping after a reload, editing, marking complete, cancelling completion, and deleting all work.
+- The console had only the 400 response records that we triggered on purpose in the checks above, and no other errors or exceptions.
+- We looked at the screenshots of the list, the form errors, and the completion screen. Nothing was broken. They were temporary files, so we did not put them in the repository.
 
-실제 브라우저에서는 공연 분야만 끝까지 돌렸다. 나머지 4개 분야의 전체 흐름은 화면 테스트로 확인했다.
+In the real browser we ran only the performance area through to the end. The full flows of the other 4 areas were checked with the screen tests.
 
-## 1차 리뷰 반영 — 2026-10-31
+## First review applied — 2026-10-31
 
-head `52ae273`을 분리된 에이전트가 리뷰했다. 지적 12건(병합 차단 0, 보완 4, 사소함 8)을 모두 이 커밋에 반영했다.
+A separate agent reviewed head `52ae273`. We applied all 12 findings (0 blocking the merge, 4 to fix, 8 minor) in this commit.
 
-| 지적                                        | 처리                                                                   |
-| ------------------------------------------- | ---------------------------------------------------------------------- |
-| 저장 중 Esc·닫기로 폼이 닫혀 결과를 잃음    | 저장이 끝날 때까지 폼이 닫히지 않는다                                  |
-| 저장 성공 후 재조회 실패가 실패처럼 보임    | 목록을 유지하고 "저장했습니다. 목록은 새로 불러오지 못했습니다"로 표시 |
-| 대화 상자를 닫으면 키보드 포커스가 사라짐   | 연 버튼으로 돌아간다. 그 버튼이 사라졌으면 항목 추가 버튼으로 간다     |
-| 공백 없는 긴 제목이 카드·대화 상자를 밀어냄 | `wrap-anywhere`로 줄바꿈                                               |
-| 닫히는 동안 대화 상자 내용이 바뀜           | 닫는 동안 마지막 내용을 유지                                           |
-| `15.000`, `1e3`, `1,5`가 숫자로 저장됨      | 정수와 올바른 쉼표 표기만 숫자로 바꾸고, 나머지는 서버가 거절한다      |
-| `다시 시도`에 진행 표시·경쟁 방지 없음      | 진행 중 비활성화, 가장 최근 요청의 결과만 반영                         |
-| 폼에서 404가 나도 목록이 그대로임           | 404면 목록을 다시 불러온다                                             |
-| 카드 제목이 h1 다음 h3                      | h2로 변경                                                              |
-| 완료일 기본값이 앱을 연 날짜로 고정됨       | 폼을 열 때 Asia/Seoul 기준으로 계산한다                                |
-| 빈티지 숫자 변환 테스트 없음                | 주류의 모든 입력 항목을 보내는 테스트 추가                             |
-| 테스트 이름과 기록이 실제보다 넓음          | 주 메뉴 클릭 테스트와 잘못된 주소 테스트로 분리                        |
+| Finding                                                              | Handling                                                                                                       |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Esc or close during saving closed the form and lost the result       | The form does not close until saving finishes                                                                  |
+| A re-fetch failure after a successful save looked like a failure     | Keep the list and show "저장했습니다. 목록은 새로 불러오지 못했습니다" (Saved. The list could not be reloaded) |
+| Closing a dialog lost keyboard focus                                 | Return to the button that opened it. If that button is gone, go to the add item button                         |
+| A long title with no spaces pushed the card and dialog out           | Wrap with `wrap-anywhere`                                                                                      |
+| The dialog content changed while it was closing                      | Keep the last content while closing                                                                            |
+| `15.000`, `1e3`, and `1,5` were saved as numbers                     | Convert only integers and correct comma notation to numbers, and the server rejects the rest                   |
+| "다시 시도" (Retry) had no progress indicator or race protection     | Disabled while in progress, and only the result of the latest request is applied                               |
+| The list stayed the same even when the form got a 404                | On 404, reload the list                                                                                        |
+| The card title was h3 after h1                                       | Changed to h2                                                                                                  |
+| The default completion date was fixed to the date the app was opened | Computed in Asia/Seoul when the form opens                                                                     |
+| No test for vintage number conversion                                | Added a test that sends every input item of alcohol                                                            |
+| The test names and the record were broader than reality              | Split into a main menu click test and an invalid address test                                                  |
 
-남은 한계는 다음과 같다.
+The remaining limits are as follows.
 
-- 삭제나 완료 취소에 성공하면 포커스를 돌려줄 버튼이 사라져 본문으로 돌아간다. 취소로 닫으면 버튼으로 돌아간다.
-- 저장 중 브라우저 뒤로 가기로 탭을 바꾸면 그 저장의 실패 메시지는 볼 수 없다. 목록은 다시 불러온다.
+- When deleting or cancelling completion succeeds, the button to return focus to is gone, so focus goes back to the body. Closing with cancel returns to the button.
+- If you switch tabs with browser back during a save, you cannot see the failure message of that save. The list is reloaded.
 
-### 검증
+### Verification
 
-- `npm run check`: 통과. 백엔드 45개 통과·건너뜀 0개, 프론트엔드 79개 통과.
-- `npm run knip`: 통과.
-- 헤드리스 Chrome 156, 모바일 390×844와 PC 1440×900에서 기존 흐름을 다시 돌려 통과했다. 콘솔에는 일부러 일으킨 400 응답 기록만 있었다.
-- 같은 환경에서 추가로 확인했다.
-  - 200자 제목: 페이지와 수정·완료 표시·삭제 대화 상자에 가로 넘침이 없다.
-  - Esc로 닫으면 포커스가 연 버튼으로 돌아간다.
-  - 저장 요청을 잡아 둔 동안 Esc를 눌러도 폼이 닫히지 않고, 저장이 끝나면 닫힌다.
+- `npm run check`: pass. Backend 45 passed and 0 skipped, frontend 79 passed.
+- `npm run knip`: pass.
+- We ran the existing flow again in headless Chrome 156 at mobile 390×844 and PC 1440×900, and it passed. The console had only the 400 response records that we triggered on purpose.
+- We also checked the following in the same environment.
+  - A 200-character title: no horizontal overflow in the page or in the edit, complete, and delete dialogs.
+  - Closing with Esc returns focus to the button that opened it.
+  - Pressing Esc while a save request is held does not close the form, and it closes when the save finishes.
 
-## 2차 리뷰 반영 — 2026-10-31
+## Second review applied — 2026-10-31
 
-head `cad6285`를 분리된 에이전트가 리뷰했다. 지적 3건(병합 차단 1, 보완 1, 사소함 1)을 모두 반영했다. 규칙대로 3차 리뷰는 하지 않는다.
+A separate agent reviewed head `cad6285`. We applied all 3 findings (1 blocking the merge, 1 to fix, 1 minor). As the rule says, there is no third review.
 
-| 지적                                                | 처리                                                                                                                              |
-| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 저장 두 번 클릭·Enter 두 번으로 항목이 중복 생성됨  | 1차 보완에서 생긴 회귀다. 닫히는 동안에도 버튼을 비활성화한다                                                                     |
-| 재조회 실패 뒤 낡은 목록으로 고치면 저장값을 덮어씀 | 서버 응답을 목록에 바로 반영한다. 재조회가 실패해도 내 변경은 맞게 보이므로 1차의 "목록은 새로 불러오지 못했습니다" 문구는 없앴다 |
-| 최신 요청만 반영하는 동작의 테스트 없음             | 늦게 온 옛 응답 테스트를 추가했다                                                                                                 |
+| Finding                                                                     | Handling                                                                                                                                                                                                            |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Double-clicking save or pressing Enter twice created a duplicate item       | A regression from the first-round fix. Disable the button while the form is closing too                                                                                                                             |
+| Fixing with a stale list after a re-fetch failure overwrote the saved value | Reflect the server response in the list right away. Even if the re-fetch fails, my change shows correctly, so we removed the first-round message "목록은 새로 불러오지 못했습니다" (the list could not be reloaded) |
+| No test for applying only the latest request                                | Added a test for an old response that arrives late                                                                                                                                                                  |
 
-남은 한계: 폼이 완전히 닫힌 뒤(약 200ms 이후)의 두 번째 입력은 그 자리의 요소에 닿는다. 마우스면 아래 카드의 버튼을 누를 수 있지만, 삭제는 확인 창을 거친다.
+Remaining limit: a second input after the form has fully closed (after about 200ms) reaches the element in that place. With a mouse you can press the button of the card below, but deleting goes through a confirmation dialog.
 
-### 검증
+### Verification
 
-- `npm run check`: 통과. 백엔드 45개 통과·건너뜀 0개, 프론트엔드 80개 통과.
-- `npm run knip`: 통과.
-- `request === latest.current` 조건을 뺀 코드로 `bucket-list.test.tsx`를 돌려 늦은 응답 테스트가 실패하는 것을 확인하고 코드를 되돌렸다.
-- 헤드리스 Chrome 156, 모바일 390×844와 PC 1440×900에서 전체 흐름을 다시 돌려 통과했다. 콘솔에는 일부러 일으킨 400 응답 기록만 있었다.
-- 같은 환경에서 저장 더블클릭과 Enter 두 번을 20·60·120·180ms 간격으로 실행해 매번 항목이 1개만 저장되는 것을 실제 DB로 확인했다. jsdom에는 닫힘 애니메이션이 없어 이 회귀는 화면 테스트로 잡을 수 없다.
+- `npm run check`: pass. Backend 45 passed and 0 skipped, frontend 80 passed.
+- `npm run knip`: pass.
+- We ran `bucket-list.test.tsx` with the `request === latest.current` condition removed from the code, confirmed that the late response test fails, and reverted the code.
+- We ran the whole flow again in headless Chrome 156 at mobile 390×844 and PC 1440×900, and it passed. The console had only the 400 response records that we triggered on purpose.
+- In the same environment we ran a save double-click and a double Enter at 20, 60, 120, and 180 ms intervals, and confirmed on a real DB that only 1 item was saved each time. jsdom has no closing animation, so this regression cannot be caught with a screen test.

@@ -1,49 +1,49 @@
-# #69 용어 공부 화면
+# #69 Terms study screen
 
-- 이슈: [#69](https://github.com/sirloinbh/life-journal/issues/69)
-- 브랜치: `feat/69-terms-screen`
+- Issue: [#69](https://github.com/sirloinbh/life-journal/issues/69)
+- Branch: `feat/69-terms-screen`
 
-## 변경 — 2026-11-02
+## Changes — 2026-11-02
 
-분야를 골라 용어와 뜻을 보고, 검색하고, 외운 용어를 표시하는 화면을 추가했다. 주 메뉴의 "용어 공부"에서 들어간다.
+Added a screen where you pick an area, see terms and their meanings, search, and mark terms you have memorized. You reach it from "용어 공부" (Terms study) in the main menu.
 
-- 분야: 와인, 위스키, 문학, 영화, 오페라, 뮤지컬. 분야마다 예시 용어 2개를 넣었고, 나머지는 #70~#73에서 채운다.
-- 용어는 `backend/src/terms-data.ts`에 둔다. 앱에서 추가하거나 고칠 수 없다.
-- 외운 표시만 새 테이블 `learned_terms`에 저장한다(마이그레이션 `006`).
-- API: `GET /api/terms`, `PUT`·`DELETE /api/terms/:id/learned`. 데이터에 없는 용어는 한국어 404로 거절한다.
-- 검색은 지금 분야 안에서 용어, 원어, 뜻을 찾는다. 대소문자를 가리지 않는다. 다른 분야로 가면 검색어가 비워진다.
-- 저장 중인 용어의 체크박스는 더 눌러도 요청을 보내지 않는다. 키보드 초점이 사라지지 않도록 비활성화하지 않는다.
-- 분야 탭과 불러오기 실패 표시를 `category-tabs.tsx`, `load-failed.tsx`로 옮겨 버킷리스트와 함께 쓴다.
+- Areas: wine, whisky, literature, film, opera, and musical. Each area has 2 example terms, and the rest are filled in #70 to #73.
+- Terms are kept in `backend/src/terms-data.ts`. They cannot be added or edited in the app.
+- Only the memorized marks are stored, in the new table `learned_terms` (migration `006`).
+- API: `GET /api/terms`, `PUT` and `DELETE /api/terms/:id/learned`. A term that is not in the data is rejected with a Korean 404.
+- Search looks for the term, the original word, and the meaning within the current area. It is not case sensitive. When you move to another area, the search text is cleared.
+- The checkbox of a term that is being saved does not send a request when clicked again. It is not disabled so that keyboard focus is not lost.
+- Moved the area tabs and the load-failed display to `category-tabs.tsx` and `load-failed.tsx` and share them with the bucket list.
 
-결정은 [이슈 댓글](https://github.com/sirloinbh/life-journal/issues/69)에 있다. 퀴즈와 플래시카드는 넣지 않았다.
+The decisions are in the [issue comment](https://github.com/sirloinbh/life-journal/issues/69). Quizzes and flashcards were not added.
 
-## 테스트
+## Tests
 
-- `frontend/src/terms-study.test.tsx`: 분야별 표시, 검색, 외운 표시 유지와 해제, 실패, 중복 클릭, 사라진 용어, 목록 다시 시도
-- `backend/test/terms.test.ts`: 용어 데이터의 ID, 분야, 이름 중복, 없는 용어의 404
-- `backend/test/db.integration.test.ts`: 외운 표시 저장과 해제, 반복 요청, 데이터에서 사라진 용어, 마이그레이션 재실행
+- `frontend/src/terms-study.test.tsx`: showing per area, search, keeping and clearing the memorized mark, failure, double clicks, a term that disappeared, and retrying the list
+- `backend/test/terms.test.ts`: IDs, areas, and duplicate names of the term data, and a 404 for a term that does not exist
+- `backend/test/db.integration.test.ts`: saving and clearing the memorized mark, repeated requests, a term that disappeared from the data, and re-running the migration
 
-## 검증
+## Verification
 
-- `npm run check`: 통과(백엔드 126개 통과, 프론트엔드 144개 통과, 2개 건너뜀, 스킬 4개 통과). DB 통합 테스트는 `TEST_DATABASE_URL`을 설정해 실행했다.
-- 브라우저: 실제 API, Vite, 테스트 DB를 띄우고 헤드리스 Chrome을 DevTools 프로토콜로 조작했다. 모바일 390×844(터치 없는 에뮬레이션)와 PC 1440×900에서 첫 분야 이동, 외운 표시와 개수, 새로고침 뒤 유지, 실제 키 입력 검색, 분야 이동, 표시 해제를 확인했다. 페이지가 가로로 넘치지 않았고 콘솔 오류는 0건이었다. 캡처 화면도 눈으로 확인했다.
+- `npm run check`: pass (backend 126 passed, frontend 144 passed, 2 skipped, skills 4 passed). The DB integration tests ran with `TEST_DATABASE_URL` set.
+- Browser: we started the real API, Vite, and the test DB and drove headless Chrome through the DevTools protocol. At mobile 390×844 (emulation without touch) and PC 1440×900 we checked moving to the first area, the memorized mark and count, keeping it after a reload, search with real key input, moving between areas, and clearing the mark. The page did not overflow horizontally and there were 0 console errors. We also looked at the captured screens.
 
-## 리뷰
+## Review
 
-1차 지적 4건을 반영했다.
+We applied the 4 findings of the first round.
 
-- 저장 실패 메시지가 다른 분야 탭에 남았다. 분야를 바꾸면 지운다.
-- 목록을 받는 중에 다른 용어의 표시가 끝나면 그 목록을 버려서, 404 뒤의 새로 고침이 사라질 수 있었다. 목록을 다시 요청한다.
-- 위 동작을 잡는 테스트가 없어 추가했다.
-- 다음 작업 문서의 #73 설명과 브라우저 확인 범위를 고쳤다.
+- A save failure message stayed on another area tab. It is cleared when the area changes.
+- If another term finished being marked while the list was being fetched, that list was discarded, so the refresh after a 404 could be lost. We now request the list again.
+- There was no test that catches the behavior above, so we added one.
+- Fixed the #73 description in the next-steps document and the scope of the browser check.
 
-2차 지적 1건을 반영했다. 저장 중에 분야를 옮기면 실패 메시지가 옮긴 탭에 나오는데 어떤 용어인지 알 수 없었다. 메시지에 용어 이름을 넣고 테스트를 추가했다.
+We applied the 1 finding of the second round. If you moved the area while saving, the failure message appeared on the tab you moved to, and you could not tell which term it was about. We put the term name in the message and added a test.
 
-브라우저 확인은 1차 수정 전에 했고, 리뷰 수정은 화면 테스트로 확인했다.
+The browser check was done before the first-round fix, and the review fixes were checked with the screen tests.
 
-## 제한
+## Limits
 
-- 기존 DB에는 `006`을 `database/README.md`의 방법으로 적용해야 한다.
-- 데이터에서 지운 용어의 외운 표시는 DB에 남지만 화면에는 나오지 않는다.
-- 실제 터치 기기에서는 확인하지 못했다.
-- 프런트엔드 빌드의 JS 파일이 498.69kB에서 506.81kB가 되어 Vite의 500kB 경고가 새로 나온다. 빌드는 실패하지 않는다. #70~#73은 백엔드 데이터만 늘려 이 크기를 키우지 않는다.
+- On an existing DB, `006` must be applied with the method in `database/README.md`.
+- The memorized mark of a term removed from the data stays in the DB but is not shown on the screen.
+- We could not check on a real touch device.
+- The JS file of the frontend build grew from 498.69kB to 506.81kB, so Vite's 500kB warning appears for the first time. The build does not fail. #70 to #73 only grow the backend data and do not increase this size.

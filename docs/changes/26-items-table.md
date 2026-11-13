@@ -1,82 +1,82 @@
-# #26 항목을 표로 보고 검색·필터하기
+# #26 View items in a table with search and filters
 
-- 이슈: [#26](https://github.com/sirloinbh/life-journal/issues/26)
-- 브랜치: `feat/26-items-table`
+- Issue: [#26](https://github.com/sirloinbh/life-journal/issues/26)
+- Branch: `feat/26-items-table`
 
-## 목적
+## Purpose
 
-항목이 쌓여도 원하는 항목을 빠르게 찾도록 모든 항목을 한 표에서 검색·필터·정렬한다.
+So that you can find the item you want quickly even as items pile up, search, filter, and sort all items in one table.
 
-## 변경 — 2026-10-31
+## Changes — 2026-10-31
 
-- `backend/src/items.ts`: `GET /api/items` 쿼리 파라미터 `q`, `category`, `status`, `from`, `to`, `costMin`, `costMax`, `sort`, `order`. 값은 Zod로 검증하고, 정렬은 정해진 컬럼만 쓴다. 파라미터가 없으면 기존처럼 최근 순 전체를 돌려준다.
-- `frontend/src/items-table.tsx`, `frontend/src/app.tsx`: 메뉴의 표 보기(`/table`). 필터와 정렬은 주소에 남아 새로고침해도 유지된다.
+- `backend/src/items.ts`: query parameters of `GET /api/items`: `q`, `category`, `status`, `from`, `to`, `costMin`, `costMax`, `sort`, and `order`. The values are validated with Zod, and sorting uses only fixed columns. If there are no parameters, it returns everything in recent order as before.
+- `frontend/src/items-table.tsx`, `frontend/src/app.tsx`: the table view in the menu (`/table`). Filters and sorting stay in the address, so they are kept even after a reload.
 
-구현하면서 정한 값은 다음과 같다.
+The values decided during implementation are as follows.
 
-- 검색은 제목과 분야별 정보의 값에서 찾는다. 대소문자를 가리지 않고, 분야별 정보의 항목 이름(`author` 등)과 세부 종류는 찾지 않는다. 세부 종류는 코드값(`opera`)으로 저장돼 화면 글자로 찾을 수 없다.
-- 분야 열은 메뉴 순서로 정렬한다.
-- 비ASCII 글자의 대소문자 구분과 제목 정렬 순서는 DB 로케일을 따른다. `C` 로케일 임시 DB에서는 `Émile`을 `émile`로 찾지 못하고 대문자가 먼저 정렬됐다. 운영 DB의 로케일은 확인하지 않았다.
-- 필터와 정렬은 방문 기록을 늘리지 않는다(`replace`). 뒤로 가기를 누르면 이전 조건이 아니라 표에 오기 전 화면으로 간다.
-- 기간은 완료일을, 없으면 예정일을 기준으로 한다. 날짜가 없는 항목은 기간 필터에서 빠진다.
-- 비용이 없는 항목은 비용 필터에서 빠진다. 정렬에서는 값이 없는 항목이 방향과 관계없이 뒤로 간다.
-- 글자와 날짜 칸은 Enter나 포커스 이동 때 적용한다. 한글 조합 중에 요청이 나가지 않고, 날짜가 입력 중의 값으로 찾아지지 않게 하기 위해서다. 선택 상자는 바꾸면 바로 적용한다.
-- 표의 제목을 누르면 그 항목의 분야 탭으로 간다.
-- 페이지 나누기는 넣지 않았다. 사용자 1명의 항목 수에서는 필요하지 않다.
+- Search looks in the title and in the values of the per-area details. It is not case sensitive, and it does not look at the item names of the per-area details (such as `author`) or at the subtype. The subtype is stored as a code value (`opera`), so it cannot be searched by the text on screen.
+- The area column is sorted in menu order.
+- Case sensitivity for non-ASCII characters and the title sort order follow the DB locale. On a temporary DB with the `C` locale, `Émile` could not be found by `émile`, and uppercase sorted first. We did not check the locale of the production DB.
+- Filtering and sorting do not add to the history (`replace`). Pressing back goes to the screen before you came to the table, not to the earlier condition.
+- The period is based on the completion date, or on the planned date if there is none. Items with no date are left out of the period filter.
+- Items with no cost are left out of the cost filter. In sorting, items with no value go last regardless of the direction.
+- Text and date fields apply on Enter or when focus moves away. This is so that no request goes out in the middle of Korean text composition, and a date is not searched with a value that is still being typed. A select box applies as soon as you change it.
+- Clicking a title in the table goes to the area tab of that item.
+- We did not add pagination. It is not needed for the number of items of a single user.
 
-## 테스트
+## Tests
 
-- `backend/test/items.test.ts`: 잘못된 조건이 DB에 닿기 전에 한국어 400으로 거절된다.
-- `backend/test/db.integration.test.ts`: 검색어·필터 조합별로 맞는 항목만 돌아오고, `%`, `_`가 글자 그대로 검색되며, 정렬이 맞다.
-- `frontend/src/items-table.test.tsx`: 메뉴 이동, 열 표시, 필터 변경 시 재조회, 주소의 조건 유지, 입력 칸 적용 시점, 정렬, 오류 표시, 조건 지우기, 늦게 온 옛 응답 무시.
+- `backend/test/items.test.ts`: an invalid condition is rejected with a Korean 400 before it reaches the DB.
+- `backend/test/db.integration.test.ts`: only matching items return for each combination of search term and filters, `%` and `_` are searched as literal characters, and the sorting is correct.
+- `frontend/src/items-table.test.tsx`: menu navigation, column display, re-fetching when a filter changes, keeping the conditions in the address, when input fields apply, sorting, error display, clearing the conditions, and ignoring a late old response.
 
-## 검증 — 2026-10-31
+## Verification — 2026-10-31
 
-임시 PostgreSQL 17.11을 `TEST_DATABASE_URL`로 지정해 Windows에서 실행했다.
+Ran on Windows with a temporary PostgreSQL 17.11 set as `TEST_DATABASE_URL`.
 
-- `npm run check`: 통과. 백엔드 95개 통과·건너뜀 0개, 프론트엔드 111개 통과·2개 건너뜀. 건너뛴 2개는 중앙 관리 테스트의 다크 전용 앱 조건(`runIf(DARK_ONLY)`)으로 이 앱에 해당하지 않는다.
-- `npm run knip`: 통과.
-- 브라우저: 헤드리스 Chrome 156, 모바일 390×844(터치 없는 에뮬레이션)와 PC 1440×900. 실제 API·임시 DB로 메뉴 이동, 분야별 정보 검색, 새로고침 후 조건 유지, 조건 지우기, 상태 필터, 평점 정렬, 잘못된 비용의 한국어 오류를 확인했다. 모바일에서 표는 표 안에서만 가로로 스크롤되고(표 704px, 영역 356px) 페이지는 넘치지 않는다. 콘솔에는 일부러 일으킨 400 응답 기록만 있었다.
+- `npm run check`: pass. Backend 95 passed and 0 skipped, frontend 111 passed and 2 skipped. The 2 skipped are the dark-only app condition (`runIf(DARK_ONLY)`) of a centrally managed test, which does not apply to this app.
+- `npm run knip`: pass.
+- Browser: headless Chrome 156, mobile 390×844 (emulation without touch) and PC 1440×900. With the real API and a temporary DB we checked menu navigation, search of per-area details, keeping the conditions after a reload, clearing the conditions, the status filter, rating sort, and the Korean error for an invalid cost. On mobile the table scrolls horizontally only inside the table (table 704px, area 356px) and the page does not overflow. The console had only the 400 response records that we triggered on purpose.
 
-## 1차 리뷰 반영 — 2026-10-31
+## First review applied — 2026-10-31
 
-head `076a46a`를 분리된 에이전트가 리뷰했다. 지적 11건(병합 차단 1, 보완 3, 사소함 7)을 반영했다.
+A separate agent reviewed head `076a46a`. We applied the 11 findings (1 blocking the merge, 3 to fix, 7 minor).
 
-| 지적                                                 | 처리                                                                                           |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| 키보드로 입력한 날짜가 다른 날짜로 필터됨(병합 차단) | 날짜 칸을 비제어 입력으로 바꿔 Enter나 포커스 이동 때 적용                                     |
-| 검색어 `any`가 적용되지 않음                         | "전체" 값은 선택 상자에서만 처리                                                               |
-| 적용하면 입력 칸의 포커스가 사라짐                   | 입력 칸을 다시 만들지 않고 값만 바꿈. 조건 지우기 뒤에는 검색 칸으로 이동                      |
-| 테스트 공백                                          | 날짜, `any`, 포커스, 값 지우기, 뒤로 가기, 오류 복구, `\` 검색, 0원, 중복 파라미터 테스트 추가 |
-| 오류 뒤 다시 시도할 수 없음                          | 다시 시도 버튼 추가                                                                            |
-| 불러오는 중·오류 때 빈 결과 안내가 보임              | 답이 온 뒤 결과가 없을 때만 표시                                                               |
-| 분야 정렬이 화면과 맞지 않음                         | 메뉴 순서로 정렬                                                                               |
-| 제목 정렬과 검색의 로케일 의존                       | 코드는 그대로 두고 한계로 기록                                                                 |
-| 세부 종류가 검색되지 않음                            | 범위를 넓히지 않고 기록                                                                        |
-| 폭 1024px에서 입력 칸 높이가 어긋남                  | 라벨을 줄이고 기간 설명을 필터 아래로 옮김                                                     |
-| `replace` 결정이 기록에 없음                         | 기록                                                                                           |
+| Finding                                                                            | Handling                                                                                                                           |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| A date typed with the keyboard was filtered as a different date (blocks the merge) | Changed the date fields to uncontrolled inputs, applied on Enter or when focus moves away                                          |
+| The search term `any` was not applied                                              | The "all" value is handled only in the select box                                                                                  |
+| Applying removed focus from the input field                                        | Only the value is changed, without re-creating the input. After clearing the conditions, focus moves to the search field           |
+| Test gaps                                                                          | Added tests for dates, `any`, focus, clearing values, back navigation, error recovery, `\` search, 0 won, and duplicate parameters |
+| Could not retry after an error                                                     | Added a retry button                                                                                                               |
+| The empty result guidance showed while loading or on an error                      | Show it only when there are no results after the answer arrives                                                                    |
+| Area sorting did not match the screen                                              | Sort in menu order                                                                                                                 |
+| Locale dependence of title sorting and search                                      | Left the code as is and recorded it as a limit                                                                                     |
+| The subtype is not searched                                                        | Did not widen the scope, and recorded it                                                                                           |
+| Input field heights misaligned at 1024px wide                                      | Shortened the label and moved the period description below the filter                                                              |
+| The `replace` decision was not recorded                                            | Recorded it                                                                                                                        |
 
-### 검증
+### Verification
 
-- `npm run check`: 통과. 백엔드 98개 통과·건너뜀 0개, 프론트엔드 117개 통과·2개 건너뜀(다크 전용 앱 조건).
-- `npm run knip`: 통과.
-- 헤드리스 Chrome 156, 모바일 390×844와 PC 1440×900에서 실제 키 입력으로 날짜를 넣었다. `2026`, →, `0328`을 입력하는 동안 요청과 주소가 바뀌지 않았고, 칸을 벗어나자 `to=2026-03-28`이 적용됐다. 검색어 `any`의 적용과 포커스 유지, 기존 흐름도 통과했다.
+- `npm run check`: pass. Backend 98 passed and 0 skipped, frontend 117 passed and 2 skipped (the dark-only app condition).
+- `npm run knip`: pass.
+- We typed dates with real key input in headless Chrome 156, at mobile 390×844 and PC 1440×900. While typing `2026`, →, and `0328`, the request and the address did not change, and when we left the field `to=2026-03-28` was applied. The application of the search term `any`, keeping focus, and the existing flows also passed.
 
-## 2차 리뷰 반영 — 2026-10-31
+## Second review applied — 2026-10-31
 
-head `fa635d5`를 분리된 에이전트가 리뷰했다. 지적 4건(병합 차단 0, 보완 2, 사소함 2)을 모두 반영했다. 규칙대로 3차 리뷰는 하지 않는다.
+A separate agent reviewed head `fa635d5`. We applied all 4 findings (0 blocking the merge, 2 to fix, 2 minor). As the rule says, there is no third review.
 
-| 지적                                                  | 처리                                                     |
-| ----------------------------------------------------- | -------------------------------------------------------- |
-| 미완성이거나 없는 날짜로 칸을 벗어나면 조건이 지워짐  | `validity.badInput`이면 적용하지 않아 기존 조건을 유지   |
-| 입력 직후 머리글을 누르면 방금 적용한 검색어가 사라짐 | 렌더 시점의 값 대신 현재 주소를 읽어 두 변경을 모두 유지 |
-| 조건 지우기가 미완성 날짜 칸을 비우지 못함            | 조건을 지울 때 입력 칸을 다시 맞춤                       |
-| 다시 시도를 누르면 포커스가 사라짐                    | 다시 시도 중에도 버튼을 유지                             |
+| Finding                                                                         | Handling                                                                               |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Leaving the field with an incomplete or non-existent date cleared the condition | If `validity.badInput`, it is not applied, so the existing condition stays             |
+| Clicking a header right after typing lost the search term just applied          | Read the current address instead of the value at render time, so both changes are kept |
+| Clearing the conditions could not empty an incomplete date field                | Re-sync the input fields when the conditions are cleared                               |
+| Pressing retry removed focus                                                    | Keep the button during the retry too                                                   |
 
-달력 팝업에서 직접 고르는 동작은 헤드리스 브라우저에서 조작할 수 없어 확인하지 못했다. 선택한 값은 칸을 벗어날 때 적용되고, 화면 문구에 그렇게 적었다.
+The behavior of picking directly in the calendar popup could not be operated in a headless browser, so we could not check it. The selected value is applied when leaving the field, and the screen text says so.
 
-### 검증
+### Verification
 
-- `npm run check`: 통과. 백엔드 98개 통과·건너뜀 0개, 프론트엔드 120개 통과·2개 건너뜀(다크 전용 앱 조건).
-- `npm run knip`: 통과.
-- 헤드리스 Chrome 156, 모바일 390×844와 PC 1440×900에서 실제 키로 월을 지우고 칸을 벗어나도 조건이 남고, 조건 지우기로 칸이 비는 것을 확인했다. 기존 흐름도 다시 통과했다.
+- `npm run check`: pass. Backend 98 passed and 0 skipped, frontend 120 passed and 2 skipped (the dark-only app condition).
+- `npm run knip`: pass.
+- In headless Chrome 156, at mobile 390×844 and PC 1440×900, we confirmed with real keys that clearing the month and leaving the field keeps the condition, and that clearing the conditions empties the field. The existing flows also passed again.

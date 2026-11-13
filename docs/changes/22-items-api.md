@@ -1,83 +1,83 @@
-# #22 5개 분야 항목 저장 API
+# #22 Item storage API for 5 areas
 
-- 이슈: [#22](https://github.com/sirloinbh/life-journal/issues/22)
-- 브랜치: `feat/22-items-api`
+- Issue: [#22](https://github.com/sirloinbh/life-journal/issues/22)
+- Branch: `feat/22-items-api`
 
-## 목적
+## Purpose
 
-버킷리스트, 평가, 감상문, 표 보기의 바탕이 되는 항목 데이터를 저장·조회·수정·삭제할 수 있게 한다.
+Make it possible to store, read, update, and delete the item data that the bucket list, ratings, reviews, and table view are built on.
 
-## 결정
+## Decision
 
-이슈 댓글에 기록한 사용자 결정을 따른다.
+Follow the user decision recorded in the issue comment.
 
-- 버킷리스트와 완료 기록은 한 테이블에 두고 `status`(`wishlist` / `done`)로 나눈다.
-- 비용은 원 단위 정수(`cost_krw`)이며 통화는 KRW 하나다.
-- 분야별 정보는 `details`(`jsonb`) 한 칸에 두고 분야별 Zod 스키마로 검증한다.
-- `done`이면 완료일이 필수이고, 완료일은 오늘(Asia/Seoul)보다 뒤일 수 없다. `wishlist`에는 완료일을 넣을 수 없다. 예정일은 제한이 없다.
+- Keep the bucket list and completion records in one table and tell them apart by `status` (`wishlist` / `done`).
+- Cost is an integer in won (`cost_krw`), and KRW is the only currency.
+- Keep the per-area details in a single `details` (`jsonb`) column and validate them with a per-area Zod schema.
+- If `done`, the completion date is required, and it cannot be later than today (Asia/Seoul). A completion date cannot be set on `wishlist`. The planned date has no limit.
 
-구현하면서 정한 값은 다음과 같다. #23 화면 작업에서 바뀔 수 있다.
+The values decided during implementation are as follows. They may change in the #23 screen work.
 
-| 분야 (`category`) | 세부 종류 (`subtype`)                     | 분야별 정보 (`details`, 모두 선택)    |
-| ----------------- | ----------------------------------------- | ------------------------------------- |
-| `reading`         | 없음                                      | `author`, `publisher`                 |
-| `screen`          | `movie`, `drama`                          | `director`, `cast`                    |
-| `stage`           | `play`, `performance`, `musical`, `opera` | `venue`, `cast`                       |
-| `drink`           | `wine`, `whisky`, `sake`                  | `producer`, `region`, `vintage`(연도) |
-| `travel`          | 없음                                      | `country`, `city`                     |
+| Area (`category`) | Subtype (`subtype`)                       | Per-area details (`details`, all optional) |
+| ----------------- | ----------------------------------------- | ------------------------------------------ |
+| `reading`         | none                                      | `author`, `publisher`                      |
+| `screen`          | `movie`, `drama`                          | `director`, `cast`                         |
+| `stage`           | `play`, `performance`, `musical`, `opera` | `venue`, `cast`                            |
+| `drink`           | `wine`, `whisky`, `sake`                  | `producer`, `region`, `vintage` (year)     |
+| `travel`          | none                                      | `country`, `city`                          |
 
-## 변경 — 2026-10-31
+## Changes — 2026-10-31
 
-- `database/migrations/002_items.sql`: `items` 테이블과 목록 정렬용 인덱스. DB도 분야·상태·비용·제목과 "완료 상태와 완료일은 함께" 규칙을 `CHECK`로 막는다.
-- `backend/src/items.ts`: `GET/POST /api/items`, `GET/PATCH/DELETE /api/items/:id`와 검증.
-- `PATCH`: 일부 값만 받아 현재 행과 합친 뒤 전체 규칙을 다시 검사한다. 행을 잠그는 트랜잭션 안에서 처리해 동시 수정으로 값이 사라지지 않게 한다. `details`는 합치지 않고 통째로 바꾼다.
-- `backend/src/app.ts`: 자체 오류 처리를 중앙 `standard/http.ts`의 `errorHandler`·`notFound`로 바꿨다. 잘못된 JSON 본문이 500이 아니라 한국어 400이 된다. BIGINT `id`는 JSON 숫자로 내려준다.
-- 검색·필터·페이지 나누기는 #26 범위라 넣지 않았다.
+- `database/migrations/002_items.sql`: the `items` table and an index for list sorting. The DB also blocks the area, status, cost, title, and the rule "a completed status and a completion date go together" with `CHECK`.
+- `backend/src/items.ts`: `GET/POST /api/items`, `GET/PATCH/DELETE /api/items/:id`, and validation.
+- `PATCH`: takes only some values, merges them with the current row, and re-checks all the rules. It is handled inside a transaction that locks the row, so a concurrent edit does not make values disappear. `details` is replaced as a whole, not merged.
+- `backend/src/app.ts`: replaced the own error handling with `errorHandler` and `notFound` of the central `standard/http.ts`. A malformed JSON body now gives a Korean 400 instead of 500. The BIGINT `id` is sent as a JSON number.
+- Search, filters, and pagination are in the scope of #26, so they are not included.
 
-## 테스트
+## Tests
 
-- `backend/test/items.test.ts`(DB 없음): 잘못된 분야·날짜·비용·세부 종류·분야별 정보, 완료일 규칙, NUL 문자 등 입력이 DB에 닿기 전에 한국어 400으로 거절되는지, 완료일이 오늘이면 받아들이는지 확인한다.
-- `backend/test/db.integration.test.ts`(실제 DB): 마이그레이션 재적용, 5개 분야 저장·재조회·목록 순서, 수정·재오픈·분야 변경·삭제·404, DB `CHECK` 동작을 확인한다.
-- `backend/test/helpers.ts`: 요청에 메서드와 본문을 넣을 수 있게 했다. `fetch` 대신 `node:http`를 쓴다. 임시 포트 범위가 1024부터인 Windows PC에서 테스트 서버가 `fetch`가 막는 포트를 받아 `bad port`로 실패한 것을 고쳤다.
+- `backend/test/items.test.ts` (no DB): checks that input such as an invalid area, date, cost, subtype, per-area details, the completion date rule, and a NUL character is rejected with a Korean 400 before it reaches the DB, and that a completion date of today is accepted.
+- `backend/test/db.integration.test.ts` (real DB): checks re-applying the migration, saving, re-reading, and list order for the 5 areas, update, reopen, area change, delete, 404, and the behavior of the DB `CHECK`.
+- `backend/test/helpers.ts`: made it possible to put a method and a body in a request. It uses `node:http` instead of `fetch`. On a Windows PC where the temporary port range starts at 1024, the test server got a port that `fetch` blocks and failed with `bad port`; this fixes it.
 
-## 검증 — 2026-10-31
+## Verification — 2026-10-31
 
-임시 PostgreSQL 17.11(`journal_test`, 마이그레이션 001·002 적용)을 `TEST_DATABASE_URL`로 지정해 Windows에서 실행했다.
+Ran on Windows with a temporary PostgreSQL 17.11 (`journal_test`, migrations 001 and 002 applied) set as `TEST_DATABASE_URL`.
 
-- `npm run check`: 통과(포맷, lint, 타입, 테스트, 스킬 동기화 검사, 빌드).
-- `npm test`: 백엔드 37개 통과·건너뜀 0개, 프론트엔드 52개 통과.
-- `npm run knip`: 통과.
-- `TEST_DATABASE_URL` 없이 `npm test -w backend`: 32개 통과, DB 통합 테스트 5개 건너뜀. 건너뛴 결과는 DB 검증으로 치지 않는다.
-- 화면 변경이 없어 브라우저 확인은 하지 않았다.
+- `npm run check`: pass (format, lint, types, tests, skill sync check, build).
+- `npm test`: backend 37 passed and 0 skipped, frontend 52 passed.
+- `npm run knip`: pass.
+- `npm test -w backend` without `TEST_DATABASE_URL`: 32 passed, and 5 DB integration tests skipped. A skipped result does not count as DB verification.
+- There is no screen change, so we did not check in a browser.
 
-## 1차 리뷰 반영 — 2026-10-31
+## First review applied — 2026-10-31
 
-작성 문맥과 분리한 에이전트 리뷰의 지적과 처리 결과다.
+The findings of an agent review separated from the authoring context, and how they were handled.
 
-| 지적                                                    | 처리                                                                                                                                                               |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PATCH 중 DB 연결이 끊기면 API 프로세스가 죽음           | 트랜잭션 동안 연결의 `error`를 받아 로그로 남긴다. 요청은 500으로 끝나고 프로세스는 살아 있다                                                                      |
-| 쉬는 풀 연결이 끊겨도 프로세스가 죽음(기존 `server.ts`) | 이 PR의 변경이 아니라 [#31](https://github.com/sirloinbh/life-journal/issues/31)로 분리                                                                            |
-| ROLLBACK 실패가 원래 오류를 덮음                        | 원래 오류를 유지하고 그 연결은 풀에서 버린다                                                                                                                       |
-| 잠금·롤백을 검증하는 테스트가 없음                      | 동시 PATCH, COMMIT 실패 시 되돌림, 연결 끊김, PATCH의 미래 완료일 테스트 추가                                                                                      |
-| `costKrw: -1.5`에서 같은 오류 메시지가 두 번 나옴       | 비용·빈티지 검사를 묶어 한 번만 나오게 수정                                                                                                                        |
-| `CodeQL` 체크 실패(`js/missing-rate-limiting` 5건)      | 사용자 결정으로 오탐 처리 대신 앱에 요청 제한을 넣기로 함. [#32](https://github.com/sirloinbh/life-journal/issues/32)로 분리. 그 병합 전에는 이 PR을 병합하지 않음 |
+| Finding                                                                       | Handling                                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| If the DB connection drops during PATCH, the API process dies                 | During the transaction, receive the connection `error` and log it. The request ends with 500 and the process stays alive                                                                                            |
+| If an idle pool connection drops, the process dies (the existing `server.ts`) | Not a change of this PR; split out as [#31](https://github.com/sirloinbh/life-journal/issues/31)                                                                                                                    |
+| A ROLLBACK failure masked the original error                                  | Keep the original error and discard that connection from the pool                                                                                                                                                   |
+| No tests verified the lock and the rollback                                   | Added tests for concurrent PATCH, rollback on COMMIT failure, a dropped connection, and a future completion date in PATCH                                                                                           |
+| The same error message appeared twice for `costKrw: -1.5`                     | Fixed it by combining the cost and vintage checks so it appears once                                                                                                                                                |
+| The `CodeQL` check failed (5 `js/missing-rate-limiting` alerts)               | By the user decision, instead of dismissing it as a false positive, add a request limit to the app. Split out as [#32](https://github.com/sirloinbh/life-journal/issues/32). Do not merge this PR before that merge |
 
-### 검증
+### Verification
 
-같은 임시 DB로 실행했다.
+Ran with the same temporary DB.
 
-- `npm run check`: 통과.
-- `npm test -w backend`: 44개 통과·건너뜀 0개.
-- 코드에서 보호 장치를 하나씩 뺀 뒤 `npm test -w backend`를 돌려 새 테스트가 실패하는지 확인했다. 확인 후 코드는 되돌렸다.
-  - `FOR UPDATE` 제거: 동시 PATCH 테스트 실패.
-  - 연결 `error` 리스너 제거: 연결 끊김 테스트 실패.
-  - `ROLLBACK` 제거: COMMIT 실패 되돌림 테스트와 ROLLBACK 실패 테스트 실패.
+- `npm run check`: pass.
+- `npm test -w backend`: 44 passed and 0 skipped.
+- We removed the safeguards from the code one at a time, ran `npm test -w backend`, and checked that the new tests fail. After checking, we reverted the code.
+  - Remove `FOR UPDATE`: the concurrent PATCH test fails.
+  - Remove the connection `error` listener: the dropped connection test fails.
+  - Remove `ROLLBACK`: the COMMIT failure rollback test and the ROLLBACK failure test fail.
 
-## 2차 리뷰 — 2026-10-31
+## Second review — 2026-10-31
 
-head `62597f1`을 리뷰했다. 코드·테스트·마이그레이션의 보완점은 없었고, 1차 지적이 고쳐진 것을 확인했다. 부하 없이 12회, CPU 부하 중 6회 `npm test -w backend`를 돌려 매번 44개가 통과했다(불안정 없음). PR 본문의 테스트 건수가 오래된 지적 1건은 본문을 고쳐 반영했다. 리뷰는 2회로 끝낸다.
+We reviewed head `62597f1`. There was nothing to fix in code, tests, or migrations, and we confirmed that the first-round findings were fixed. We ran `npm test -w backend` 12 times without load and 6 times under CPU load, and each time 44 passed (no instability). One finding that the test count in the PR body was out of date was applied by fixing the body. The review ends after 2 rounds.
 
-## `origin/main` 병합 — 2026-10-31
+## Merge of `origin/main` — 2026-10-31
 
-#32(앱 수준 요청 제한, PR #33)가 병합돼 이 브랜치에 `origin/main`을 병합했다. 충돌은 없었다. 같은 임시 DB로 `npm run check`가 통과했고, 백엔드 45개 통과·건너뜀 0개, 프론트엔드 52개 통과다.
+#32 (app-level request limit, PR #33) was merged, so we merged `origin/main` into this branch. There were no conflicts. `npm run check` passed with the same temporary DB, with backend 45 passed and 0 skipped and frontend 52 passed.

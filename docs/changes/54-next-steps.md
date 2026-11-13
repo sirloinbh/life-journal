@@ -1,25 +1,25 @@
-# #54 다음 작업 문서를 PR 상태에 맞게 고치기
+# #54 Fix the next-steps document to match PR states
 
-- 이슈: [#54](https://github.com/sirloinbh/life-journal/issues/54)
-- 브랜치: `docs/54-next-steps`
+- Issue: [#54](https://github.com/sirloinbh/life-journal/issues/54)
+- Branch: `docs/54-next-steps`
 
-## 변경 — 2026-11-01
+## Changes — 2026-11-01
 
-`docs/next-steps/README.md`를 고쳤다.
+Fixed `docs/next-steps/README.md`.
 
-- PR #15 `zod` 4: 전날 "검토"로 적었지만, 중앙 #307에서 `zod` 3 유지로 이미 정해졌다. 병합하지 않는 것으로 고쳤다.
-- PR #52: 잠금 파일이 그대로라 CI가 실패한다. 사용자 단계로 옮겼다.
-- #34: 중앙 수정(project-standards PR #379)이 병합돼 동기화만 남았다.
-- `chore/1-agent-auto-merge`: 원격 브랜치와 파일 내용이 같고 PR #2로 병합된 것을 확인했다.
+- PR #15 `zod` 4: the day before it was written as "review" (under review), but central #307 had already decided to keep `zod` 3. Changed it to not merging.
+- PR #52: the lockfile is unchanged, so CI fails. Moved it to the user steps.
+- #34: the central fix (project-standards PR #379) was merged, so only the sync remains.
+- `chore/1-agent-auto-merge`: confirmed that its file content is the same as the remote branch and that it was merged in PR #2.
 
-## 검증
+## Verification
 
-- 문서만 바꿔 앱 테스트는 추가하지 않았다.
-- `npm run format:check`: 통과.
-- 이 문서에 적은 PR·이슈 상태는 GitHub에서 조회해 확인했다.
+- Only docs changed, so no app tests were added.
+- `npm run format:check`: pass.
+- The PR and issue states written in this document were checked by querying GitHub.
 
-## 리뷰 — 2026-11-01
+## Review — 2026-11-01
 
-head `775ed4c`를 분리된 에이전트가 리뷰했다. 문서의 사실 주장을 GitHub와 대조해, 중앙 수정의 번호 표기 1건(#378은 이슈, 병합은 PR #379)을 고쳤다. 이 PR 자체가 문서에 없다는 사소한 지적은 반영하지 않았다. 병합되면 사라질 항목이기 때문이다.
+A separate agent reviewed head `775ed4c`. It compared the factual claims of the document with GitHub, and one number notation of the central fix (#378 is the issue, the merge is PR #379) was fixed. A minor finding that this PR itself is not in the document was not applied, because that item disappears once it is merged.
 
-head `2c50859`의 2차 리뷰에서는 보완점이 없었다. 리뷰는 2회로 끝낸다.
+The second review of head `2c50859` found nothing to fix. The review ends after 2 rounds.
