@@ -42,8 +42,8 @@ Copy these as-is into the new project's `AGENTS.md` too.
 
 ## 2. Language and document rules
 
-- Talk to the user, and write screen text and docs (README, docs, issues, PRs) in **Korean**. Code identifiers, commit title prefixes (`feat:` and so on), and code comments default to English.
-- Specify Korean for server validation error messages too when the user can see them. Give the message, as in `.min(1, '…')`, so the default English Zod messages ("Array must contain…") are not shown on screen as they are.
+- User conversation, screen text, and documents (README, docs, issues, PRs) are written in **English** (the user set this on 2026-11-12; the earlier version of this document said Korean). Code identifiers, commit title prefixes (`feat:` and so on), and code comments are English. Screen text and validation messages that the user sees are covered by `sirloinbh/project-standards#457`.
+- Set a validation error message that the user sees explicitly. Give the message, as in `.min(1, '…')`, so the default English Zod message ("Array must contain…") is not shown on screen as it is.
 - Dates are `YYYY-MM-DD`, and the service time zone is `<timezone>`. Compute "today" on the server in the service time zone, not the server time zone.
 - Document locations:
   - `docs/changes/<issue-number>-<slug>.md`: change record per issue. Record the purpose, the changes, the commands actually run to verify them with pass/fail/skip, and the limits.
@@ -461,7 +461,7 @@ server {
 
 - `createApp(pool)` builds and returns the Express app, and `server.ts` only calls `listen`. Then tests can start the app with a real DB pool or a fake pool. To fix "today" in tests, provide an injection point such as `createApp(pool, { today })`.
 - `app.disable('x-powered-by')`, `express.json({ limit: '256kb' })`. Raise the limit separately only on a large upload route (for example backup restore).
-- Validate every input with Zod before touching the DB. A shared error middleware turns `ZodError` into 400 and a unique violation (23505) into 409, with Korean messages.
+- Validate every input with Zod before touching the DB. A shared error middleware turns `ZodError` into 400 and a unique violation (23505) into 409, and returns the user-facing messages.
 - Check the status with `GET /api/health`.
 - Receive the pg `date` type (OID 1082) as a string: `types.setTypeParser(1082, (v) => v)`. This prevents it from becoming a JS `Date` and shifting by time zone.
 - Wrap a change that writes several rows (a log plus its sets, and so on) in `BEGIN … COMMIT` on one client, run `ROLLBACK` on error, and `release()` in `finally`.
@@ -754,7 +754,7 @@ provider "aws" { region = var.region }
 | Several PRs keep conflicting in the same large file (`main.tsx`, `app.ts`)    | Screens and routes are gathered in one file                        | Split into per-feature modules, and after merging `main` into the later PR, confirm both features with tests |
 | Double-clicking a toggle button reverts the state                             | The two clicks are handled in different renders                    | Ignore the opposite action within a short time + a regression test                                           |
 | Data saved on another screen does not show up when you return                 | The screen does not reload on entry                                | Re-fetch when switching screens                                                                              |
-| A server validation error is shown in the original English                    | Default Zod message                                                | Give Korean messages to validation the user can see                                                          |
+| A server validation error is shown in the original English                    | Default Zod message                                                | Give explicit messages for validation the user can see                                                       |
 | After a backup "full replace", a retry answers a deleted id as "saved"        | The idempotent retry key is still there                            | On a replace restore, also reset the retry keys in the same transaction                                      |
 | A DB test looked like it "passed" but was not actually run                    | It is skipped when `TEST_DATABASE_URL` is not set                  | Check the skip count and report what was not run separately                                                  |
 
