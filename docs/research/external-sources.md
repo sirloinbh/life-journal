@@ -1,112 +1,112 @@
-# 분야별 외부 정보 소스 조사
+# Research on external information sources by area
 
-- 이슈: [#24](https://github.com/sirloinbh/life-journal/issues/24)
-- 조사일: 2026-10-31. 약관과 한도는 바뀔 수 있으므로 구현 직전에 다시 확인한다.
+- Issue: [#24](https://github.com/sirloinbh/life-journal/issues/24)
+- Research date: 2026-10-31. Terms and limits can change, so check them again right before implementation.
 
-## 결정
+## Decision
 
-| 분야        | 쓸 소스                | 사용자 결정                 |
-| ----------- | ---------------------- | --------------------------- |
-| 독서        | YES24 Open API         | 교보문고 우선, 없으면 YES24 |
-| 영화·드라마 | TMDB                   | 조사 추천(비상업 무료)      |
-| 공연        | KOPIS                  | 조사 추천(공연 전문 소스)   |
-| 주류        | 없음. 수동 입력 + 링크 | 추천안 선택                 |
-| 여행        | 한국관광공사 TourAPI   | 관광지·행사 중심            |
+| Area             | Source to use                      | User decision                                                |
+| ---------------- | ---------------------------------- | ------------------------------------------------------------ |
+| Books            | YES24 Open API                     | Kyobo Book Centre first, otherwise YES24                     |
+| Movies and shows | TMDB                               | Research recommendation (free for non-commercial use)        |
+| Performances     | KOPIS                              | Research recommendation (specialist source for performances) |
+| Alcohol          | None. Manual entry plus link       | Recommended option chosen                                    |
+| Travel           | Korea Tourism Organization TourAPI | Focus on sights and events                                   |
 
-외부 평점·가격과 이미지는 표시만 하고 기록하지 않는다.
+External ratings, prices, and images are only displayed, not recorded.
 
-교보문고는 공개 Open API를 찾지 못해 YES24로 정했다. 검색으로 개발자 문서를 찾지 못했고, 짐작한 `developers.kyobobook.co.kr`은 주소가 없었다. 공개되지 않은 제휴 API까지 없다고 확인한 것은 아니다.
+No public Open API was found for Kyobo Book Centre, so YES24 was chosen. A search did not find developer documentation, and the guessed `developers.kyobobook.co.kr` had no address. This does not confirm that there is no partner API that is not public.
 
-## 쓰지 않는 소스와 이유
+## Sources not used, and why
 
-| 분야        | 소스                                    | 이유                                                                                                                                                                |
-| ----------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 독서        | 알라딘                                  | [2026-10-30 종료](https://blog.aladin.co.kr/cscenter/17483675)                                                                                                      |
-| 독서        | 네이버 책 검색                          | 2026-07-31 종료, 대체 API 없음([2차 자료](https://newsway.co.kr/news/view?ud=2026090215314059117), 공식 공지 미확인)                                                |
-| 독서        | 카카오 책 검색                          | 평점이 없고, [운영정책](https://developers.kakao.com/terms/ko/site-policies) 제4조 제10호의 주류 서비스 제한이 걸림                                                 |
-| 독서        | 국립중앙도서관, 도서관 정보나루         | 평점이 확인되지 않고 약관과 한도가 미확인                                                                                                                           |
-| 영화·드라마 | KOBIS                                   | [약관](https://www.kobis.or.kr/kobisopenapi/homepg/board/findProvisionInfo.do)이 복제·저장을 금지하고 드라마가 없음                                                 |
-| 영화·드라마 | KMDb                                    | 약관을 읽지 못했고 드라마 지원이 미확인. 옛 한국 영화가 많아지면 다시 검토                                                                                          |
-| 공연        | 전국공연행사정보 표준데이터             | [공공데이터포털](https://www.data.go.kr/data/15013106/standard.do)의 지자체 행사 데이터로 분기 갱신, 포스터 항목 없음. 민간 공연을 포함하는지 미확인                |
-| 주류        | Vivino, Distiller                       | [Vivino](https://www.vivino.com/terms)와 [Distiller](https://distiller.com/terms-of-service) 약관이 스크래핑을 금지하고, 공식 API를 찾지 못함                       |
-| 주류        | Whiskybase                              | 라이선스 [API](https://www.whiskybase.com/wp/api)의 가격이 미확인이고, [약관](https://www.whiskybase.com/page/disclaimer)이 복제·수집을 제한함(요약 기준, 원문 403) |
-| 주류        | Wine-Searcher                           | [API](https://www.wine-searcher.com/trade/api)가 월 $335부터(검색 결과 기준, 페이지 원문은 403)                                                                     |
-| 여행        | 카카오 로컬, 네이버 지역, Google Places | 사용자가 관광지·행사 중심으로 정함. 카카오는 주류 조항, 네이버는 유료 전환 예고, Google은 유료 구간과 저장 제한                                                     |
+| Area             | Source                                       | Reason                                                                                                                                                                                                                    |
+| ---------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Books            | Aladin                                       | [Ended 2026-10-30](https://blog.aladin.co.kr/cscenter/17483675)                                                                                                                                                           |
+| Books            | Naver book search                            | Ended 2026-07-31, no replacement API ([secondary source](https://newsway.co.kr/news/view?ud=2026090215314059117), official notice not confirmed)                                                                          |
+| Books            | Kakao book search                            | No ratings, and the alcohol-service restriction in Article 4, item 10 of its [operating policy](https://developers.kakao.com/terms/ko/site-policies) applies                                                              |
+| Books            | National Library of Korea, Library Info Naru | No ratings confirmed, and terms and limits not confirmed                                                                                                                                                                  |
+| Movies and shows | KOBIS                                        | Its [terms](https://www.kobis.or.kr/kobisopenapi/homepg/board/findProvisionInfo.do) forbid copying and storing, and it has no TV dramas                                                                                   |
+| Movies and shows | KMDb                                         | The terms could not be read, and TV drama support is not confirmed. Review again if there are many older Korean films                                                                                                     |
+| Performances     | National performance and event standard data | Local-government event data on [data.go.kr](https://www.data.go.kr/data/15013106/standard.do), updated quarterly, with no poster field. Not confirmed whether it includes private performances                            |
+| Alcohol          | Vivino, Distiller                            | The terms of [Vivino](https://www.vivino.com/terms) and [Distiller](https://distiller.com/terms-of-service) forbid scraping, and no official API was found                                                                |
+| Alcohol          | Whiskybase                                   | The price of the licensed [API](https://www.whiskybase.com/wp/api) is not confirmed, and the [terms](https://www.whiskybase.com/page/disclaimer) limit copying and collecting (from a summary; the original returned 403) |
+| Alcohol          | Wine-Searcher                                | The [API](https://www.wine-searcher.com/trade/api) starts at $335 per month (from search results; the page itself returned 403)                                                                                           |
+| Travel           | Kakao Local, Naver Local, Google Places      | The user chose a focus on sights and events. Kakao has the alcohol clause, Naver announced a move to paid, and Google has paid tiers and storage limits                                                                   |
 
-## 쓸 소스의 조건
+## Conditions of the sources to use
 
-### YES24 Open API (독서)
+### YES24 Open API (books)
 
-- 제공: 제목, 저자, 출판사, ISBN, 정가·판매가, 표지 URL, 상세 조회 시 평균 별점([API 명세](https://github.com/yes24-AX/yes24-openapi-samples/blob/main/docs/api-reference.md)).
-- 인증과 한도: `X-Api-Key` 헤더, 기본 키 초당 10회, 일 20,000회([문서](https://developers.yes24.com/docs)). 샘플 저장소에는 초당 5회, 일 5,000회로 적혀 있지만 공식 문서 값을 따른다. Basic 플랜은 무료 유지 예정([개발자센터](https://developers.yes24.com)).
-- 약관([원문](https://developers.yes24.com/support/terms)):
-  - 성능 향상을 위한 일시 캐싱은 허용한다. 가격·재고는 운영정책의 갱신 주기를 지킨다.
-  - 대량·체계적 축적으로 별도 DB를 만들거나 제3자에게 제공하면 안 된다.
-  - 데이터를 보여 주는 화면에 출처를 표기하고 상품 상세 링크를 넣는다.
-- 이용 주체: 약관 제2조가 "자기 명의로 운영하는 개인, 법인 또는 기관"으로 정의한다. 실제 발급은 #40에서 확인한다.
-- 미확인: 가격·재고의 갱신 주기, 표지 이미지 조항.
+- Provides: title, author, publisher, ISBN, list and sale price, cover URL, and the average star rating on a detail lookup ([API reference](https://github.com/yes24-AX/yes24-openapi-samples/blob/main/docs/api-reference.md)).
+- Authentication and limits: `X-Api-Key` header, 10 calls per second and 20,000 per day for the basic key ([docs](https://developers.yes24.com/docs)). The sample repository says 5 per second and 5,000 per day, but follow the values in the official docs. The Basic plan is planned to stay free ([developer center](https://developers.yes24.com)).
+- Terms ([original](https://developers.yes24.com/support/terms)):
+  - Temporary caching to improve performance is allowed. For prices and stock, keep to the refresh cycle in the operating policy.
+  - You must not build a separate DB by bulk or systematic accumulation, or provide the data to a third party.
+  - On screens that show the data, show the source and include a link to the product detail page.
+- Who may use it: Article 2 of the terms defines it as "an individual, corporation, or organization that operates in its own name". Check the actual issuance in #40.
+- Not confirmed: the refresh cycle for prices and stock, and the clause on cover images.
 
-### TMDB (영화·드라마)
+### TMDB (movies and shows)
 
-- 제공: 영화·TV 통합 검색, 포스터 경로, 개요, 평점, 언어 지정([검색](https://developer.themoviedb.org/reference/search-multi)). 감독·출연진 필드는 미확인.
-- 인증과 한도: Bearer 토큰, 초당 약 40회([한도](https://developer.themoviedb.org/docs/rate-limiting)). 비상업 무료.
-- 약관([원문](https://www.themoviedb.org/api-terms-of-use)): 캐시는 6개월을 넘길 수 없고, 로고와 고지문을 넣어야 한다.
+- Provides: combined movie and TV search, poster paths, overview, rating, and language selection ([search](https://developer.themoviedb.org/reference/search-multi)). Director and cast fields are not confirmed.
+- Authentication and limits: Bearer token, about 40 calls per second ([limits](https://developer.themoviedb.org/docs/rate-limiting)). Free for non-commercial use.
+- Terms ([original](https://www.themoviedb.org/api-terms-of-use)): the cache must not exceed 6 months, and the logo and notice must be shown.
 
-### KOPIS (공연)
+### KOPIS (performances)
 
-- 제공: 공연 목록, 포스터 URL. 가격·출연진·공연장 필드는 미확인([안내](https://kopis.or.kr/por/cs/openapi/openApiInfo.do?menuId=MNU_00074)).
-- 조건: 인증키 1인 1개, KOPIS 기반임을 명시. 유효기간 1년, 3개월 이상 미사용 시 승인 취소.
-- 미확인: 호출 한도, 비용, 저장·캐시 조건, 약관 전문. 공식 페이지 본문을 읽지 못해 위 조건도 검색 결과 문구로만 확인했다. 키를 받은 뒤 다시 확인한다.
+- Provides: performance list and poster URLs. Price, cast, and venue fields are not confirmed ([guide](https://kopis.or.kr/por/cs/openapi/openApiInfo.do?menuId=MNU_00074)).
+- Conditions: one authentication key per person, and you must state that the data is based on KOPIS. The key is valid for 1 year, and approval is cancelled after 3 months of no use.
+- Not confirmed: call limits, cost, storage and cache conditions, and the full terms. The body of the official page could not be read, so the conditions above were checked only from search result text. Check again after getting a key.
 
-### 한국관광공사 TourAPI (여행)
+### Korea Tourism Organization TourAPI (travel)
 
-- 제공: 국내 관광정보 약 26만 건, 위치·지역·키워드 검색, 행사, 숙박, 이미지([API](https://www.data.go.kr/data/15101578/openapi.do)).
-- 인증과 비용: 공공데이터포털 `serviceKey`, 무료. 개발계정 한도는 같은 기관 다른 API 기준 1,000건으로, 이 API의 수치는 미확인.
-- 조건: 사진은 공공누리 1·3유형이라 출처 표시가 필수이고 3유형은 변경 금지다.
-- 한계: 일반 식당·가게가 어디까지 있는지 미확인.
+- Provides: about 260,000 domestic tourism records, search by location, region, and keyword, events, lodging, and images ([API](https://www.data.go.kr/data/15101578/openapi.do)).
+- Authentication and cost: `serviceKey` from data.go.kr, free. The development account limit is 1,000 calls based on another API from the same organization; the figure for this API is not confirmed.
+- Conditions: photos are KOGL type 1 and 3, so a source credit is required, and type 3 forbids changes.
+- Limit: how far ordinary restaurants and shops are covered is not confirmed.
 
-### 주류: 수동 입력 + 링크
+### Alcohol: manual entry plus link
 
-- 이름, 생산자, 산지, 빈티지 등을 직접 입력하고 사용자가 붙여넣은 링크를 저장한다.
-- 서버가 그 링크를 가져와 내용을 채우는 기능은 자동 접근이므로 넣지 않는다.
-- robots.txt가 열려 있어도 약관의 금지가 사라지지는 않으므로 크롤링하지 않는다.
+- Enter the name, producer, region of origin, vintage, and so on directly, and store the link the user pastes.
+- Do not add a feature where the server fetches that link to fill in the content, because that is automated access.
+- Do not crawl, because an open robots.txt does not remove the ban in the terms.
 
-## 저장 방식
+## How to store
 
-검색 결과는 저장하지 않고, 사용자가 고른 1건만 항목에 연결한다.
+Do not store search results; link only the one result the user picks to the item.
 
-| 값                              | 처리                                                        |
-| ------------------------------- | ----------------------------------------------------------- |
-| 사용자가 입력·수정한 값         | 저장                                                        |
-| 외부에서 채운 뒤 고치지 않은 값 | 저장하고 `source_fields`에 필드 이름을 기록                 |
-| 출처 정보                       | `source`, `external_id`, `source_url`, `fetched_at` 저장    |
-| 외부 평점, 가격                 | 항목을 볼 때 불러와 짧게 캐시. 기록하지 않음                |
-| 표지, 포스터                    | 외부 URL로만 표시. 깨지면 대체 이미지. 파일로 저장하지 않음 |
+| Value                                     | Handling                                                                                 |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Values the user entered or edited         | Store                                                                                    |
+| Values filled from outside and not edited | Store, and record the field name in `source_fields`                                      |
+| Source information                        | Store `source`, `external_id`, `source_url`, `fetched_at`                                |
+| External ratings and prices               | Load when the item is viewed and cache briefly. Do not record                            |
+| Covers and posters                        | Show only from the external URL. Use a fallback image if it breaks. Do not save as files |
 
-TMDB에서 가져온 값은 6개월 안에 다시 조회해 갱신한다. 갱신은 `source_fields`에 있는 필드만 덮어쓰고, 사용자가 고친 필드는 그 목록에서 빠지므로 건드리지 않는다. 사용자가 확정한 값에도 6개월 제한이 적용되는지는 약관에서 확인되지 않아, 이처럼 보수적으로 다룬다. YES24에서 고른 책 1건의 장기 보관은 약관이 직접 다루지 않아 구현 카드에서 다시 확인한다.
+Values taken from TMDB are looked up again and refreshed within 6 months. A refresh overwrites only the fields in `source_fields`; a field the user edited is removed from that list, so it is left alone. The terms do not say whether the 6-month limit also applies to values the user confirmed, so they are handled conservatively like this. Long-term keeping of the one book picked from YES24 is not covered directly by the terms, so check it again in the implementation card.
 
-지금은 항목 상세 화면이 없다. 외부 평점·가격·이미지를 어디에 보여 줄지는 먼저 구현하는 카드에서 정한다.
+There is no item detail screen now. Where to show external ratings, prices, and images is decided in the first card that is implemented.
 
-## API 키 보관
+## Keeping API keys
 
-- 키는 백엔드 `.env`에만 둔다. `.env.example`에는 이름만 넣는다. 커밋, 문서, PR, 로그에 남기지 않는다.
-- `VITE_` 접두사를 쓰지 않는다. 브라우저로 노출되기 때문이다. 외부 호출은 모두 Express를 거친다.
-- 변수 이름: `YES24_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, `KOPIS_SERVICE_KEY`, `TOURAPI_SERVICE_KEY`.
-- KOPIS와 TourAPI 키는 쿼리 문자열로 전달하므로 URL 로그에서 가린다.
-- 키가 없거나 만료되면 그 분야의 자동 채움만 끄고 수동 입력은 유지한다. KOPIS는 3개월 미사용 취소가 있어 #44 구현 직전에 신청하고, 키를 살려 두는 호출은 하지 않고 필요할 때 재발급한다.
+- Keep keys only in the backend `.env`. In `.env.example`, put only the names. Do not leave them in commits, docs, PRs, or logs.
+- Do not use the `VITE_` prefix, because it is exposed to the browser. All external calls go through Express.
+- Variable names: `YES24_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, `KOPIS_SERVICE_KEY`, `TOURAPI_SERVICE_KEY`.
+- The KOPIS and TourAPI keys are passed in the query string, so mask them in URL logs.
+- If a key is missing or expired, turn off only the auto-fill for that area and keep manual entry. KOPIS cancels after 3 months of no use, so apply right before you implement #44, do not make calls just to keep the key alive, and reissue it when needed.
 
-## 조사의 한계
+## Limits of the research
 
-- 약관 인용 중 YES24, 카카오 제4조 제10호, 알라딘 공지는 원문 페이지에서 다시 확인했다. 나머지는 웹 페이지 요약을 거쳤으므로 구현 전에 원문을 대조한다.
-- 읽지 못한 페이지: `developers.naver.com`, Wine-Searcher API 문서와 약관(403), Whiskybase API 페이지와 약관(403), KMDb 약관, KOPIS 본문.
+- Among the terms quoted, YES24, Kakao Article 4 item 10, and the Aladin notice were checked again on the original pages. The rest went through web page summaries, so compare them with the originals before implementation.
+- Pages that could not be read: `developers.naver.com`, the Wine-Searcher API docs and terms (403), the Whiskybase API page and terms (403), the KMDb terms, and the KOPIS body.
 
-## 구현 카드
+## Implementation cards
 
-| 카드 | 내용                                    |
-| ---- | --------------------------------------- |
-| #40  | [직접] API 키 발급                      |
-| #41  | 항목 링크 저장(주류 수동 입력 보완)     |
-| #42  | 책 검색으로 독서 항목 채우기 (YES24)    |
-| #43  | 영화·드라마 검색으로 항목 채우기 (TMDB) |
-| #44  | 공연 검색으로 항목 채우기 (KOPIS)       |
-| #45  | 여행지 검색으로 항목 채우기 (TourAPI)   |
+| Card | Content                                             |
+| ---- | --------------------------------------------------- |
+| #40  | [Manual] Get API keys                               |
+| #41  | Store item links (complements manual alcohol entry) |
+| #42  | Fill book items from book search (YES24)            |
+| #43  | Fill movie and show items from search (TMDB)        |
+| #44  | Fill performance items from search (KOPIS)          |
+| #45  | Fill travel place items from search (TourAPI)       |

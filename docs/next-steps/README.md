@@ -1,34 +1,34 @@
-# 다음 작업
+# Next steps
 
-최종 갱신일: **2026-11-02 (Asia/Seoul)**.
+Last updated: **2026-11-02 (Asia/Seoul)**.
 
-## 남은 할 일
+## What is left to do
 
-### 사용자가 먼저 할 일
+### What the user does first
 
-| 할 일                              | 막고 있는 카드 | 비고                                                                                             |
-| ---------------------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
-| #40 YES24, TMDB, TourAPI 키 발급   | #42, #43, #45  | 값은 `.env`에만 넣고 이슈·PR·채팅에 적지 않는다                                                  |
-| #38 Google OAuth 클라이언트 만들기 | #39            | 값은 `.env`에만 넣는다                                                                           |
-| KOPIS 키 신청                      | #44            | #44를 시작할 때 신청한다. 3개월 미사용 시 취소될 수 있다                                         |
-| #29 AWS 리소스 요청                | #29            | 사진을 S3에 저장하기로 해서 버킷, 자격 증명, SDK 설치가 필요하다. 아직 요청하지 않아 보류 상태다 |
+| Task                                  | Blocked card  | Note                                                                                                                        |
+| ------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| #40 Get YES24, TMDB, and TourAPI keys | #42, #43, #45 | Put the values only in `.env`; do not write them in issues, PRs, or chat                                                    |
+| #38 Create a Google OAuth client      | #39           | Put the values only in `.env`                                                                                               |
+| Apply for a KOPIS key                 | #44           | Apply when you start #44. It may be cancelled after 3 months of no use                                                      |
+| #29 Request AWS resources             | #29           | Photos will be stored in S3, so a bucket, credentials, and an SDK install are needed. Not requested yet, so this is on hold |
 
-### 에이전트가 할 일
+### What the agent does
 
-| 순서 | 할 일                                      | 조건                                                     |
-| ---- | ------------------------------------------ | -------------------------------------------------------- |
-| 1    | #42 YES24, #43 TMDB, #45 TourAPI 자동 채움 | #40 완료 후. 항목 상세 화면 또는 표시 위치를 먼저 정한다 |
-| 2    | #44 KOPIS 자동 채움                        | KOPIS 키 신청 후                                         |
-| 3    | #39 Google 캘린더 연동                     | #38 완료 후. 카드의 확인 항목을 먼저 묻는다              |
-| 4    | #29 사진을 S3에 저장                       | AWS 준비 후                                              |
-| 5    | `minimatch` 보안 알림 해결                 | 2026-11-10 이후. ESLint `^10`에 맞는 override가 필요하다 |
+| Order | Task                                       | Condition                                                               |
+| ----- | ------------------------------------------ | ----------------------------------------------------------------------- |
+| 1     | #42 YES24, #43 TMDB, #45 TourAPI auto-fill | After #40 is done. Decide the item detail screen or display place first |
+| 2     | #44 KOPIS auto-fill                        | After the KOPIS key is requested                                        |
+| 3     | #39 Google Calendar integration            | After #38 is done. Ask the confirmation items on the card first         |
+| 4     | #29 Store photos in S3                     | After AWS is ready                                                      |
+| 5     | Resolve the `minimatch` security alert     | After 2026-11-10. An override that fits ESLint `^10` is needed          |
 
-### 확인할 것
+### To check
 
-- 실제 터치 기기와 달력 팝업: 버킷리스트, 표 보기, 용어 공부를 헤드리스 Chrome으로만 확인했다.
-- 운영 DB 로케일: 제목 정렬과 비ASCII 대소문자 검색이 이 값을 따른다.
-- 기존 로컬 DB: 루트에서 `npm run db:migrate`를 한 번 실행한다. 기록이 없어 `001`부터 다시 적용하며 기록하고, 아직 적용하지 않은 `007`도 함께 적용된다(`database/README.md`).
+- Real touch devices and the calendar popup: the bucket list, table view, and terms study were checked only with headless Chrome.
+- Production DB locale: title sorting and non-ASCII case-insensitive search follow this value.
+- Existing local DB: run `npm run db:migrate` once from the root. With no record it re-applies from `001` and records them, and it also applies `007`, which has not been applied yet (`database/README.md`).
 
-## 실행 경계
+## Execution boundary
 
-배포, 하위 저장소 동기화, AWS 리소스 생성은 별도 요청 시에만 한다. 공유 인프라의 ECR 저장소는 첫 배포 때 `shared-aws-infrastructure`의 목록에 추가한다.
+Deploys, syncing the sub-repositories, and creating AWS resources are done only on a separate request. Add the ECR repository of the shared infrastructure to the list in `shared-aws-infrastructure` at the first deploy.
