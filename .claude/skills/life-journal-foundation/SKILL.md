@@ -5,7 +5,7 @@ description: Establish or improve the repeatable development foundation of the l
 
 # Review and Journal App development foundation
 
-Organize how this app is developed, verified, and operated so that it can be repeated. First read `AGENTS.md` in the project root and `skills/life-journal-implementation/SKILL.md`, then work through these steps: issue → numbered branch → implementation and docs record → tests and PR → automated code review (at most 2 rounds) → merge after CI passes. This skill does not skip the issue and PR steps and does not grant deploy permission.
+Organize how this app is developed, verified, and operated so that it can be repeated. First read `AGENTS.md` in the project root and `skills/life-journal-implementation/SKILL.md`, then work through these steps: issue → numbered branch → implementation and docs record → tests and PR → automated code review (1 or 2 rounds, more only while blocking findings remain) → merge after CI passes. This skill does not skip the issue and PR steps and does not grant deploy permission.
 
 ## Baseline
 

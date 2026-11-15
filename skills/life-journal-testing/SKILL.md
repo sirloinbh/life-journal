@@ -5,7 +5,7 @@ description: Write or update behavior-focused tests with life-journal implementa
 
 # Writing and running tests for the Review and Journal App
 
-Follow the project AGENTS.md and the life-journal-implementation procedure together. This skill sets the standard for writing and running tests. It keeps the issue, branch, docs, and PR steps, and the policy of automated code review after the PR (at most 2 rounds) → merge after CI passes.
+Follow the project AGENTS.md and the life-journal-implementation procedure together. This skill sets the standard for writing and running tests. It keeps the issue, branch, docs, and PR steps, and the policy of automated code review after the PR (1 or 2 rounds, more only while blocking findings remain) → merge after CI passes.
 
 ## Write tests together with the implementation or fix
 
