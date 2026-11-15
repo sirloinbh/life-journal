@@ -5,7 +5,7 @@ description: Follow the user's issue, numbered branch, implementation with docs,
 
 # Review and Journal App implementation procedure
 
-This skill applies to changes in `sirloinbh/life-journal`. Do not apply this account, repository, or policy to other projects. Read the project root `AGENTS.md` and the related docs first. Follow the order below: pass automated code review (at most 2 rounds), and finish by merging a PR whose required CI has passed.
+This skill applies to changes in `sirloinbh/life-journal`. Do not apply this account, repository, or policy to other projects. Read the project root `AGENTS.md` and the related docs first. Follow the order below: pass automated code review (1 or 2 rounds, more only while blocking findings remain), and finish by merging a PR whose required CI has passed.
 
 ## 1. Register an issue card
 
@@ -44,13 +44,13 @@ This skill applies to changes in `sirloinbh/life-journal`. Do not apply this acc
 
 ## 5. Automated code review after the PR (at most 2 rounds)
 
-After you open a PR, it goes through automated code review at most 2 times. If a review finds something to fix, apply it in an extra commit, and get one more review after the first round of fixes. Do not review again after the second round of fixes. If a review finds nothing, go straight to the next step. A fix that is too large for this PR becomes a new issue card.
+After you open the PR, review it yourself 1 or 2 times (more only while blocking findings remain, std-code-review section 8). If there is nothing to fix, go straight to the CI check and the merge.
 
 1. **First review**: After opening the PR, run a read-only review that is separate from the authoring context (a separate agent, a review tool, and so on). Check correctness, regressions, security, missing tests, and the docs record against the issue done criteria and the full PR diff.
 2. **If nothing needs fixing**, end the review and move on to the CI check and the merge.
 3. **If something needs fixing**, apply only the findings that can be fixed within this PR. Make an extra commit that includes the related tests and docs record, and push it.
 4. **Second review**: Check that the first-round findings were applied and review the added diff. Also look at the full final PR diff. If nothing needs fixing, move on to CI.
-5. **Second-round fixes**: Apply second-round findings in an extra commit. Reviews are at most 2, so do not run a third review; move on to CI.
+5. **Second-round fixes**: Apply the second findings in an additional commit. Stop after round 2 unless a blocking finding remains. If one does, fix it on the same branch and review again, repeating only while blocking findings remain (std-code-review section 8), then go on to CI.
 6. **Split large fixes**: Do not fix findings of the following kinds in this PR. Instead create a new issue card (with the problem, scope, and done criteria) in `sirloinbh/life-journal`. Leave the issue link in a PR comment and the docs record, and continue with this PR.
    - A feature outside the requested scope
    - A design or data structure change
