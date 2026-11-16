@@ -1,3 +1,4 @@
+import { meHandler } from '@sirloinbh/auth-client';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import type { Pool } from 'pg';
@@ -24,7 +25,10 @@ export function serviceDate(now = new Date()) {
   }).format(now);
 }
 
-export function createApp(pool: Pool, options: { today?: () => string } = {}) {
+export function createApp(
+  pool: Pool,
+  options: { today?: () => string; auth?: express.RequestHandler } = {},
+) {
   const today = options.today ?? (() => serviceDate());
   const app = express();
   app.disable('x-powered-by');
@@ -40,6 +44,9 @@ export function createApp(pool: Pool, options: { today?: () => string } = {}) {
     }),
   );
   app.use(express.json({ limit: '256kb' }));
+  // #111: the shared sign-in guards every /api route except /api/health, before any route registers.
+  if (options.auth) app.use('/api', options.auth);
+  app.get('/api/me', meHandler);
   app.get('/api/health', async (_req, res) => {
     await pool.query('SELECT 1');
     res.json({ ok: true, service: 'life-journal', today: today() });
