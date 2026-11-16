@@ -24,4 +24,5 @@
 
 ## Verification
 
-- Pending: run after the lockfile update
+- Local: format, lint and typecheck pass; backend `sign-in` and `health` tests (7 pass); frontend `app` and `auth-origin` tests (6 pass); `node .standards/check.mjs` passes. The tests that need PostgreSQL and the rest of the frontend run in CI.
+- `npm install --ignore-scripts` (user step) and `node .standards/lockfiles.mjs --write` updated the lockfiles for `@sirloinbh/auth-client` 1.0.0.
