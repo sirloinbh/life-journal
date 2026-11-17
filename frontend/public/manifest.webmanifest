@@ -1,7 +1,7 @@
 {
   "name": "Reviews & Diary",
   "short_name": "Reviews & Diary",
-  "description": "A personal service for recording book and film reviews, a diary, and experiences such as plays and concerts. There is one user (me) and no login. Before any public exposure, design private access or authentication first.",
+  "description": "Keep book and film reviews, a diary, and notes on plays and concerts.",
   "lang": "en",
   "start_url": "/",
   "scope": "/",
