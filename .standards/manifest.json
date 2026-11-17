@@ -1,5 +1,5 @@
 {
-  "centralSha": "ef519a027a81e433b3ccb701683cf17492cba689",
+  "centralSha": "1d20cf11e897809cbead42177bae51189e92db2b",
   "profile": "app",
   "project": "life-journal",
   "files": {
@@ -379,7 +379,7 @@
     },
     "frontend/nginx.conf": {
       "mode": "full",
-      "sha256": "46be333124229e8f1865a36c6d7b6de3a8b3a472cc706244b3f3c3f5c2f52056",
+      "sha256": "5b05d85b4587c80c3363750857e446745f6029be79ca8610a9b9ec1809d29922",
       "source": "templates/app/frontend/nginx.conf.tmpl"
     },
     "frontend/package.json": {
