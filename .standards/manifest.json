@@ -1,5 +1,5 @@
 {
-  "centralSha": "74a105e99e677d4609f99dc4873ed79a2cd204df",
+  "centralSha": "aba0794137264f87dfdd25c776304fae7cb6ffba",
   "profile": "app",
   "project": "life-journal",
   "files": {
@@ -428,7 +428,7 @@
     },
     "frontend/public/manifest.webmanifest": {
       "mode": "full",
-      "sha256": "5f1a72d1fc9533a54cdd9f793b90e8bdb7ba463d70dbf229742161b71739bb5b",
+      "sha256": "ce6b1deadd7bc834b07cc9975fb2629f58dff7c651bcdb67de1cb287881723d4",
       "source": "templates/app/frontend/public/manifest.webmanifest.tmpl"
     },
     "frontend/public/offline.html": {
@@ -738,7 +738,7 @@
     },
     "knip.json": {
       "mode": "full",
-      "sha256": "98d012da1b99df680e21a39d1c4ea63cdebaffdf2ca1d7183aa554e2c019a93c",
+      "sha256": "b3b9fcc9dd9c425b8d7043d4d5a306f32044317ee5c53ff6ce3c6700c2eefc85",
       "source": "templates/app/knip.json"
     },
     "lighthouserc.json": {
