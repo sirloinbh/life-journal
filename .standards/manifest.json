@@ -1,5 +1,5 @@
 {
-  "centralSha": "9f05ff31ce4c4151dfe85a0ffd38195fe8ecdee4",
+  "centralSha": "d974c93bf39765824b671009f2b2d2cec202e6ee",
   "profile": "app",
   "project": "life-journal",
   "files": {
@@ -339,7 +339,7 @@
     },
     "deploy/remote-deploy.sh": {
       "mode": "full",
-      "sha256": "4dcf5945aa771204dda1989c2c952838659f79044bed8a67c23ed94920f35094",
+      "sha256": "941bcf9435515559442e462e6f0eb012c77c2384d45ea831cc9265b1ade5afb8",
       "source": "templates/app/deploy/remote-deploy.sh.tmpl"
     },
     "deploy/report.service": {
@@ -349,7 +349,7 @@
     },
     "deploy/report.sh": {
       "mode": "full",
-      "sha256": "680e171206f0098cb451b6f8b15aceddcebec2637169797b8e5a36e283fe33c9",
+      "sha256": "6a933d216cfcd5fa8ea8a299e97ebb8125e43fede8d4da4e5ee9fecc15cecd38",
       "source": "templates/app/deploy/report.sh.tmpl"
     },
     "deploy/report.timer": {
