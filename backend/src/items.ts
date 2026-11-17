@@ -241,7 +241,7 @@ const itemObject = <Shape extends z.ZodRawShape>(shape: Shape) =>
     input === undefined ? 'Request body is required' : 'Request body is not valid',
   );
 
-const itemFields = itemObject({
+export const itemFields = itemObject({
   ...itemShape,
   status: status.default('wishlist'),
   details: detailsRecord.default({}),
@@ -249,7 +249,7 @@ const itemFields = itemObject({
 });
 
 // No defaults here: zod 4 applies a default inside .optional(), so PATCH would overwrite fields it did not get.
-const itemPatch = itemObject(itemShape).partial();
+export const itemPatch = itemObject(itemShape).partial();
 
 // Rules across fields. PATCH runs them on the merged row, so a partial change cannot break them.
 function parseItem(input: unknown, today: string) {
@@ -323,7 +323,7 @@ const queryCost = (label: string) => {
 
 const queryDate = (label: string) => date(label).optional();
 
-const listQuery = strictObject(
+export const listQuery = strictObject(
   {
     q: z
       .string({ error: 'Search term must be a single value' })
