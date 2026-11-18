@@ -1,6 +1,6 @@
 # Next steps
 
-Last updated: **2026-11-02 (Asia/Seoul)**.
+Last updated: **2026-11-18 (Asia/Seoul)**.
 
 ## What is left to do
 
@@ -21,7 +21,7 @@ Last updated: **2026-11-02 (Asia/Seoul)**.
 | 2     | #44 KOPIS auto-fill                        | After the KOPIS key is requested                                        |
 | 3     | #39 Google Calendar integration            | After #38 is done. Ask the confirmation items on the card first         |
 | 4     | #29 Store photos in S3                     | After AWS is ready                                                      |
-| 5     | Resolve the `minimatch` security alert     | After 2026-11-10. An override that fits ESLint `^10` is needed          |
+| 5     | Dependabot PR #119 (`basic-ftp` 6.x)       | Major bump in a dev-only tool. Review it under #127                     |
 
 ### To check
 
