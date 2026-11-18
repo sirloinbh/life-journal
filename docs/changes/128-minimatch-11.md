@@ -7,7 +7,7 @@
 
 Dependabot alert #10 ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), moderate) covers `minimatch >= 7.0.0, < 11.0.1`. `eslint`, `@eslint/config-array`, `typescript-eslint` and `eslint-plugin-jsx-a11y-x` ask for `minimatch ^10`, so the lockfile had `10.2.6`. The fix will not be backported to 10.x, so we force 11.x with overrides. This is a dev-only dependency; the app does not ship it.
 
-- Root `package.json`: added `overrides` that pin `minimatch` to `11.0.4` under `eslint`, `typescript-eslint` and `eslint-plugin-jsx-a11y-x`. The overrides are scoped to these packages so that `rimraf`'s `glob@7`, which needs `minimatch` 3, is not touched. `11.0.4` is the same version that sirloinbh/dev-career-portfolio and sirloinbh/plan-routine use, and it was released more than two weeks ago.
+- Root `package.json`: added `overrides` that pin `minimatch` to `11.0.4` under `eslint`, `typescript-eslint` and `eslint-plugin-jsx-a11y-x`. The overrides are scoped to these packages so that `rimraf`'s `glob@7`, which needs `minimatch` 3, is not touched. `11.0.4` is the same version that sirloinbh/dev-career-portfolio and sirloinbh/plan-routine use, and it was released on 2026-11-02, more than two weeks before this change.
 - `package-lock.json`: updated with `npm install --ignore-scripts` (the user approved the package change). Only the `node_modules/minimatch` entry changed, from `10.2.6` to `11.0.4`. Its new dependencies (`@isaacs/nonrecursive-glob-match` 1.1.0, `brace-expansion` 5.0.12) were already in the lockfile.
 - Compatibility: these packages use only `new Minimatch()`, `.match()`, `.pattern` and `minimatch()`, which 11.x keeps. 11.x removes `makeRe` and the `AST` export, which none of them use.
 - `docs/next-steps/README.md`: replaced the `minimatch` line with the Dependabot `basic-ftp` PR #119.
@@ -19,6 +19,15 @@ Dependabot alert #10 ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g
 - `npm run check`: format, lint (`eslint . --max-warnings 0`, which runs every file through the overridden `minimatch`), contract check and typecheck passed. The backend DB integration tests failed with `ECONNREFUSED 127.0.0.1:5432` because the local PostgreSQL service was stopped and could not be started without admin rights.
 - Without `TEST_DATABASE_URL`, the remaining steps passed: `npm test` (backend 143 passed, 22 skipped DB tests, 0 failed; frontend 164 passed, 3 skipped), `npm run test:skills` (4 passed) and `npm run build`. The DB tests run in the PR CI, which has its own PostgreSQL.
 - No app code or screen changed, so we did not check in a browser.
+
+## Review — round 1 (2026-11-18)
+
+An independent read-only review found no blocking issue. It confirmed every ESLint path resolves to `minimatch` 11.0.4, the APIs used are still exported, and only the `minimatch` lockfile entry changed.
+
+- suggestion (non-blocking): the overrides cover only the three named packages, so a future dev dependency that asks for `minimatch ^10` would not be covered. Not changed: Dependabot and `npm audit` would report it.
+- nitpick: the release date of 11.0.4 was not stated. Added (2026-11-02, from `npm view minimatch time`).
+
+No second round is needed because round 1 had no blocking findings.
 
 ## Follow-up
 
