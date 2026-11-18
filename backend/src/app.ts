@@ -5,7 +5,7 @@ import type { Pool } from 'pg';
 import { types } from 'pg';
 
 import { createItemsRouter } from './items.js';
-import { errorHandler, notFound } from './standard/http.js';
+import { errorHandler, notFound, requestLog } from './standard/http.js';
 import { createTermsRouter } from './terms.js';
 
 // DATE columns stay YYYY-MM-DD strings so the service time zone never shifts them.
@@ -32,6 +32,8 @@ export function createApp(
   const today = options.today ?? (() => serviceDate());
   const app = express();
   app.disable('x-powered-by');
+  // project-standards#658: a request ID and one JSON log line for every request, first so a 401 has them too.
+  app.use(requestLog);
   // Same level as the /api/ limit in frontend/nginx.conf (10 r/s), for paths that skip nginx.
   app.use(
     '/api',
