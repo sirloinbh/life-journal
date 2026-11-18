@@ -13,7 +13,7 @@ npm run db:migrate               # Applies the pending files in name order
 
 - The runner wraps each file in a transaction and records every applied file in `schema_migrations` with its checksum. If a file fails, only that file is rolled back and the runner stops with a non-zero exit code.
 - On a DB with no record table (a DB that was set up earlier with psql), the first run applies everything again from `001` and records it. This is why every file must be safe to run again.
-- On an empty Docker volume, all files are applied automatically in name order on the first start (with no record). Then run `npm run db:migrate` once to create the record.
+- On an empty Docker volume, Docker applies nothing. Start the DB, then run `npm run db:migrate`, which applies every file in name order and records it.
 - For a production deploy, `deploy/remote-deploy.sh` takes a dump and then runs the same runner inside the API image with `node dist/migrate.js`.
 - CI applies the files once with psql and then runs the runner, which also checks that running them again is safe.
 
