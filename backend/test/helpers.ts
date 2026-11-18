@@ -1,4 +1,4 @@
-import { request } from 'node:http';
+import { type IncomingHttpHeaders, request } from 'node:http';
 
 import type { Pool } from 'pg';
 
@@ -6,33 +6,44 @@ import { createApp } from '../src/app.js';
 
 type Call = (
   path: string,
-  init?: { method?: string; body?: unknown; rawBody?: string },
-) => Promise<{ status: number; data: Record<string, unknown> }>;
+  init?: { method?: string; body?: unknown; rawBody?: string; headers?: Record<string, string> },
+) => Promise<{ status: number; data: Record<string, unknown>; headers: IncomingHttpHeaders }>;
 
 // node:http, not fetch: fetch refuses "bad ports" such as 5060, and a Windows PC whose
 // ephemeral range starts at 1024 can hand those to listen(0).
-function send(port: number, path: string, method: string, body?: string) {
-  return new Promise<{ status: number; raw: string }>((resolve, reject) => {
-    const req = request(
-      {
-        host: '127.0.0.1',
-        port,
-        path,
-        method,
-        agent: false,
-        headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-      },
-      (res) => {
-        let raw = '';
-        res.setEncoding('utf8');
-        res.on('data', (chunk: string) => (raw += chunk));
-        res.on('end', () => resolve({ status: res.statusCode ?? 0, raw }));
-        res.on('error', reject);
-      },
-    );
-    req.on('error', reject);
-    req.end(body);
-  });
+function send(
+  port: number,
+  path: string,
+  method: string,
+  body?: string,
+  extraHeaders: Record<string, string> = {},
+) {
+  return new Promise<{ status: number; raw: string; headers: IncomingHttpHeaders }>(
+    (resolve, reject) => {
+      const req = request(
+        {
+          host: '127.0.0.1',
+          port,
+          path,
+          method,
+          agent: false,
+          headers: {
+            ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+            ...extraHeaders,
+          },
+        },
+        (res) => {
+          let raw = '';
+          res.setEncoding('utf8');
+          res.on('data', (chunk: string) => (raw += chunk));
+          res.on('end', () => resolve({ status: res.statusCode ?? 0, raw, headers: res.headers }));
+          res.on('error', reject);
+        },
+      );
+      req.on('error', reject);
+      req.end(body);
+    },
+  );
 }
 
 export async function withApi(
@@ -51,8 +62,14 @@ export async function withApi(
     await run(async (path, init = {}) => {
       const body =
         init.rawBody ?? (init.body === undefined ? undefined : JSON.stringify(init.body));
-      const { status, raw } = await send(address.port, path, init.method ?? 'GET', body);
-      return { status, data: (raw ? JSON.parse(raw) : {}) as Record<string, unknown> };
+      const { status, raw, headers } = await send(
+        address.port,
+        path,
+        init.method ?? 'GET',
+        body,
+        init.headers,
+      );
+      return { status, data: (raw ? JSON.parse(raw) : {}) as Record<string, unknown>, headers };
     });
   } finally {
     await new Promise<void>((resolve, reject) =>
