@@ -21,7 +21,6 @@ Last updated: **2026-11-18 (Asia/Seoul)**.
 | 2     | #44 KOPIS auto-fill                        | After the KOPIS key is requested                                        |
 | 3     | #39 Google Calendar integration            | After #38 is done. Ask the confirmation items on the card first         |
 | 4     | #29 Store photos in S3                     | After AWS is ready                                                      |
-| 5     | Dependabot PR #119 (`basic-ftp` 6.x)       | Major bump in a dev-only tool. Review it under #127                     |
 
 ### To check
 
