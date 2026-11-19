@@ -118,14 +118,14 @@ test(
     assert.match(first.stdout, /Applied: 001_initial\.sql/);
     const second = await runCommand(inSchema(schema));
     assert.equal(second.code, 0, second.stderr);
-    assert.match(second.stdout, /No migrations to apply/);
+    assert.match(second.stdout, /No pending migrations/);
 
     await client.query(
       "UPDATE schema_migrations SET checksum = 'changed' WHERE name = '007_coffee_category.sql'",
     );
     const failed = await runCommand(inSchema(schema));
     assert.equal(failed.code, 1);
-    assert.match(failed.stderr, /Applied migration file has changed: 007_coffee_category\.sql/);
+    assert.match(failed.stderr, /An applied migration file was changed: 007_coffee_category\.sql/);
   },
 );
 
@@ -144,7 +144,7 @@ test(
     );
     await assert.rejects(
       migrate(client, await readMigrations(dir)),
-      /Failed to apply 002_bad\.sql/,
+      /002_bad\.sql failed to apply/,
     );
     const { rows } = await client.query('SELECT name FROM schema_migrations ORDER BY name');
     assert.deepEqual(rows, [{ name: '001_ok.sql' }]);
