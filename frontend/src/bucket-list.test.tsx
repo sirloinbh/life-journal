@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import type { Item } from './items';
+import { queryLive } from './test/live';
 
 const TODAY = '2026-10-31';
 
@@ -483,7 +484,7 @@ test('editing the review clears the previous error', async () => {
   fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
   await dialog.findByRole('alert');
   type(dialog, 'Review', 'ㄱ');
-  expect(dialog.queryByRole('alert')).toBeNull();
+  expect(dialog.queryByRole('alert')).toBeEmptyDOMElement();
 });
 
 for (const [name, text, message] of [
@@ -597,7 +598,7 @@ test('changes show the server response even when the reload after them fails', a
   await dialogClosed();
   expect(await screen.findByText('수레바퀴')).toBeInTheDocument();
   expect(screen.getByText('Saved')).toHaveAttribute('role', 'status');
-  expect(screen.queryByRole('alert')).toBeNull();
+  expect(queryLive('alert')).toBeNull();
 
   // The next edit starts from the saved values, so it cannot bring old ones back.
   dialog = await openDialog('Edit 데미안');
@@ -622,7 +623,7 @@ test('changes show the server response even when the reload after them fails', a
   await dialogClosed();
   await waitFor(() => expect(screen.queryByText('고친 제목')).toBeNull());
   expect(screen.getByText('수레바퀴')).toBeInTheDocument();
-  expect(screen.queryByRole('alert')).toBeNull();
+  expect(queryLive('alert')).toBeNull();
 });
 
 test('a slow older list response cannot replace a newer one', async () => {
@@ -689,7 +690,7 @@ test('a failed list load is reported, and the retry button waits for its request
   api.gate = null;
   held.open();
   expect(await screen.findByText('데미안')).toBeInTheDocument();
-  expect(screen.queryByRole('alert')).toBeNull();
+  expect(queryLive('alert')).toBeNull();
 });
 
 for (const name of ['Add item', 'Edit 데미안', 'Mark 데미안 as done', 'Delete 데미안']) {

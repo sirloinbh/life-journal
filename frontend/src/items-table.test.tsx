@@ -3,6 +3,7 @@ import { beforeAll, expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import type { Item } from './items';
+import { findLive, queryLive } from './test/live';
 
 beforeAll(() => {
   Element.prototype.hasPointerCapture ??= () => false;
@@ -277,13 +278,13 @@ test('a failure can be retried with the same conditions, without an empty notice
     online ? json({ items: [row(1, {})] }) : json({ error: 'A server error occurred' }, 500),
   );
   openAt('/table?status=done');
-  expect(await screen.findByRole('alert')).toHaveTextContent('A server error occurred');
+  expect(await findLive('alert')).toHaveTextContent('A server error occurred');
   expect(screen.queryByText('No items match the filters')).toBeNull();
   online = true;
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
   expect(await screen.findByRole('link', { name: 'Item 1' })).toBeInTheDocument();
   expect(asked).toEqual(['status=done', 'status=done']);
-  expect(screen.queryByRole('alert')).toBeNull();
+  expect(queryLive('alert')).toBeNull();
 });
 
 test('the empty notice waits for the answer', async () => {
@@ -346,7 +347,7 @@ test('a server validation error is shown in Korean and the last rows stay', asyn
   const cost = screen.getByLabelText('Minimum cost (KRW)');
   fireEvent.change(cost, { target: { value: 'expensive' } });
   fireEvent.blur(cost);
-  expect(await screen.findByRole('alert')).toHaveTextContent(
+  expect(await findLive('alert')).toHaveTextContent(
     'Minimum cost must be a whole number from 0 to 2147483647',
   );
   expect(screen.getByRole('link', { name: 'Item 1' })).toBeInTheDocument();

@@ -8,7 +8,16 @@ import { fileURLToPath } from 'node:url';
 
 import { Client } from 'pg';
 
-import { migrate, readMigrations } from '../src/migrations.js';
+import {
+  migrate as runMigrate,
+  type Migration,
+  readMigrations,
+} from '../src/standard/migrations.js';
+
+// The runner takes the app's advisory lock key; tests use their own.
+const lockKey = 581_900;
+const migrate = (db: Parameters<typeof runMigrate>[0], files: Migration[]) =>
+  runMigrate(db, files, lockKey);
 
 // The migration runner against a real database (#83). deploy/remote-deploy.sh runs the built
 // command as `node dist/migrate.js`; these tests run its source the same way through tsx.
@@ -109,14 +118,14 @@ test(
     assert.match(first.stdout, /Applied: 001_initial\.sql/);
     const second = await runCommand(inSchema(schema));
     assert.equal(second.code, 0, second.stderr);
-    assert.match(second.stdout, /No migrations to apply/);
+    assert.match(second.stdout, /No pending migrations/);
 
     await client.query(
       "UPDATE schema_migrations SET checksum = 'changed' WHERE name = '007_coffee_category.sql'",
     );
     const failed = await runCommand(inSchema(schema));
     assert.equal(failed.code, 1);
-    assert.match(failed.stderr, /Applied migration file has changed: 007_coffee_category\.sql/);
+    assert.match(failed.stderr, /An applied migration file was changed: 007_coffee_category\.sql/);
   },
 );
 
@@ -135,7 +144,7 @@ test(
     );
     await assert.rejects(
       migrate(client, await readMigrations(dir)),
-      /Failed to apply 002_bad\.sql/,
+      /002_bad\.sql failed to apply/,
     );
     const { rows } = await client.query('SELECT name FROM schema_migrations ORDER BY name');
     assert.deepEqual(rows, [{ name: '001_ok.sql' }]);

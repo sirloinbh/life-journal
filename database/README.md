@@ -4,7 +4,7 @@ PostgreSQL 17. The only source of migrations is `migrations/NNN_<description>.sq
 
 ## How to apply
 
-Apply them with the shared runner (`backend/src/migrations.ts`; the command is `backend/src/migrate.ts`). Run it from the repository root; it uses `DATABASE_URL` from `.env`.
+Apply them with the shared runner (`backend/src/standard/migrations.ts`; the command is `backend/src/standard/migrate.ts`). Run it from the repository root; it uses `DATABASE_URL` from `.env`.
 
 ```powershell
 npm run db:migrate -- --status   # Only lists applied and pending files. It does not change the DB
