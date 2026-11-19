@@ -483,7 +483,7 @@ test('editing the review clears the previous error', async () => {
   fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
   await dialog.findByRole('alert');
   type(dialog, 'Review', 'ㄱ');
-  expect(dialog.queryByRole('alert')).toBeNull();
+  expect(dialog.queryByRole('alert')).toBeEmptyDOMElement();
 });
 
 for (const [name, text, message] of [
@@ -597,7 +597,7 @@ test('changes show the server response even when the reload after them fails', a
   await dialogClosed();
   expect(await screen.findByText('수레바퀴')).toBeInTheDocument();
   expect(screen.getByText('Saved')).toHaveAttribute('role', 'status');
-  expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.queryByRole('alert')).toBeEmptyDOMElement();
 
   // The next edit starts from the saved values, so it cannot bring old ones back.
   dialog = await openDialog('Edit 데미안');
@@ -689,7 +689,7 @@ test('a failed list load is reported, and the retry button waits for its request
   api.gate = null;
   held.open();
   expect(await screen.findByText('데미안')).toBeInTheDocument();
-  expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.queryByRole('alert')).toBeEmptyDOMElement();
 });
 
 for (const name of ['Add item', 'Edit 데미안', 'Mark 데미안 as done', 'Delete 데미안']) {

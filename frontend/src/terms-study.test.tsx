@@ -205,7 +205,7 @@ test('a failed mark shows the message and leaves the box as it was', async () =>
   expect(tannin).not.toBeChecked();
   fireEvent.click(tannin);
   await waitFor(() => expect(tannin).toBeChecked());
-  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(screen.queryByRole('alert')).toBeEmptyDOMElement();
 });
 
 test('a mark failing after a move to another domain names its term there', async () => {
