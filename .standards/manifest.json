@@ -1,5 +1,5 @@
 {
-  "centralSha": "7425a45fda829c10c418983d914321148357bd1f",
+  "centralSha": "018b16251d584eccd1e8f39e6ac31de4136961bd",
   "profile": "app",
   "project": "life-journal",
   "files": {
@@ -130,7 +130,7 @@
     },
     ".github/workflows/ci.yml": {
       "mode": "full",
-      "sha256": "2f47667778dbf6d3c83ea9324cf1393de570441a413c697046d49889a06c9403",
+      "sha256": "b829a9d640a2b4163bde12ab7046a91551121ff6206ab619ac7575f3f95ce2d1",
       "source": "templates/app/.github/workflows/ci.yml.tmpl"
     },
     ".gitignore": {
@@ -350,7 +350,7 @@
     },
     "deploy/autodeploy.sh": {
       "mode": "full",
-      "sha256": "cb0537f51c5dd6c0613bb1f00449ddae83ed01e077e60a55038b98c6a192ed23",
+      "sha256": "4103fc754754f0c2357098f19ffb6abefd59aea9e67d2320e067b5961cb03207",
       "source": "templates/deploy/deploy/autodeploy.sh.tmpl"
     },
     "deploy/autodeploy.timer": {
@@ -861,7 +861,7 @@
     },
     "frontend/src/health.ts": {
       "mode": "full",
-      "sha256": "883b0f670b801155fc7e47802ca3864d3b67f53dc4aa46a3444aa786c8912892",
+      "sha256": "2b9dcf54a0b6baa6a2dd896ccd55af04b51cf7c6a3585cff14bc53c8eb4a755a",
       "source": "templates/ui/frontend/src/health.ts"
     },
     "frontend/src/lib/api.test.ts": {
