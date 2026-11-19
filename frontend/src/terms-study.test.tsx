@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { expect, test, vi } from 'vitest';
 
 import { App } from './app';
+import { findLive, queryLive } from './test/live';
 
 const json = (body: unknown, status = 200) =>
   new Response(body === undefined ? null : JSON.stringify(body), { status });
@@ -201,11 +202,11 @@ test('a failed mark shows the message and leaves the box as it was', async () =>
   const tannin = await box('Tannin learned');
   api.failNext = { status: 500, error: 'A server error occurred' };
   fireEvent.click(tannin);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Tannin: A server error occurred');
+  expect(await findLive('alert')).toHaveTextContent('Tannin: A server error occurred');
   expect(tannin).not.toBeChecked();
   fireEvent.click(tannin);
   await waitFor(() => expect(tannin).toBeChecked());
-  expect(screen.queryByRole('alert')).toBeEmptyDOMElement();
+  expect(queryLive('alert')).toBeNull();
 });
 
 test('a mark failing after a move to another domain names its term there', async () => {
@@ -223,7 +224,7 @@ test('a mark failing after a move to another domain names its term there', async
     open();
     await api.changeGate;
   });
-  expect(await screen.findByRole('alert')).toHaveTextContent('Tannin: A server error occurred');
+  expect(await findLive('alert')).toHaveTextContent('Tannin: A server error occurred');
 });
 
 test('more clicks during a mark on its way send nothing and keep the keyboard focus', async () => {
@@ -255,7 +256,7 @@ test('a term gone from the server is reported and leaves the list', async () => 
   api.failNext = { status: 404, error: 'Term not found' };
   api.terms = api.terms.filter(({ id }) => id !== 'wine-tannin');
   fireEvent.click(tannin);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Term not found');
+  expect(await findLive('alert')).toHaveTextContent('Term not found');
   await waitFor(() => expect(screen.queryByText('Tannin')).not.toBeInTheDocument());
 });
 
@@ -271,7 +272,7 @@ test('a mark confirmed during a list on its way keeps both the mark and the refr
   api.failNext = { status: 404, error: 'Term not found' };
   api.terms = api.terms.filter(({ id }) => id !== 'wine-tannin');
   fireEvent.click(tannin);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Term not found');
+  expect(await findLive('alert')).toHaveTextContent('Term not found');
 
   // The held list was read before this mark.
   fireEvent.click(terroir);
@@ -292,10 +293,10 @@ test('a message about a mark goes away on another domain', async () => {
   const tannin = await box('Tannin learned');
   api.failNext = { status: 500, error: 'A server error occurred' };
   fireEvent.click(tannin);
-  expect(await screen.findByRole('alert')).toHaveTextContent('A server error occurred');
+  expect(await findLive('alert')).toHaveTextContent('A server error occurred');
   fireEvent.click(screen.getByRole('link', { name: 'Opera' }));
   await box('Aria learned');
-  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+  await waitFor(() => expect(queryLive('alert')).toBeNull());
 });
 
 test('a failed list can be tried again', async () => {
