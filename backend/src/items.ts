@@ -5,6 +5,9 @@ import { z } from 'zod/v4';
 import { withTransaction } from './standard/db.js';
 import { HttpError, parseId } from './standard/http.js';
 
+// The database handle the list query runs on: the pool for the route and the AI tool, a client in a transaction.
+export type Db = Pick<Pool, 'query'> | PoolClient;
+
 const MAX_COST_KRW = 2_147_483_647; // items.cost_krw is a PostgreSQL integer.
 
 const COLUMNS = `id, category, subtype, title, status, cost_krw AS "costKrw",
@@ -363,7 +366,7 @@ export const listQuery = strictObject(
   () => 'Search filters are not valid',
 );
 
-function listSql(input: unknown) {
+function listSql(input: unknown, limit?: number) {
   const query = listQuery.parse(input);
   if (query.from && query.to && query.from > query.to) {
     throw new HttpError(400, 'Start date cannot be after end date');
@@ -391,18 +394,23 @@ function listSql(input: unknown) {
   return {
     text: `SELECT ${COLUMNS} FROM items
       ${where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY ${SORT_COLUMNS[query.sort]} ${direction} NULLS LAST, id DESC`,
+      ORDER BY ${SORT_COLUMNS[query.sort]} ${direction} NULLS LAST, id DESC${limit === undefined ? '' : ` LIMIT ${Math.trunc(limit)}`}`,
     params,
   };
+}
+
+// The list the route answers with. The AI tool list_items passes a limit (project-standards#711); the route has none.
+export async function listItems(db: Db, query: unknown, limit?: number) {
+  const { text, params } = listSql(query, limit);
+  const { rows } = await db.query(text, params);
+  return { items: rows };
 }
 
 export function createItemsRouter(pool: Pool, today: () => string) {
   const router = Router();
 
   router.get('/', async (req, res) => {
-    const { text, params } = listSql(req.query);
-    const { rows } = await pool.query(text, params);
-    res.json({ items: rows });
+    res.json(await listItems(pool, req.query));
   });
 
   router.post('/', async (req, res) => {
