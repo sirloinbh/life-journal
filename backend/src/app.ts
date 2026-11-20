@@ -5,13 +5,14 @@ import type { Pool } from 'pg';
 import { types } from 'pg';
 
 import { createItemsRouter } from './items.js';
+import { setInt8Parser } from './standard/db.js';
 import { errorHandler, notFound, requestLog } from './standard/http.js';
 import { createTermsRouter } from './terms.js';
 
 // DATE columns stay YYYY-MM-DD strings so the service time zone never shifts them.
 types.setTypeParser(1082, (value) => value);
-// BIGINT ids stay JSON numbers: parseId only accepts ids that a JS number holds exactly.
-types.setTypeParser(20, Number);
+// BIGINT ids come back as JS numbers; a value a number cannot hold exactly throws (ADR-0025).
+setInt8Parser(types);
 
 const serviceTimeZone = 'Asia/Seoul';
 
