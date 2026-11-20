@@ -50,17 +50,18 @@ test('unknown API paths return a Korean 404 JSON body', async () => {
   );
 });
 
-test('API requests beyond 600 per minute get a Korean 429', async () => {
+test('API requests beyond 600 per minute get a 429, and the health check is not counted', async () => {
   await withApi(
     pool(async () => ({ rows: [] })),
     async (call) => {
       for (let request = 1; request <= 600; request++) {
-        const { status } = await call('/api/health');
-        assert.equal(status, 200, `request ${request}`);
+        const { status } = await call('/api/does-not-exist');
+        assert.equal(status, 404, `request ${request}`);
       }
+      assert.equal((await call('/api/health')).status, 200);
       const { status, data } = await call('/api/does-not-exist');
       assert.equal(status, 429);
-      assert.deepEqual(data, { error: 'Too many requests. Please try again later' });
+      assert.deepEqual(data, { error: 'Too many requests. Try again in a minute.' });
     },
   );
 });

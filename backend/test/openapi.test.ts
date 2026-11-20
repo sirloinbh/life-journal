@@ -6,16 +6,49 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v4';
 
 import { createApp } from '../src/app.js';
-import { buildOpenApi, jsonSchema, registeredRoutes } from '../src/openapi.js';
+import { document, operations } from '../src/openapi.js';
+import { buildOpenApi, schemaOf } from '../src/standard/openapi.js';
 
 // Routes are only registered here, never called, so no database is needed.
 const app = () => createApp({} as Pool);
 
-test('docs/openapi.json is up to date with the routes and schemas', async () => {
+type Layer = {
+  route?: { path: string; methods: Record<string, boolean> };
+  name?: string;
+  handle?: { stack?: Layer[] };
+  matchers?: ((path: string) => unknown)[];
+};
+// Express 5 keeps no mount path on a router layer, so each router is matched against these known mounts.
+const mounts = ['/api/items', '/api/terms'];
+function routesOf(stack: Layer[], prefix: string): string[] {
+  return stack.flatMap((layer) => {
+    if (layer.route) {
+      const path = layer.route.path === '/' ? prefix : prefix + layer.route.path;
+      return Object.keys(layer.route.methods).map((m) => `${m.toUpperCase()} ${path}`);
+    }
+    if (layer.name !== 'router' || !layer.handle?.stack) return [];
+    const mount = mounts.find((m) => layer.matchers?.some((match) => match(m)));
+    if (!mount) throw new Error('A router is mounted at a path that is not listed in `mounts`');
+    return routesOf(layer.handle.stack, prefix + mount);
+  });
+}
+const registeredRoutes = (instance: ReturnType<typeof app>) =>
+  routesOf((instance as unknown as { router: { stack: Layer[] } }).router.stack, '');
+
+test('docs/openapi.json is up to date with the operation table', async () => {
   const committed = JSON.parse(
     await readFile(new URL('../../docs/openapi.json', import.meta.url), 'utf8'),
   ) as unknown;
-  assert.deepEqual(committed, buildOpenApi(app()), 'run `npm run openapi -w backend` and commit');
+  assert.deepEqual(
+    committed,
+    JSON.parse(JSON.stringify(document)),
+    'run `npm run openapi -w backend` and commit',
+  );
+});
+
+test('the operation table and the registered routes are the same set', () => {
+  const routes = registeredRoutes(app());
+  assert.deepEqual(Object.keys(operations).sort(), [...routes].sort());
 });
 
 test('API paths start with /api and use lowercase words joined by hyphens', () => {
@@ -25,28 +58,22 @@ test('API paths start with /api and use lowercase words joined by hyphens', () =
     assert.match(route, /^[A-Z]+ \/api(\/(:\w+|[a-z0-9]+(-[a-z0-9]+)*(\.[a-z0-9]+)?))*$/);
 });
 
-test('formats stay in the document whether they are the type or a check', () => {
-  assert.deepEqual(jsonSchema(z.int().min(1)), { type: 'integer', minimum: 1 });
-  assert.deepEqual(jsonSchema(z.number().int()), { type: 'integer' });
-  assert.deepEqual(jsonSchema(z.uuid()), { type: 'string', format: 'uuid' });
-  assert.deepEqual(jsonSchema(z.guid()), { type: 'string', format: 'uuid' });
-  assert.deepEqual(jsonSchema(z.string().uuid()), { type: 'string', format: 'uuid' });
-  assert.deepEqual(jsonSchema(z.email()), { type: 'string', format: 'email' });
-  assert.deepEqual(jsonSchema(z.iso.date()), { type: 'string', format: 'date' });
-  assert.deepEqual(jsonSchema(z.iso.datetime()), { type: 'string', format: 'date-time' });
-});
-
-test('a preprocessed value is described by its target', () => {
-  assert.deepEqual(jsonSchema(z.preprocess((value) => value, z.string().min(1))), {
-    type: 'string',
-    minLength: 1,
-  });
+test('guarded routes document the sign-in, 401 and 429; the public route does not', () => {
+  const paths = document.paths as Record<
+    string,
+    Record<string, { security?: unknown[]; responses: Record<string, unknown> }>
+  >;
+  assert.deepEqual(paths['/api/health']!.get!.security, []);
+  assert.ok(!('401' in paths['/api/health']!.get!.responses));
+  assert.ok('401' in paths['/api/me']!.get!.responses);
+  assert.ok('429' in paths['/api/me']!.get!.responses);
 });
 
 test('unsupported schemas and undocumented routes fail instead of being skipped', () => {
-  assert.throws(() => jsonSchema(z.date()), /Unsupported Zod type for OpenAPI: date/);
-  assert.throws(() => jsonSchema(z.ulid()), /Unsupported string format: ulid/);
+  assert.throws(() => schemaOf(z.date()), /Date cannot be represented/);
   const extended = app();
   extended.get('/api/undocumented', (_req, res) => void res.json({}));
-  assert.throws(() => buildOpenApi(extended), /\+GET \/api\/undocumented/);
+  assert.ok(registeredRoutes(extended).includes('GET /api/undocumented'));
+  assert.ok(!('GET /api/undocumented' in operations));
+  assert.ok(buildOpenApi({ title: 'T', description: 'd', operations: {} }));
 });

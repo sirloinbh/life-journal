@@ -23,16 +23,18 @@ export function createTermsRouter(pool: Pool) {
     });
   });
 
-  router.put('/:id/learned', async (req, res) => {
+  router.put('/:termId/learned', async (req, res) => {
     await pool.query(
       'INSERT INTO learned_terms (term_id) VALUES ($1) ON CONFLICT (term_id) DO NOTHING',
-      [knownTermId(req.params.id)],
+      [knownTermId(req.params.termId)],
     );
     res.status(204).end();
   });
 
-  router.delete('/:id/learned', async (req, res) => {
-    await pool.query('DELETE FROM learned_terms WHERE term_id = $1', [knownTermId(req.params.id)]);
+  router.delete('/:termId/learned', async (req, res) => {
+    await pool.query('DELETE FROM learned_terms WHERE term_id = $1', [
+      knownTermId(req.params.termId),
+    ]);
     res.status(204).end();
   });
 
