@@ -10,6 +10,11 @@
       "url": "/"
     }
   ],
+  "security": [
+    {
+      "session": []
+    }
+  ],
   "paths": {
     "/api/items/{id}": {
       "delete": {
@@ -21,7 +26,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "minimum": 1
             }
           }
         ],
@@ -51,6 +56,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -90,7 +105,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "minimum": 1
             }
           }
         ],
@@ -120,6 +135,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -159,7 +184,7 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "exclusiveMinimum": 0
+              "minimum": 1
             }
           }
         ],
@@ -217,6 +242,16 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Server error",
             "content": {
@@ -240,12 +275,12 @@
         }
       }
     },
-    "/api/terms/{id}/learned": {
+    "/api/terms/{termId}/learned": {
       "delete": {
         "summary": "Mark a term as not learned",
         "parameters": [
           {
-            "name": "id",
+            "name": "termId",
             "in": "path",
             "required": true,
             "schema": {
@@ -269,6 +304,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -303,7 +348,7 @@
         "summary": "Mark a term as learned",
         "parameters": [
           {
-            "name": "id",
+            "name": "termId",
             "in": "path",
             "required": true,
             "schema": {
@@ -327,6 +372,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -361,6 +416,7 @@
     "/api/health": {
       "get": {
         "summary": "Check that the server and database respond",
+        "security": [],
         "responses": {
           "200": {
             "description": "Success"
@@ -455,6 +511,7 @@
             "in": "query",
             "required": false,
             "schema": {
+              "default": "createdAt",
               "type": "string",
               "enum": [
                 "title",
@@ -465,8 +522,7 @@
                 "completedDate",
                 "rating",
                 "createdAt"
-              ],
-              "default": "createdAt"
+              ]
             }
           },
           {
@@ -474,12 +530,12 @@
             "in": "query",
             "required": false,
             "schema": {
+              "default": "desc",
               "type": "string",
               "enum": [
                 "asc",
                 "desc"
-              ],
-              "default": "desc"
+              ]
             }
           }
         ],
@@ -499,6 +555,16 @@
           },
           "401": {
             "description": "Sign-in required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -575,6 +641,16 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Server error",
             "content": {
@@ -615,6 +691,16 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "503": {
             "description": "The shared sign-in service could not be reached",
             "content": {
@@ -637,6 +723,16 @@
           },
           "401": {
             "description": "Sign-in required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -733,6 +829,9 @@
           },
           "details": {
             "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
             "additionalProperties": {}
           },
           "rating": {
@@ -743,6 +842,9 @@
           },
           "subRatings": {
             "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
             "additionalProperties": {}
           },
           "review": {
@@ -784,12 +886,12 @@
             "type": "string"
           },
           "status": {
+            "default": "wishlist",
             "type": "string",
             "enum": [
               "wishlist",
               "done"
-            ],
-            "default": "wishlist"
+            ]
           },
           "costKrw": {
             "type": [
@@ -810,9 +912,12 @@
             ]
           },
           "details": {
+            "default": {},
             "type": "object",
-            "additionalProperties": {},
-            "default": {}
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
           },
           "rating": {
             "type": [
@@ -821,9 +926,12 @@
             ]
           },
           "subRatings": {
+            "default": {},
             "type": "object",
-            "additionalProperties": {},
-            "default": {}
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
           },
           "review": {
             "type": [
@@ -843,6 +951,14 @@
           "title"
         ],
         "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sirloinbh.session_token",
+        "description": "The shared sign-in session cookie (ADR-0015)."
       }
     }
   }

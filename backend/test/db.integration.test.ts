@@ -4,6 +4,7 @@ import { test } from 'node:test';
 
 import { Pool } from 'pg';
 
+import { connectPool } from '../src/pool.js';
 import { withApi } from './helpers.js';
 
 const url = process.env.TEST_DATABASE_URL;
@@ -704,7 +705,7 @@ test(
   'losing the connection during a patch answers 500 and keeps the API alive',
   { skip: !url },
   async (t) => {
-    const pool = new Pool({ connectionString: url });
+    const pool = connectPool(url);
     t.after(() => pool.end());
     const id = await createTestItem(pool);
     const original = console.error;

@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod/v4';
 
+import { withTransaction } from './standard/db.js';
 import { HttpError, parseId } from './standard/http.js';
 
 const MAX_COST_KRW = 2_147_483_647; // items.cost_krw is a PostgreSQL integer.
@@ -441,16 +442,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
     const id = parseId(req.params.id, 'item');
     const patch = itemPatch.parse(req.body);
     if (Object.keys(patch).length === 0) throw new HttpError(400, 'Nothing to update');
-    const client = await pool.connect();
-    // pg-pool stops listening while a client is checked out, and an unheard socket error would end
-    // the process. The pending query still rejects, so the request answers with a 500.
-    const onClientError = (error: Error) => {
-      console.error(JSON.stringify({ event: 'db_client_error', message: error.message }));
-    };
-    client.on('error', onClientError);
-    let connectionBroken = false;
-    try {
-      await client.query('BEGIN');
+    const updated = await withTransaction(pool, async (client: PoolClient) => {
       const { rows: current } = await client.query(
         `SELECT ${COLUMNS} FROM items WHERE id = $1 FOR UPDATE`,
         [id],
@@ -511,18 +503,9 @@ export function createItemsRouter(pool: Pool, today: () => string) {
           item.link,
         ],
       );
-      await client.query('COMMIT');
-      res.json(rows[0]);
-    } catch (error) {
-      // A failed ROLLBACK must not replace the error the client should see.
-      await client.query('ROLLBACK').catch(() => {
-        connectionBroken = true;
-      });
-      throw error;
-    } finally {
-      client.off('error', onClientError);
-      client.release(connectionBroken);
-    }
+      return rows[0];
+    });
+    res.json(updated);
   });
 
   router.delete('/:id', async (req, res) => {
