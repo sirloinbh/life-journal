@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
 import { test } from 'node:test';
 
 import { Pool } from 'pg';
@@ -20,14 +21,17 @@ function captureErrors() {
   };
 }
 
-test('a pool error is logged instead of ending the process', async (t) => {
+test('a connection error is logged instead of ending the process', async (t) => {
   const pool = connectPool('postgres://unused@127.0.0.1:1/unused');
   t.after(() => pool.end());
   const errors = captureErrors();
   t.after(errors.restore);
-  pool.emit('error', new Error('connection lost'));
+  const client = new EventEmitter();
+  pool.emit('connect', client);
+  client.emit('error', new Error('connection lost'));
+  pool.emit('error', new Error('idle client lost'));
   assert.deepEqual(errors.logged, [
-    JSON.stringify({ event: 'db_pool_error', message: 'connection lost' }),
+    JSON.stringify({ event: 'db_connection_error', message: 'connection lost' }),
   ]);
 });
 
