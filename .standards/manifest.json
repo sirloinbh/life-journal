@@ -1,5 +1,5 @@
 {
-  "centralSha": "7812b9c848637f018e66f23aad2d35417d3f38a8",
+  "centralSha": "d9a81d5145620bdbd698a30a2bf55d6db4afe9da",
   "profile": "app",
   "project": "life-journal",
   "files": {
@@ -140,7 +140,7 @@
     },
     ".github/workflows/ci.yml": {
       "mode": "full",
-      "sha256": "fcef72dffe2181d77e7f766188076633e33ab3395ba1e6f20add2d3c00742804",
+      "sha256": "74dc1593c518a57af72e3bd5ec35f20d7b3122cbec99bd666790506e27f7808f",
       "source": "templates/app/.github/workflows/ci.yml.tmpl"
     },
     ".gitignore": {
@@ -345,7 +345,7 @@
     },
     "deploy/autodeploy.sh": {
       "mode": "full",
-      "sha256": "f543483db95114fd301449033fa5b0b1b5051c23d1f345bf7fd5d95be394d34b",
+      "sha256": "f481a40459caac3538f65a54badcb9021ad2eb86d1b12c9ae47bf3174e17d0df",
       "source": "templates/deploy/deploy/autodeploy.sh.tmpl"
     },
     "deploy/autodeploy.timer": {
@@ -400,7 +400,7 @@
     },
     "deploy/remote-deploy.sh": {
       "mode": "full",
-      "sha256": "a3d6a17967261e79391ef2f841d95317b22a0a66df2411d873e7d1268d528af9",
+      "sha256": "d0e5fd1833307118f0c29d69137ccb325a0201d7a4668dda70c1253bc88bca99",
       "source": "templates/deploy/deploy/remote-deploy.sh.tmpl"
     },
     "deploy/report.service": {
@@ -435,7 +435,7 @@
     },
     "e2e/support/jev.ts": {
       "mode": "full",
-      "sha256": "83ec5d7d0250919b6f4361125aa8cb6c31f6c8fbb75869ef6140d41c3130086a",
+      "sha256": "1d22cca3fb7e6c1c210c0d8f3652c9e9e1a8fe805c37aaf48692df1bd1cf12b7",
       "source": "templates/e2e/e2e/support/jev.ts"
     },
     "e2e/support/judged.ts": {
