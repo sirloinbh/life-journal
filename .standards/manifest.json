@@ -1,5 +1,5 @@
 {
-  "centralSha": "73dc0c64c8cac666f61cd0117648808045b259c6",
+  "centralSha": "c0bc08fd83c82abc50bc5577f261e694b8d7480e",
   "profile": "app",
   "project": "life-journal",
   "files": {
@@ -280,7 +280,7 @@
     },
     "backend/src/standard/migrate.ts": {
       "mode": "full",
-      "sha256": "e90c774410540c14e19e9b0add48f101ca5993531c1f7e67bb3a1f43139f19b8",
+      "sha256": "e64d3ee7a44b520f806e72254cce3813ad3511306a8bc8bb5c6b62e0e6918cef",
       "source": "templates/app/backend/src/standard/migrate.ts.tmpl"
     },
     "backend/src/standard/migrations.ts": {
@@ -395,7 +395,7 @@
     },
     "deploy/remote-deploy.sh": {
       "mode": "full",
-      "sha256": "93866a470636e2aed76d24ce343c9cef4be73da2c2bfe4df6bbeccd0148900e7",
+      "sha256": "2bcf8ad7f0a947f46072b868d991772a922b40f26ce042b8ed0945d8a280659e",
       "source": "templates/deploy/deploy/remote-deploy.sh.tmpl"
     },
     "deploy/report.service": {
