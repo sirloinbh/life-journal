@@ -1,5 +1,5 @@
 {
-  "centralSha": "52d0d2c2eb7310dae0d93356742a36fc4914fb30",
+  "centralSha": "b205088594b7c7295df8eba87cb06a37e0a32e0e",
   "profile": "app",
   "project": "life-journal",
   "files": {
@@ -395,7 +395,7 @@
     },
     "deploy/install-backup.sh": {
       "mode": "full",
-      "sha256": "b87a0e1e0ec179d033196105c457618b49c719156bc15dbcd96fdd421b85f50e",
+      "sha256": "9e337b4d7ed55cdea6190d046a75416cf75c85a2aec3206782eb556fedc4c47e",
       "source": "templates/deploy/deploy/install-backup.sh.tmpl"
     },
     "deploy/notify.sh": {
@@ -410,18 +410,18 @@
     },
     "deploy/report.service": {
       "mode": "full",
-      "sha256": "8dd612aa10f160d9cb127306c34096b941cfa9d5991f7f3003edb7b4f9839037",
-      "source": "templates/app/deploy/report.service.tmpl"
+      "sha256": "9571562b2883e73e30e7aae3559d17e851092b08b03479f62e66c4de4f45cb13",
+      "source": "templates/deploy/deploy/report.service.tmpl"
     },
     "deploy/report.sh": {
       "mode": "full",
-      "sha256": "6a933d216cfcd5fa8ea8a299e97ebb8125e43fede8d4da4e5ee9fecc15cecd38",
-      "source": "templates/app/deploy/report.sh.tmpl"
+      "sha256": "7b773d696a5e548780ab6c2a2bb7d7eb3f6bac034ffcbe2c6608a735a65a0057",
+      "source": "templates/deploy/deploy/report.sh.tmpl"
     },
     "deploy/report.timer": {
       "mode": "full",
-      "sha256": "ac2657350d6c23bbc103b765c75978af20046c4d1c513fa7a261031879e3f779",
-      "source": "templates/app/deploy/report.timer.tmpl"
+      "sha256": "69d8f21901f8218660ed5bfa3bdf5d8643ff5f376e51872be892d68019c54942",
+      "source": "templates/deploy/deploy/report.timer.tmpl"
     },
     "deploy/restore-check.service": {
       "mode": "full",
