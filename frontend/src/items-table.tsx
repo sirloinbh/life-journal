@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
-import { categories, formatDate, formatKrw, type Item } from './items';
+import { categories, formatDate, formatKrw, type Item, itemAnchor } from './items';
 import { requestJson } from './lib/api';
 import { errorText } from './lib/use-notice';
 
@@ -306,7 +306,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
                 <tr key={item.id} className="border-b last:border-0">
                   <td className="max-w-64 px-3 py-2 wrap-anywhere">
                     <Link
-                      to={`${bucketListPath}/${item.category}`}
+                      to={`${bucketListPath}/${item.category}#${itemAnchor(item.id)}`}
                       className="underline-offset-4 hover:underline"
                     >
                       {item.title}
