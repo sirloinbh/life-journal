@@ -1,8 +1,14 @@
 import { type IncomingHttpHeaders, request } from 'node:http';
 
-import type { Pool } from 'pg';
+import { Pool, type PoolConfig } from 'pg';
 
 import { createApp } from '../src/app.js';
+import { pgTypes } from '../src/pool.js';
+
+// A pool on the test DB with the app's type parsers (#143): DATE as YYYY-MM-DD, BIGINT as a number.
+export function testPool(config: PoolConfig = {}) {
+  return new Pool({ connectionString: process.env.TEST_DATABASE_URL, types: pgTypes, ...config });
+}
 
 type Call = (
   path: string,

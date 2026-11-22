@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 
 import { connectPool } from '../src/pool.js';
-import { withApi } from './helpers.js';
+import { testPool, withApi } from './helpers.js';
 
 const url = process.env.TEST_DATABASE_URL;
 const TODAY = '2026-10-31';
@@ -15,7 +15,7 @@ test(
   'baseline schema is applied and health answers against the real database',
   { skip: !url },
   async (t) => {
-    const pool = new Pool({ connectionString: url });
+    const pool = testPool();
     t.after(() => pool.end());
     const tables = await pool.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'app_settings'",
@@ -30,7 +30,7 @@ test(
 );
 
 test('the items migration can be applied again without errors', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   for (const file of [
     '002_items.sql',
@@ -58,7 +58,7 @@ test(
   'the ratings and review migrations apply to a table that already has rows',
   { skip: !url },
   async (t) => {
-    const pool = new Pool({ connectionString: url, max: 1 });
+    const pool = testPool({ max: 1 });
     const migration = (file: string) =>
       readFile(new URL(`../../database/migrations/${file}`, import.meta.url), 'utf8');
     const schema = 'test_ratings_migration';
@@ -89,7 +89,7 @@ test(
   async (t) => {
     // One client for the whole test: pool.query drops its connection after an error, and with it
     // the search_path below.
-    const pool = new Pool({ connectionString: url, max: 1 });
+    const pool = testPool({ max: 1 });
     const client = await pool.connect();
     const migration = (file: string) =>
       readFile(new URL(`../../database/migrations/${file}`, import.meta.url), 'utf8');
@@ -136,7 +136,7 @@ test(
 );
 
 test('a learned mark on a term is stored, repeatable, and cleared', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   await pool.query('DELETE FROM learned_terms');
   await withApi(pool, async (call) => {
@@ -159,7 +159,7 @@ test('a learned mark on a term is stored, repeatable, and cleared', { skip: !url
 });
 
 test('a learned mark on a term that no longer exists is ignored', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(async () => {
     await pool.query('DELETE FROM learned_terms');
     await pool.end();
@@ -176,7 +176,7 @@ test('a learned mark on a term that no longer exists is ignored', { skip: !url }
 });
 
 test('items of all six categories are stored and read back', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   await pool.query('DELETE FROM items');
   const samples = [
@@ -257,7 +257,7 @@ test('items of all six categories are stored and read back', { skip: !url }, asy
 });
 
 test('items are updated, checked as a whole, and deleted', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   await withApi(
     pool,
@@ -333,7 +333,7 @@ test('items are updated, checked as a whole, and deleted', { skip: !url }, async
 });
 
 test('ratings of a done item are stored, kept, and cleared with it', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   await withApi(
     pool,
@@ -411,7 +411,7 @@ test('ratings of a done item are stored, kept, and cleared with it', { skip: !ur
 });
 
 test('a review of a done item is stored, kept, edited, and cleared', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   await withApi(
     pool,
@@ -478,7 +478,7 @@ test('a review of a done item is stored, kept, edited, and cleared', { skip: !ur
 });
 
 test('search, filters, and sorting return the right items', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   await pool.query('DELETE FROM items');
   const done = (completedDate: string) => ({ status: 'done', completedDate });
@@ -586,7 +586,7 @@ test('search, filters, and sorting return the right items', { skip: !url }, asyn
 });
 
 test('a link is stored, kept by other edits, and cleared', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   await withApi(pool, async (call) => {
     const created = await call('/api/items', {
@@ -640,7 +640,7 @@ async function waitForLockWaiters(pool: Pool, count: number) {
 }
 
 test('concurrent patches of different fields both survive', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   const id = await createTestItem(pool);
   await withApi(pool, async (call) => {
@@ -669,7 +669,7 @@ test('concurrent patches of different fields both survive', { skip: !url }, asyn
 });
 
 test('a patch that fails after its UPDATE leaves the row unchanged', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   const id = await createTestItem(pool);
   const failingCommit = {
@@ -736,7 +736,7 @@ test(
 );
 
 test('a patch cannot set a completed date after the service date', { skip: !url }, async (t) => {
-  const pool = new Pool({ connectionString: url });
+  const pool = testPool();
   t.after(() => pool.end());
   const id = await createTestItem(pool);
   await withApi(
@@ -757,7 +757,7 @@ test(
   'the database itself refuses a done item without a completed date',
   { skip: !url },
   async (t) => {
-    const pool = new Pool({ connectionString: url });
+    const pool = testPool();
     t.after(() => pool.end());
     await assert.rejects(
       pool.query(
