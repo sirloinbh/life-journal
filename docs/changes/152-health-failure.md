@@ -33,3 +33,7 @@ The centrally managed `health.ts` also exports a `useHealth` that retries every 
 ## Review round 1 — 2026-11-23
 
 Self-review (std-code-review section 8). Decision: approve, no blocking comments. Non-blocking notes left as they are: a 200 answer with an `error` field and no `today` now shows the fallback instead of that `error` (the route never sends it), and adopting the managed `health.ts` hook is a possible later cleanup outside this card.
+
+## Decision — 2026-11-23
+
+- The decision was answered on 2026-11-23: option A, 'Cannot check the server status (HTTP <status>)', recorded on #152.
