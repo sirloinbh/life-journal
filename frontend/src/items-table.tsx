@@ -14,8 +14,8 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
+import { fetchItemPage } from './item-pages';
 import { categories, formatDate, formatKrw, type Item, itemAnchor, itemCount } from './items';
-import { requestJson } from './lib/api';
 import { errorText } from './lib/use-notice';
 
 const ANY = 'any';
@@ -32,31 +32,81 @@ const COLUMNS = [
 
 const STATUS_LABELS = { wishlist: 'Want to do', done: 'Done' };
 
-type Result = { items: Item[] | null; failure: unknown; request: string | null };
+type Result = {
+  items: Item[] | null;
+  total: number;
+  nextOffset: number | null;
+  failure: unknown;
+  request: string | null;
+};
+
+// "Load more" of one list address: whether it is running and how the last try failed.
+type More = { request: string | null; loading: boolean; failure: unknown };
 
 // Only the answer for the current address reaches the screen, so a slow old answer cannot replace it.
+// The API answers pages (#144): the first page comes with the address, "Load more" appends the next one.
 function useFilteredItems(search: string) {
-  const [result, setResult] = useState<Result>({ items: null, failure: null, request: null });
+  const [result, setResult] = useState<Result>({
+    items: null,
+    total: 0,
+    nextOffset: null,
+    failure: null,
+    request: null,
+  });
+  const [more, setMore] = useState<More>({ request: null, loading: false, failure: null });
   const [attempt, setAttempt] = useState(0);
   const request = `${attempt}?${search}`;
   useEffect(() => {
     let current = true;
-    requestJson<{ items: Item[] }>(`/api/items${search ? `?${search}` : ''}`).then(
-      ({ items }) => {
-        if (current) setResult({ items, failure: null, request });
+    fetchItemPage(search).then(
+      ({ items, total, nextOffset }) => {
+        if (current) setResult({ items, total, nextOffset, failure: null, request });
       },
       (failure: unknown) => {
-        if (current) setResult((last) => ({ items: last.items, failure, request }));
+        if (current) setResult((last) => ({ ...last, failure, request }));
       },
     );
     return () => {
       current = false;
     };
   }, [search, request]);
+  const current = result.request === request;
+  const loadMore = () => {
+    const offset = result.nextOffset;
+    if (!current || offset === null || (more.request === request && more.loading)) return;
+    setMore({ request, loading: true, failure: null });
+    fetchItemPage(search, offset).then(
+      (page) => {
+        // Appends only to the list it was asked for, and only once.
+        setResult((last) =>
+          last.request === request && last.nextOffset === offset
+            ? {
+                ...last,
+                items: [...(last.items ?? []), ...page.items],
+                total: page.total,
+                nextOffset: page.nextOffset,
+              }
+            : last,
+        );
+        setMore((last) =>
+          last.request === request ? { request, loading: false, failure: null } : last,
+        );
+      },
+      (failure: unknown) => {
+        setMore((last) => (last.request === request ? { request, loading: false, failure } : last));
+      },
+    );
+  };
+  const moreHere = more.request === request;
   return {
     items: result.items,
+    total: result.total,
+    hasMore: current && result.nextOffset !== null,
     failure: result.failure,
-    loading: result.request !== request,
+    loading: !current,
+    loadingMore: moreHere && more.loading,
+    moreFailure: moreHere ? more.failure : null,
+    loadMore,
     retry: () => setAttempt((count) => count + 1),
   };
 }
@@ -148,7 +198,8 @@ function InputFilter({
 export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
   const [params, setParams] = useSearchParams();
   const search = params.toString();
-  const { items, failure, loading, retry } = useFilteredItems(search);
+  const { items, total, hasMore, failure, loading, loadingMore, moreFailure, loadMore, retry } =
+    useFilteredItems(search);
   const [resetCount, setResetCount] = useState(0);
   const sort = params.get('sort') ?? 'createdAt';
   const order = params.get('order') ?? 'desc';
@@ -238,7 +289,13 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
       </p>
       <div className="flex min-h-9 items-center justify-between gap-4">
         <p role="status" className="text-body-sm text-muted-foreground">
-          {loading ? 'Loading…' : items ? itemCount(items.length) : ''}
+          {loading
+            ? 'Loading…'
+            : items
+              ? items.length < total
+                ? `${itemCount(total)} · showing ${items.length}`
+                : itemCount(items.length)
+              : ''}
         </p>
         {search ? (
           <Button
@@ -332,6 +389,21 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           </table>
         </div>
       )}
+      {items && items.length > 0 && (hasMore || moreFailure) ? (
+        <div className="flex flex-wrap items-center gap-3">
+          {moreFailure ? <Notice notice={{ kind: 'error', text: errorText(moreFailure) }} /> : null}
+          {/* Stays on screen while loading, so the keyboard focus is not lost. */}
+          <Button
+            variant="outline"
+            aria-busy={loadingMore || undefined}
+            onClick={loadMore}
+            disabled={!hasMore}
+          >
+            {loadingMore ? <Spinner size="sm" label="Loading more items" /> : null}
+            Load more
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

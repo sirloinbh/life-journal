@@ -413,3 +413,61 @@ test('the count reads 1 item, and more than one as items', async () => {
   await choose('Status', 'Done');
   expect(await screen.findByText('1 item')).toHaveAttribute('role', 'status');
 });
+
+// #144: the API answers pages of `{ items, nextOffset, total }`.
+const page = (ids: number[], nextOffset: number | null, total: number) =>
+  json({ items: ids.map((id) => row(id, {})), nextOffset, total });
+
+test('"Load more" appends the next page and the count keeps the total', async () => {
+  const asked = fakeApi((search) =>
+    search.includes('offset=2') ? page([3], null, 3) : page([1, 2], 2, 3),
+  );
+  openAt('/table?status=wishlist');
+  expect(await screen.findByText('3 items · showing 2')).toHaveAttribute('role', 'status');
+  expect(rows()).toHaveLength(3);
+  fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+  expect(await screen.findByText('3 items')).toHaveAttribute('role', 'status');
+  expect(rows()).toHaveLength(4);
+  expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+  expect(asked).toEqual(['status=wishlist', 'status=wishlist&offset=2']);
+});
+
+test('a failed "Load more" shows the error and can be tried again', async () => {
+  let failMore = true;
+  fakeApi((search) => {
+    if (!search.includes('offset=2')) return page([1, 2], 2, 3);
+    return failMore ? json({ error: 'A server error occurred' }, 500) : page([3], null, 3);
+  });
+  openAt('/table');
+  fireEvent.click(await screen.findByRole('button', { name: 'Load more' }));
+  expect(await screen.findByText('A server error occurred')).toBeInTheDocument();
+  expect(rows()).toHaveLength(3);
+  failMore = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+  expect(await screen.findByText('3 items')).toHaveAttribute('role', 'status');
+  expect(rows()).toHaveLength(4);
+  expect(screen.queryByText('A server error occurred')).not.toBeInTheDocument();
+});
+
+test('a page that arrives after the filters changed is not appended', async () => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  fakeApi(async (search) => {
+    if (search.includes('status=done')) return page([7], null, 1);
+    if (search.includes('offset=2')) {
+      await held;
+      return page([3], null, 3);
+    }
+    return page([1, 2], 2, 3);
+  });
+  openAt('/table');
+  fireEvent.click(await screen.findByRole('button', { name: 'Load more' }));
+  await choose('Status', 'Done');
+  expect(await screen.findByText('1 item')).toHaveAttribute('role', 'status');
+  await act(async () => {
+    release();
+    await held;
+  });
+  expect(rows()).toHaveLength(2);
+  expect(screen.getByText('1 item')).toHaveAttribute('role', 'status');
+});

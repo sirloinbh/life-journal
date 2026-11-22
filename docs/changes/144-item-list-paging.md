@@ -22,4 +22,29 @@
 - `backend/test/items.test.ts`: 7 new 400 cases for `limit` (0, 501, `ten`, repeated) and `offset` (-1, 1.5, 1000001).
 - `backend/test/db.integration.test.ts`, "the list answers pages with the next offset and the total (#144)": with 105 items, the default page has 100 items, `nextOffset` 100 and `total` 105, and the next page has the other 5 with `nextOffset` `null`. Pages of 30 of a filtered and sorted list (`category=reading&sort=costKrw&order=asc`, 101 items) take 4 calls and join into exactly the one-page list. A filter changes `total`; a page past the end is empty with `nextOffset` `null`; a filter with no match answers `total` 0.
 - The first run caught a bad regex (the backslash of `\d` was lost while writing the file), so every `limit`/`offset` was refused; fixed before the commit.
-- Backend tests with `TEST_DATABASE_URL` set to a throwaway PostgreSQL 17 (`journal_test`, all migrations applied): see the verification section.
+
+## Changes — screens, 2026-11-23
+
+Written after merging `origin/main` with the screens lane's #191 and #194 (both change `bucket-list.tsx` and `items-table.tsx`).
+
+- `frontend/src/item-pages.ts` (new): `fetchItemPage(search, offset)` asks for one page and `fetchAllItems()` asks for pages of 500 (the API's largest) until `nextOffset` is `null`. An answer without the paging fields counts as the whole list, and a `nextOffset` that does not move forward ends the loop, so it always stops.
+- `frontend/src/bucket-list.tsx`: loads every item with `fetchAllItems()`; grouping, counts, and the reload after a change work as before.
+- `frontend/src/items-table.tsx`: the first page comes with the filters; "Load more" (under the table, only while there is a next page) appends the next page. The count shows the total: `133 items · showing 100` while pages are left, `133 items` when all are shown. A failed "Load more" shows the error next to the button, which stays to try again. A page that arrives after the filters changed is not appended.
+
+## Tests — screens
+
+- `frontend/src/items-table.test.tsx`: "Load more" appends the next page, the count keeps the total, and the second request is `status=wishlist&offset=2`; a failed "Load more" shows the error and works when tried again; a page that arrives after the filters changed is not appended (fails when the guard is removed).
+- `frontend/src/bucket-list.test.tsx`: the bucket list asks `/api/items?limit=500` and then `...&offset=2`, and shows the items of both pages.
+- The existing table and bucket-list tests, whose fake API answers only `{ items }`, pass unchanged.
+
+## Browser check — 2026-11-23
+
+Real API (`server.ts` on a temporary port with the throwaway DB, 130 reading and 3 travel items) and the Vite dev server on a temporary port, Playwright with the installed Chrome:
+
+- 390×844 and 1440×900: the table first read `133 items · showing 100` with 100 rows; "Load more" asked `?offset=100`, then the table had 133 rows, read `133 items`, and the button was gone. The bucket list asked `?limit=500` and showed `· 130 items` for reading. No horizontal page overflow on either screen.
+- The button is the default size, 36 px high with a mouse; the shared button grows to 44 px on touch screens (`pointer-coarse:min-h-11`).
+
+## Verification — 2026-11-23
+
+- `npm run check` with `TEST_DATABASE_URL` set to a throwaway PostgreSQL 17 (`postgres:17-alpine`, `journal_test`, migrations 001-009 applied): pass. Backend 191 passed, 0 skipped; frontend 297 passed, 3 skipped (existing); contract 3 passed; skills 4 passed; build passed.
+- Browser e2e (`npm run test:e2e`) was not run locally because ports 3204/5304 are shared with the other lanes; CI runs it on the PR.

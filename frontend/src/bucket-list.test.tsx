@@ -797,3 +797,39 @@ test('reopening a done item asks and reports "Mark as not done"', async () => {
   expect(await screen.findByText('Marked as not done')).toHaveAttribute('role', 'status');
   expect(screen.getByRole('button', { name: 'Mark 데미안 as done' })).toBeInTheDocument();
 });
+
+test('the bucket list asks for every page until the last one (#144)', async () => {
+  const asked: string[] = [];
+  const book = (id: number, title: string) => ({
+    id,
+    category: 'reading',
+    subtype: null,
+    title,
+    status: 'wishlist',
+    costKrw: null,
+    plannedDate: null,
+    completedDate: null,
+    details: {},
+    rating: null,
+    subRatings: {},
+    review: null,
+    link: null,
+  });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((path: string) => {
+      if (path === '/api/health') return Promise.resolve(json({ today: TODAY }));
+      asked.push(path);
+      return Promise.resolve(
+        path.endsWith('offset=2')
+          ? json({ items: [book(3, '세 번째')], nextOffset: null, total: 3 })
+          : json({ items: [book(1, '첫 번째'), book(2, '두 번째')], nextOffset: 2, total: 3 }),
+      );
+    }),
+  );
+  openAt('/bucket-list/reading');
+  expect(await screen.findByText('세 번째')).toBeInTheDocument();
+  expect(screen.getByText('첫 번째')).toBeInTheDocument();
+  expect(screen.getByText(/· 3 items$/)).toBeInTheDocument();
+  expect(asked).toEqual(['/api/items?limit=500', '/api/items?limit=500&offset=2']);
+});
