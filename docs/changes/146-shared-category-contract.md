@@ -27,3 +27,9 @@ The categories, subtypes, detail fields, rating criteria, scores and review limi
 
 - The central registry marks this app's `features.contract` as `false` (project-standards#838). `.standards/check.mjs` does not read that flag, but the registry entry should be turned back on in `sirloinbh/project-standards`.
 - The DB CHECK test reads the migration files as text; it expects the `category IN (...)` form the existing migrations use.
+
+## Merge with main (after #149 and #145)
+
+- `origin/main` was merged in (no rebase). `frontend/src/items.ts` conflicted: #149 added `itemAnchor` next to the hand-written table; the merge keeps `itemAnchor` and the derived `categories`. Migration 009 (#145) only renames CHECK constraints, so the latest `category IN (...)` list is still 007's and the table test still applies.
+- `npm run check` after the merge: passed (backend 150 pass / 29 skipped DB tests, frontend 282 passed / 3 skipped).
+- Review round 1 (PR comment): approve, no findings.
