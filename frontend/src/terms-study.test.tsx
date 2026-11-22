@@ -7,19 +7,15 @@ import { findLive, queryLive } from './test/live';
 const json = (body: unknown, status = 200) =>
   new Response(body === undefined ? null : JSON.stringify(body), { status });
 
+// `original` comes only when it differs from the name; Montage's copy checks the screen still
+// prints the name once if the server sends one (#147).
 const TERMS = [
-  {
-    id: 'wine-tannin',
-    domain: 'wine',
-    term: 'Tannin',
-    original: 'Tannin',
-    meaning: 'An astringent compound',
-  },
+  { id: 'wine-tannin', domain: 'wine', term: 'Tannin', meaning: 'An astringent compound' },
   {
     id: 'wine-terroir',
     domain: 'wine',
     term: 'Terroir',
-    original: 'Terroir',
+    original: 'Le terroir',
     meaning: 'The growing environment',
   },
   {
@@ -29,14 +25,8 @@ const TERMS = [
     original: 'Montage',
     meaning: 'Editing',
   },
-  { id: 'opera-aria', domain: 'opera', term: 'Aria', original: 'Aria', meaning: 'A solo song' },
-  {
-    id: 'musical-number',
-    domain: 'musical',
-    term: 'Number',
-    original: 'Number',
-    meaning: 'A song',
-  },
+  { id: 'opera-aria', domain: 'opera', term: 'Aria', meaning: 'A solo song' },
+  { id: 'musical-number', domain: 'musical', term: 'Number', meaning: 'A song' },
 ];
 
 // An in-memory API. Its learned marks outlive a render, like the server's do across a reload.
@@ -117,7 +107,10 @@ test('a domain shows only its own terms, with the original word and meaning', as
   fakeApi();
   openAt('/terms/wine');
   expect(await screen.findByRole('heading', { level: 2, name: /Tannin/ })).toHaveTextContent(
-    'Tannin',
+    /^Tannin$/,
+  );
+  expect(screen.getByRole('heading', { level: 2, name: /Terroir/ })).toHaveTextContent(
+    /^TerroirLe terroir$/,
   );
   expect(screen.getByText('An astringent compound')).toBeInTheDocument();
   expect(screen.queryByText('Aria')).not.toBeInTheDocument();
@@ -151,7 +144,7 @@ test.each([
 
 test.each([
   ['the term', 'Terroir'],
-  ['the original word in any case', 'tERROIR'],
+  ['the original word in any case', 'lE TERR'],
   ['the meaning', 'growing'],
   ['a word with spaces around it', '  Terroir  '],
 ])('search finds a term by %s', async (_name, search) => {
@@ -319,4 +312,13 @@ test.each(['/terms', '/terms/wine'])('no domains at %s shows an empty state', as
   expect(await screen.findByText('No terms yet')).toBeInTheDocument();
   expect(screen.getByRole('heading', { level: 1, name: 'Study terms' })).toBeInTheDocument();
   expect(window.location.pathname).toBe(path);
+});
+
+// #147: an original name that only repeats the term is not printed a second time.
+test('a term card reads its name once when the original is the same', async () => {
+  fakeApi();
+  openAt('/terms/movie');
+  expect(await screen.findByRole('heading', { level: 2, name: /Montage/ })).toHaveTextContent(
+    /^Montage$/,
+  );
 });

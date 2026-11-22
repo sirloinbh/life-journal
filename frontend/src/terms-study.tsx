@@ -17,7 +17,8 @@ type Term = {
   id: string;
   domain: string;
   term: string;
-  original: string;
+  // Sent only when the original-language name differs from `term`.
+  original?: string;
   meaning: string;
   learned: boolean;
 };
@@ -68,7 +69,7 @@ function useTerms() {
 
 function matches(term: Term, search: string) {
   return [term.term, term.original, term.meaning].some((text) =>
-    text.toLowerCase().includes(search),
+    text?.toLowerCase().includes(search),
   );
 }
 
@@ -85,9 +86,11 @@ function TermCard({
       <CardHeader>
         <CardTitle asHeading="h2" className="flex flex-wrap items-baseline gap-2">
           <span className="min-w-0 wrap-anywhere">{term.term}</span>
-          <span className="min-w-0 text-body-sm font-normal wrap-anywhere text-muted-foreground">
-            {term.original}
-          </span>
+          {term.original && term.original !== term.term && (
+            <span className="min-w-0 text-body-sm font-normal wrap-anywhere text-muted-foreground">
+              {term.original}
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="text-body-sm wrap-anywhere">{term.meaning}</CardContent>

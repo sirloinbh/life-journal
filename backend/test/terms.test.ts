@@ -16,7 +16,16 @@ test('every term has a unique id, belongs to a domain and has text in every fiel
   for (const term of TERMS) {
     assert.ok(domains.has(term.domain), term.id);
     assert.match(term.id, new RegExp(`^${term.domain}-[a-z0-9-]+$`));
-    assert.ok(term.term.trim() && term.original.trim() && term.meaning.trim(), term.id);
+    assert.ok(term.term.trim() && term.meaning.trim(), term.id);
+  }
+});
+
+// #147: a card prints `original` next to `term`, so a copy of the name would show it twice.
+test('an original name is given only when it differs from the term', () => {
+  for (const term of TERMS) {
+    if (term.original === undefined) continue;
+    assert.ok(term.original.trim(), term.id);
+    assert.notEqual(term.original.trim().toLowerCase(), term.term.trim().toLowerCase(), term.id);
   }
 });
 
