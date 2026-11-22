@@ -46,25 +46,30 @@ function useFilteredItems(search: string) {
     initialPageParam: 0,
     getNextPageParam: (last: ItemPage) => last.nextOffset ?? undefined,
   });
-  const loading = query.isFetching && !query.isFetchingNextPage;
   const [shown, setShown] = useState<Shown>({ pages: null, failure: null });
-  if (!loading) {
-    const pages = query.data?.pages ?? shown.pages;
-    const failure = query.isError && !query.isFetchNextPageError ? query.error : null;
-    if (pages !== shown.pages || failure !== shown.failure) setShown({ pages, failure });
-  }
-  const items = shown.pages?.flatMap((page) => page.items) ?? null;
+  const pages = query.data?.pages ?? shown.pages;
+  // A failure stays until a request of this address answers; a failed "Load more" is not a failure of the list.
+  const failure = query.isFetching
+    ? shown.failure
+    : query.isError && !query.isFetchNextPageError
+      ? query.error
+      : null;
+  if (pages !== shown.pages || failure !== shown.failure) setShown({ pages, failure });
+  // Loading means the address has no list yet or is being tried again. A refresh in the background (window focus,
+  // a change on the bucket list) keeps the count and "Load more", so the keyboard focus on it is not lost.
+  const loading =
+    query.isFetching && !query.isFetchingNextPage && (query.data === undefined || failure !== null);
   return {
-    items,
-    total: shown.pages?.at(-1)?.total ?? 0,
+    items: pages?.flatMap((page) => page.items) ?? null,
+    total: pages?.at(-1)?.total ?? 0,
     // The rows kept after a failed new address have no next page of that address.
     hasMore: !loading && query.data !== undefined && query.hasNextPage,
-    failure: shown.failure,
+    failure,
     loading,
     loadingMore: query.isFetchingNextPage,
     moreFailure: query.isFetchNextPageError && !query.isFetchingNextPage ? query.error : null,
     loadMore: () => {
-      if (!query.isFetching) void query.fetchNextPage();
+      if (!query.isFetchingNextPage) void query.fetchNextPage();
     },
     retry: () => void query.refetch(),
   };

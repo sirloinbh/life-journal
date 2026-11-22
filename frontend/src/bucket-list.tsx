@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
-import { allItemsKey, fetchAllItems } from './item-pages';
+import { allItemsKey, fetchAllItems, tablePagesKey } from './item-pages';
 import {
   categories,
   type Category,
@@ -80,17 +80,25 @@ function useItems() {
   return { items: query.data ?? null, loadError, reload, update };
 }
 
-/** One item write (#158): a new item (no id) or a change to one, and a delete. */
+/**
+ * One item write (#158): a new item (no id) or a change to one, and a delete. Each marks the table's cached pages stale,
+ * so the table shows the change when it opens next, even within the cache time. The table is not on screen, so the
+ * write does not wait for it. The bucket list itself takes the server's answer and reloads on its own.
+ */
 function useItemWrites() {
-  const save = useApiMutation<Item, { id: number | null; fields: object }>(({ id, fields }) => ({
-    path: id === null ? '/api/items' : `/api/items/${id}`,
-    method: id === null ? 'POST' : 'PATCH',
-    body: fields,
-  }));
-  const remove = useApiMutation<void, number>((id) => ({
-    path: `/api/items/${id}`,
-    method: 'DELETE',
-  }));
+  const invalidate = [tablePagesKey];
+  const save = useApiMutation<Item, { id: number | null; fields: object }>(
+    ({ id, fields }) => ({
+      path: id === null ? '/api/items' : `/api/items/${id}`,
+      method: id === null ? 'POST' : 'PATCH',
+      body: fields,
+    }),
+    { invalidate },
+  );
+  const remove = useApiMutation<void, number>(
+    (id) => ({ path: `/api/items/${id}`, method: 'DELETE' }),
+    { invalidate },
+  );
   return { save: save.mutateAsync, remove: remove.mutateAsync };
 }
 

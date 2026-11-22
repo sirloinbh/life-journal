@@ -13,7 +13,9 @@ const MAX_PAGE_SIZE = 500;
  * table and the bucket list. The second part keeps a table address apart from the bucket list's every-page list.
  */
 export const allItemsKey = apiKey('/api/items', 'every page');
-export const itemPagesKey = (search: string) => apiKey('/api/items', 'pages', search);
+/** Every table address: a change on the bucket list marks them stale, so the table asks again when it opens. */
+export const tablePagesKey = apiKey('/api/items', 'pages');
+export const itemPagesKey = (search: string) => [...tablePagesKey, search];
 
 /**
  * Asks for the page at `offset` of the list `search` (the table address; its own `offset` is replaced). An answer without the

@@ -39,3 +39,12 @@ Real API (`server.ts` on a temporary port with the throwaway DB, 130 reading and
 
 - `npm run check` with `TEST_DATABASE_URL` set to a throwaway PostgreSQL 17 (`journal_test`, migrations 001-009): pass. Backend 191 passed, 0 skipped; frontend 314 passed, 3 skipped (existing); contract 3; skills 4; build.
 - `npm run knip` (with `TEST_DATABASE_URL`, as in CI): no findings.
+
+## Review — 2026-11-23
+
+- Round 1 (self-review of head `7cf12c8`): two findings from the 30 s cache and the focus refresh, fixed in the next commit with regression tests (both fail without their fix, checked).
+  - `issue:` a change on the bucket list did not reach the table within the cache time: the table's pages are cached under their own keys, and a fresh cached query is not asked again when the table opens. The item writes now pass `invalidate: [tablePagesKey]` to `useApiMutation`, which marks every cached table address stale. The table is not on screen then, so the save does not wait for it. Test "a change on the bucket list shows on the table at once, within the cache time (#158)" (bucket-list tests, with the app's 30 s cache).
+  - `issue:` a refresh in the background (window focus, `refetchQueries`) counted as loading, so the table hid the count and "Load more", which could drop the keyboard focus on that button. Loading now means the address has no list yet or is being tried again after a failure. Test "a refresh in the background keeps the count and "Load more" with the focus (#158)".
+  - `openAt` (test helper) takes an optional `staleTime` and returns its query client for these tests.
+  - Checked without findings: the bucket list and terms keep their list on screen during a background refresh (their loading shows only without data); `useSettledError` keeps "Try again" during a retry; mutations still reject with `RequestError`, so the 404 handling and form errors are unchanged.
+  - After the fixes, with the same `TEST_DATABASE_URL`: `npm run check` pass (backend 191 passed, 0 skipped; frontend 316 passed, 3 skipped (existing); contract 3; skills 4; build); `npm run lint` and `npm run knip` pass.

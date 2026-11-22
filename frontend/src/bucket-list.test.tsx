@@ -713,3 +713,17 @@ test('the bucket list asks for every page until the last one (#144)', async () =
   expect(screen.getByText(/· 3 items$/)).toBeInTheDocument();
   expect(asked).toEqual(['/api/items?limit=500', '/api/items?limit=500&offset=2']);
 });
+
+test('a change on the bucket list shows on the table at once, within the cache time (#158)', async () => {
+  fakeApi([{ title: 'Old title' }]);
+  openAt('/table', { staleTime: 30_000 });
+  expect(await screen.findByRole('link', { name: 'Old title' })).toBeInTheDocument();
+  const menu = screen.getByRole('navigation', { name: 'Main menu' });
+  fireEvent.click(within(menu).getByRole('link', { name: 'Bucket list' }));
+  const dialog = await openDialog('Edit Old title');
+  type(dialog, 'Title', 'New title');
+  fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
+  await dialogClosed();
+  fireEvent.click(within(menu).getByRole('link', { name: 'Table view' }));
+  expect(await screen.findByRole('link', { name: 'New title' })).toBeInTheDocument();
+});
