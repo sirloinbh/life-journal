@@ -34,3 +34,7 @@ Wording: no new text. The background failure reuses the message and the Try agai
 ### `npm run check` (2026-11-23)
 
 - Pass. Format, lint, contract, typecheck, backend 148 passed and 25 DB tests skipped (no `TEST_DATABASE_URL`, so the DB is not verified), frontend 273 passed and 3 skipped, skills 4 passed, build.
+
+## Review round 1 — 2026-11-23
+
+Self-review of head `685d426` (std-code-review section 8). Decision: approve, no blocking comments. Checked the order of background reloads (a stale list read before a second change is dropped by the `latest` counter), the unchanged 404 refresh paths, and that `LoadFailed` remounts per failure. Two non-blocking notes left as they are: "Saved" and the reload error can show together (both are true), and Try again still disables itself while retrying (existing first-load behavior).
