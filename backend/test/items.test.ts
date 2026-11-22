@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import type { Pool } from 'pg';
 
+import { CATEGORIES } from '../src/contract.js';
 import { withApi } from './helpers.js';
 
 const TODAY = '2026-10-31';
@@ -359,17 +360,11 @@ test('creating an item without a body is a Korean 400', async () => {
   });
 });
 
-// The screen's table in frontend/src/bucket-list.test.tsx must list the same keys.
-const criteriaByCategory = {
-  reading: { subtype: null, keys: ['content', 'prose', 'afterglow'] },
-  screen: { subtype: 'movie', keys: ['story', 'direction', 'acting'] },
-  stage: { subtype: 'opera', keys: ['acting', 'direction', 'stage', 'music'] },
-  drink: { subtype: 'wine', keys: ['aroma', 'taste', 'finish', 'value'] },
-  travel: { subtype: null, keys: ['scenery', 'food', 'lodging', 'transport'] },
-  coffee: { subtype: null, keys: ['aroma', 'acidity', 'sweetness', 'body', 'finish'] },
-};
-
-for (const [category, { subtype, keys }] of Object.entries(criteriaByCategory)) {
+// Each category's criteria come from the shared table (shared/contract.ts), which the screen's test
+// in frontend/src/bucket-list.test.tsx also walks.
+for (const { key: category, subtypes, criteria } of CATEGORIES) {
+  const subtype = subtypes.at(-1)?.value ?? null;
+  const keys = criteria.map(({ key }) => key);
   test(`${category}: every sub-rating criterion and both score limits are accepted`, async () => {
     const queries: unknown[][] = [];
     const pool = {

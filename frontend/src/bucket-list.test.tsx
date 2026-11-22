@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeAll, beforeEach, expect, test, vi } from 'vitest';
 
+import { CATEGORIES } from '../../shared/contract';
 import { App } from './app';
 import type { Item } from './items';
 import { queryLive } from './test/live';
@@ -331,23 +332,10 @@ test('a rejected completed date stays in the completion dialog', async () => {
   );
 });
 
-// The server's table in backend/test/items.test.ts must list the same keys.
-const criteriaByCategory = {
-  reading: { Content: 'content', Prose: 'prose', 'Lingering impression': 'afterglow' },
-  screen: { Story: 'story', Direction: 'direction', Acting: 'acting' },
-  stage: { Acting: 'acting', Direction: 'direction', Staging: 'stage', Music: 'music' },
-  drink: { Aroma: 'aroma', Taste: 'taste', 'Lingering impression': 'finish', Value: 'value' },
-  travel: { Scenery: 'scenery', Food: 'food', Lodging: 'lodging', Transport: 'transport' },
-  coffee: {
-    Aroma: 'aroma',
-    Acidity: 'acidity',
-    Sweetness: 'sweetness',
-    Body: 'body',
-    'Lingering impression': 'finish',
-  },
-};
-
-for (const [category, criteria] of Object.entries(criteriaByCategory)) {
+// Each category's criteria come from the shared table (shared/contract.ts), which the server's
+// test in backend/test/items.test.ts also walks.
+for (const { key: category, criteria: rules } of CATEGORIES) {
+  const criteria = Object.fromEntries(rules.map(({ key, label }) => [label, key]));
   test(`${category}: the rating form shows and sends the criteria of its category`, async () => {
     const api = fakeApi([{ category, title: 'Log', status: 'done', completedDate: '2026-10-01' }]);
     openAt(`/bucket-list/${category}`);
