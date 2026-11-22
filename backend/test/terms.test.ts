@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import type { Pool } from 'pg';
@@ -29,15 +30,28 @@ test('an original name is given only when it differs from the term', () => {
   }
 });
 
+// #148: a learned mark is stored by term id, and the list ignores ids it does not know, so a renamed
+// or removed id would silently lose its marks. Every id is pinned in term-ids.txt.
+test('every term id is pinned, and none is renamed or removed', () => {
+  const pinned = readFileSync(new URL('term-ids.txt', import.meta.url), 'utf8')
+    .split(/\r?\n/)
+    .filter((line) => line && !line.startsWith('#'));
+  const ids = new Set(TERMS.map(({ id }) => id));
+  const missing = pinned.filter((id) => !ids.has(id));
+  assert.deepEqual(missing, [], 'renamed or removed ids: learned marks would be lost');
+  const unpinned = [...ids].filter((id) => !pinned.includes(id));
+  assert.deepEqual(unpinned, [], 'new ids: add them to backend/test/term-ids.txt');
+  assert.equal(new Set(pinned).size, pinned.length, 'an id is pinned twice');
+});
+
 test('a term name appears only once in its domain', () => {
   const names = TERMS.map(({ domain, term }) => `${domain}:${term}`);
   assert.equal(new Set(names).size, names.length);
 });
 
 // The filled domains (#70 wine, #71 whisky, #72 literature, #73 movie, opera and musical): how
-// many terms each has, one sample term for each range and the ids from #69 that saved learned
-// marks may point to. Terms carry no range field, so a range is checked by its sample term, not by
-// every term in it.
+// many terms each has, its ranges in list order with one sample term each, and the ids from #69
+// that saved learned marks may point to.
 const FILLED_DOMAINS = {
   wine: {
     count: 50,
@@ -55,7 +69,7 @@ const FILLED_DOMAINS = {
       Types: 'whisky-bourbon',
       Regions: 'whisky-islay',
       'Distilling and aging': 'whisky-pot-still',
-      Tasting: 'whisky-peaty',
+      'Tasting and drinking': 'whisky-peaty',
     },
     kept: ['whisky-single-malt', 'whisky-cask-strength'],
   },
@@ -109,10 +123,17 @@ test('every domain is filled', () => {
 });
 
 for (const [domain, { count, ranges, kept }] of Object.entries(FILLED_DOMAINS)) {
-  test(`the ${domain} domain has ${count} terms with a sample term from each range`, () => {
-    const ids = new Set(TERMS.filter((term) => term.domain === domain).map(({ id }) => id));
-    assert.equal(ids.size, count);
-    for (const [range, id] of Object.entries(ranges)) assert.ok(ids.has(id), `${range}: ${id}`);
+  test(`the ${domain} domain has ${count} terms in its ranges, each range in one block`, () => {
+    const terms = TERMS.filter((term) => term.domain === domain);
+    assert.equal(terms.length, count);
+    // Ranges in the order they first appear; a range that comes back later would show twice.
+    const blocks = terms
+      .map(({ range }) => range)
+      .filter((range, index, all) => index === 0 || all[index - 1] !== range);
+    assert.deepEqual(blocks, Object.keys(ranges));
+    for (const [range, id] of Object.entries(ranges)) {
+      assert.equal(terms.find((term) => term.id === id)?.range, range, id);
+    }
   });
 
   test(`the ${domain} ids that saved learned marks may point to are kept`, () => {
