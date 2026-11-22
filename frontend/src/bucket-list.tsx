@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
+import { fetchAllItems } from './item-pages';
 import {
   categories,
   type Category,
@@ -61,9 +62,10 @@ function useItems() {
   const reload = useCallback(async () => {
     const request = ++latest.current;
     try {
-      const data = await requestJson<{ items: Item[] }>('/api/items');
+      // #144: the API answers pages; the bucket list groups every item, so it asks until the last page.
+      const all = await fetchAllItems();
       if (request === latest.current) {
-        setItems(data.items);
+        setItems(all);
         setLoadError(null);
       }
     } catch (error) {

@@ -438,7 +438,7 @@
     },
     "/api/items": {
       "get": {
-        "summary": "List items, filtered and sorted (the start date must not be after the end date)",
+        "summary": "List one page of items, filtered and sorted (the start date must not be after the end date; limit 1-500, default 100; offset); answers { items, nextOffset, total }",
         "parameters": [
           {
             "name": "q",
@@ -538,6 +538,22 @@
                 "asc",
                 "desc"
               ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],

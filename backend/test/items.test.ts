@@ -334,6 +334,13 @@ for (const [query, error] of [
   [`q=${'가'.repeat(101)}`, 'Search term must be 100 characters or fewer'],
   ['q=%00', 'Search term contains a character that is not allowed'],
   ['nickname=x', 'The search contains an unknown filter'],
+  ['limit=0', 'Page size must be a whole number from 1 to 500'],
+  ['limit=501', 'Page size must be a whole number from 1 to 500'],
+  ['limit=ten', 'Page size must be a whole number from 1 to 500'],
+  ['limit=1&limit=2', 'Page size must be a whole number from 1 to 500'],
+  ['offset=-1', 'Offset must be a whole number from 0 to 1000000'],
+  ['offset=1.5', 'Offset must be a whole number from 0 to 1000000'],
+  ['offset=1000001', 'Offset must be a whole number from 0 to 1000000'],
 ] as const) {
   test(`listing items with ${query.slice(0, 40)} is a Korean 400`, async () => {
     await withApi(untouchedPool(), async (call) => {

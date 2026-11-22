@@ -3,9 +3,9 @@ import { beforeAll, beforeEach, expect, test, vi } from 'vitest';
 
 import { CATEGORIES } from '../../shared/contract';
 import type { Item } from './items';
-import { allowSelect, gate, openAt } from './test/app';
+import { allowSelect, gate, json, openAt } from './test/app';
 import { choose, dialogClosed, openDialog, pressEscape, type } from './test/dialog';
-import { fakeItemsApi } from './test/items-api';
+import { fakeItemsApi, itemRow } from './test/items-api';
 import { findLive, getLive, queryLive } from './test/live';
 
 const TODAY = '2026-10-31';
@@ -690,4 +690,26 @@ test('reopening a done item asks and reports "Mark as not done"', async () => {
   await dialogClosed();
   expect(await screen.findByText('Marked as not done')).toHaveAttribute('role', 'status');
   expect(screen.getByRole('button', { name: 'Mark 데미안 as done' })).toBeInTheDocument();
+});
+
+test('the bucket list asks for every page until the last one (#144)', async () => {
+  const asked: string[] = [];
+  const book = (id: number, title: string) => itemRow(id, { title });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((path: string) => {
+      if (path === '/api/health') return Promise.resolve(json({ today: TODAY }));
+      asked.push(path);
+      return Promise.resolve(
+        path.endsWith('offset=2')
+          ? json({ items: [book(3, '세 번째')], nextOffset: null, total: 3 })
+          : json({ items: [book(1, '첫 번째'), book(2, '두 번째')], nextOffset: 2, total: 3 }),
+      );
+    }),
+  );
+  openAt('/bucket-list/reading');
+  expect(await screen.findByText('세 번째')).toBeInTheDocument();
+  expect(screen.getByText('첫 번째')).toBeInTheDocument();
+  expect(screen.getByText(/· 3 items$/)).toBeInTheDocument();
+  expect(asked).toEqual(['/api/items?limit=500', '/api/items?limit=500&offset=2']);
 });

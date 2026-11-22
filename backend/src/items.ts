@@ -267,6 +267,23 @@ const queryCost = (label: string) => {
 
 const queryDate = (label: string) => date(label).optional();
 
+// #144: offset paging of the list (user decision 2026-11-23: limit 1-500, default 100).
+const DEFAULT_PAGE_SIZE = 100;
+const MAX_PAGE_SIZE = 500;
+const MAX_OFFSET = 1_000_000;
+
+const queryWhole = (label: string, min: number, max: number) => {
+  const message = `${label} must be a whole number from ${min} to ${max}`;
+  return z
+    .string({ error: message })
+    .refine(
+      (value) => /^\d{1,7}$/.test(value) && Number(value) >= min && Number(value) <= max,
+      message,
+    )
+    .transform(Number)
+    .optional();
+};
+
 export const listQuery = strictObject(
   {
     q: z
@@ -301,12 +318,14 @@ export const listQuery = strictObject(
       )
       .default('createdAt'),
     order: z.enum(['asc', 'desc'], { error: 'Sort order is not valid' }).default('desc'),
+    limit: queryWhole('Page size', 1, MAX_PAGE_SIZE),
+    offset: queryWhole('Offset', 0, MAX_OFFSET),
   },
   'The search contains an unknown filter',
   () => 'Search filters are not valid',
 );
 
-function listSql(input: unknown, limit?: number) {
+function listSql(input: unknown) {
   const query = listQuery.parse(input);
   if (query.from && query.to && query.from > query.to) {
     throw new HttpError(400, 'Start date cannot be after end date');
@@ -331,26 +350,46 @@ function listSql(input: unknown, limit?: number) {
   if (query.costMin !== undefined) where.push(`cost_krw >= ${param(query.costMin)}`);
   if (query.costMax !== undefined) where.push(`cost_krw <= ${param(query.costMax)}`);
   const direction = query.order === 'asc' ? 'ASC' : 'DESC';
+  const filter = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+  // id breaks ties, so every row has one place in the order and offset pages neither repeat nor skip rows.
+  const order = `ORDER BY ${SORT_COLUMNS[query.sort]} ${direction} NULLS LAST, id DESC`;
   return {
-    text: `SELECT ${COLUMNS} FROM items
-      ${where.length > 0 ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY ${SORT_COLUMNS[query.sort]} ${direction} NULLS LAST, id DESC${limit === undefined ? '' : ` LIMIT ${Math.trunc(limit)}`}`,
-    params,
+    page: (limit: number, offset: number) => ({
+      text: `SELECT ${COLUMNS} FROM items ${filter} ${order}
+        LIMIT ${param(Math.trunc(limit))} OFFSET ${param(Math.trunc(offset))}`,
+      params,
+    }),
+    count: { text: `SELECT count(*)::int AS total FROM items ${filter}`, params: [...params] },
+    query,
   };
 }
 
-// The list the route answers with. The AI tool list_items passes a limit (project-standards#711); the route has none.
-export async function listItems(db: Db, query: unknown, limit?: number) {
-  const { text, params } = listSql(query, limit);
+// The AI tool list_items: the first `limit` items (project-standards#711).
+export async function listItems(db: Db, query: unknown, limit: number) {
+  const { text, params } = listSql(query).page(limit, 0);
   const { rows } = await db.query(text, params);
   return { items: rows };
+}
+
+// The route (#144): one page, the offset of the next page (null on the last one), and the number of matching items.
+async function listItemsPage(db: Db, input: unknown) {
+  const sql = listSql(input);
+  const offset = sql.query.offset ?? 0;
+  const page = sql.page(sql.query.limit ?? DEFAULT_PAGE_SIZE, offset);
+  const [{ rows }, counted] = await Promise.all([
+    db.query(page.text, page.params),
+    db.query<{ total: number }>(sql.count.text, sql.count.params),
+  ]);
+  const total = counted.rows[0]?.total ?? 0;
+  const next = offset + rows.length;
+  return { items: rows, nextOffset: rows.length > 0 && next < total ? next : null, total };
 }
 
 export function createItemsRouter(pool: Pool, today: () => string) {
   const router = Router();
 
   router.get('/', async (req, res) => {
-    res.json(await listItems(pool, req.query));
+    res.json(await listItemsPage(pool, req.query));
   });
 
   router.post('/', async (req, res) => {
