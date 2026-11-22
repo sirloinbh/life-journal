@@ -33,3 +33,10 @@ The existing DB integration tests (dates and ids in item responses) now run on `
 - `npm run check` with that `TEST_DATABASE_URL`: pass. Backend 176 passed, 0 skipped; frontend 264 passed, 3 skipped (existing); contract 3 passed; skills 4 passed; build passed. The contract check covers the OpenAPI output that `openapi-cli.ts` generates from `app.ts`.
 - `npm run knip`: no finding in the changed files (it still lists the existing `e2e/smoke.spec.ts` and `@axe-core/playwright` items, which are not part of this card).
 - No screen change, so no browser check.
+
+## Review — 2026-11-23
+
+- Round 1 (self-review of head `6a54b19`): no findings that need a change, so no second round.
+  - `TypeOverrides` falls back to pg's global parsers for every type it does not override (`node_modules/pg/lib/type-overrides.js`), so other types parse as before.
+  - The only other pg connection in `src` is the migration runner's `Client`, which never imported `app.ts` and so never had the parsers; the AI tool routes and `listItems` use the pool passed from `server.ts` (`connectPool`); tests with stub pools do not reach pg.
+  - `items-check-names.integration.test.ts` (merged in #188) still opens `new Pool` directly; it only reads constraint names, so it does not need the parsers.
