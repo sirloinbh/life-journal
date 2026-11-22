@@ -235,6 +235,8 @@ test('more clicks during a mark on its way send nothing and keep the keyboard fo
   tannin.focus();
   fireEvent.click(tannin);
   fireEvent.click(tannin);
+  // A mutation starts its request a microtask after the click (#158), so let that happen first.
+  await act(async () => {});
   expect(api.requests).toHaveLength(1);
   expect(tannin).toBeEnabled();
   expect(tannin).toHaveFocus();

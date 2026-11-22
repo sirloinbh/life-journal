@@ -1,3 +1,4 @@
+import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BookOpen, LayoutDashboard, ListChecks, Settings2, Table2 } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
@@ -8,6 +9,7 @@ import { EmptyState } from './components/ui/empty-state';
 import { Toaster } from './components/ui/sonner';
 import { type Health, healthText } from './health';
 import { ItemsTable } from './items-table';
+import { createQueryClient } from './lib/query';
 import { AccountActions, SignInGate } from './sign-in';
 import { TermsStudy } from './terms-study';
 
@@ -93,74 +95,78 @@ function Page({
   );
 }
 
-export function App() {
+/** `queryClient` is for tests, which use one without retries; the app makes its own once (#158). */
+export function App({ queryClient }: { queryClient?: QueryClient }) {
   const health = useHealth();
+  const [client] = useState(() => queryClient ?? createQueryClient());
   return (
-    <BrowserRouter>
-      <SignInGate>
-        <AppShell appName="Reviews & Diary" nav={nav} actions={<AccountActions />}>
-          <Routes>
-            <Route
-              path={pages.overview}
-              element={
-                <Page
-                  title="Dashboard"
-                  description="A personal service for recording experiences: book and movie reviews, a diary, plays, concerts, and more"
-                  health={health}
-                />
-              }
-            />
-            <Route
-              path={`${pages.bucketList}/:category?`}
-              element={
-                <Page
-                  title="Bucket list"
-                  description="Collect what you want to do by category and mark what you finish as done"
-                  health={health}
-                >
-                  <BucketList path={pages.bucketList} />
-                </Page>
-              }
-            />
-            <Route
-              path={pages.table}
-              element={
-                <Page
-                  title="Table view"
-                  description="See every item in a table and search, filter, and sort it"
-                  health={health}
-                >
-                  <ItemsTable bucketListPath={pages.bucketList} />
-                </Page>
-              }
-            />
-            <Route
-              path={`${pages.terms}/:domain?`}
-              element={
-                <Page
-                  title="Study terms"
-                  description="See terms and meanings by category and mark the ones you have learned"
-                  health={health}
-                >
-                  <TermsStudy path={pages.terms} />
-                </Page>
-              }
-            />
-            <Route
-              path={pages.settings}
-              element={
-                <Page
-                  title="Settings"
-                  description="App environment and data management"
-                  health={health}
-                />
-              }
-            />
-            <Route path="*" element={<Navigate to={pages.overview} replace />} />
-          </Routes>
-        </AppShell>
-        <Toaster />
-      </SignInGate>
-    </BrowserRouter>
+    <QueryClientProvider client={client}>
+      <BrowserRouter>
+        <SignInGate>
+          <AppShell appName="Reviews & Diary" nav={nav} actions={<AccountActions />}>
+            <Routes>
+              <Route
+                path={pages.overview}
+                element={
+                  <Page
+                    title="Dashboard"
+                    description="A personal service for recording experiences: book and movie reviews, a diary, plays, concerts, and more"
+                    health={health}
+                  />
+                }
+              />
+              <Route
+                path={`${pages.bucketList}/:category?`}
+                element={
+                  <Page
+                    title="Bucket list"
+                    description="Collect what you want to do by category and mark what you finish as done"
+                    health={health}
+                  >
+                    <BucketList path={pages.bucketList} />
+                  </Page>
+                }
+              />
+              <Route
+                path={pages.table}
+                element={
+                  <Page
+                    title="Table view"
+                    description="See every item in a table and search, filter, and sort it"
+                    health={health}
+                  >
+                    <ItemsTable bucketListPath={pages.bucketList} />
+                  </Page>
+                }
+              />
+              <Route
+                path={`${pages.terms}/:domain?`}
+                element={
+                  <Page
+                    title="Study terms"
+                    description="See terms and meanings by category and mark the ones you have learned"
+                    health={health}
+                  >
+                    <TermsStudy path={pages.terms} />
+                  </Page>
+                }
+              />
+              <Route
+                path={pages.settings}
+                element={
+                  <Page
+                    title="Settings"
+                    description="App environment and data management"
+                    health={health}
+                  />
+                }
+              />
+              <Route path="*" element={<Navigate to={pages.overview} replace />} />
+            </Routes>
+          </AppShell>
+          <Toaster />
+        </SignInGate>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }

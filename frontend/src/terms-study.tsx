@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Navigate, useParams } from 'react-router';
 
@@ -9,9 +10,11 @@ import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { Spinner } from './components/ui/spinner';
-import { RequestError, requestJson } from './lib/api';
+import { RequestError } from './lib/api';
+import { apiKey, useApiMutation, useApiQuery } from './lib/query';
 import { errorText, useNotice } from './lib/use-notice';
 import { LoadFailed } from './load-failed';
+import { useSettledError } from './settled-error';
 
 type Term = {
   id: string;
@@ -25,33 +28,21 @@ type Term = {
 
 type TermsAnswer = { domains: { key: string; label: string }[]; terms: Term[] };
 
+const termsKey = apiKey('/api/terms');
+
 function useTerms() {
-  const [data, setData] = useState<TermsAnswer | null>(null);
-  const [loadError, setLoadError] = useState<unknown>(null);
-  const latest = useRef(0);
-  const answered = useRef(0);
+  const client = useQueryClient();
+  const query = useApiQuery<TermsAnswer>(termsKey, '/api/terms');
+  const loadError = useSettledError(query);
+  // A new reload cancels one still on its way, so only the latest answer reaches the screen.
+  const { refetch } = query;
   const reload = useCallback(async () => {
-    const request = ++latest.current;
-    try {
-      const answer = await requestJson<TermsAnswer>('/api/terms');
-      if (request === latest.current) {
-        answered.current = request;
-        setData(answer);
-        setLoadError(null);
-      }
-    } catch (error) {
-      if (request === latest.current) {
-        answered.current = request;
-        setLoadError(error);
-      }
-    }
-  }, []);
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+    await refetch();
+  }, [refetch]);
   const keepLearned = useCallback(
     (id: string, learned: boolean) => {
-      setData(
+      client.setQueryData<TermsAnswer>(
+        termsKey,
         (current) =>
           current && {
             ...current,
@@ -60,11 +51,12 @@ function useTerms() {
       );
       // A list still on its way may have been read before this change. Ask again, which drops that
       // answer, because a refresh after a 404 still has to happen.
-      if (answered.current !== latest.current) void reload();
+      if (client.isFetching({ queryKey: termsKey }) > 0)
+        void client.invalidateQueries({ queryKey: termsKey });
     },
-    [reload],
+    [client],
   );
-  return { data, loadError, reload, keepLearned };
+  return { data: query.data ?? null, loadError, reload, keepLearned };
 }
 
 function matches(term: Term, search: string) {
@@ -160,6 +152,10 @@ export function TermsStudy({ path }: { path: string }) {
   // A mark on its way ignores more clicks, so the answers cannot arrive out of order. The box stays
   // enabled because disabling it would drop the keyboard focus.
   const saving = useRef(new Set<string>());
+  const mark = useApiMutation<void, { id: string; learned: boolean }>(({ id, learned }) => ({
+    path: `/api/terms/${encodeURIComponent(id)}/learned`,
+    method: learned ? 'PUT' : 'DELETE',
+  }));
 
   // A message about one domain's term does not belong on another domain's tab.
   useEffect(() => clear(), [params.domain, clear]);
@@ -169,9 +165,7 @@ export function TermsStudy({ path }: { path: string }) {
     saving.current.add(term.id);
     clear();
     try {
-      await requestJson<void>(`/api/terms/${encodeURIComponent(term.id)}/learned`, {
-        method: learned ? 'PUT' : 'DELETE',
-      });
+      await mark.mutateAsync({ id: term.id, learned });
       keepLearned(term.id, learned);
     } catch (cause) {
       // The answer may arrive on another domain's tab, so the message says which term it is about.
