@@ -33,6 +33,7 @@ import {
   type Category,
   type Item,
   itemAnchor,
+  itemCount,
   itemFields,
   itemSummary,
   MAX_REVIEW_LENGTH,
@@ -432,15 +433,15 @@ function ItemCard({
               Review
             </Button>
             <ConfirmDialog
-              title="Undo done?"
+              title="Mark as not done?"
               description="The status goes back to want to do, and the completed date, rating, and review are cleared."
-              confirmLabel="Undo done"
+              confirmLabel="Mark as not done"
               cancelLabel="Close"
               destructive={false}
               onConfirm={onReopen}
               trigger={
-                <Button size="sm" variant="outline" aria-label={`Undo done for ${item.title}`}>
-                  Undo done
+                <Button size="sm" variant="outline" aria-label={`Mark ${item.title} as not done`}>
+                  Mark as not done
                 </Button>
               }
             />
@@ -581,7 +582,7 @@ function CategoryItems({
     <>
       <div className="flex items-center justify-between gap-4">
         <p className="text-body-sm text-muted-foreground">
-          {category.description} · {shown.length} items
+          {category.description} · {itemCount(shown.length)}
         </p>
         <Button ref={addButton} onClick={(event) => openForm({ kind: 'new' }, event)}>
           Add item
@@ -624,7 +625,7 @@ function CategoryItems({
                         },
                       }),
                     );
-                  }, 'Undid done')
+                  }, 'Marked as not done')
                 }
                 onDelete={() =>
                   changeFromDialog(async () => {
