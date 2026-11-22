@@ -49,3 +49,16 @@ Self-review of head `1628e1c` (std-code-review section 8). Decision: changes nee
 ### `npm run check` after round 1 (2026-11-23)
 
 - Pass. Format, lint, contract 3 passed, typecheck, backend 142 passed and 24 DB tests skipped (no `TEST_DATABASE_URL`), frontend 264 passed and 3 skipped, skills 4 passed, build.
+
+## Review round 2 — 2026-11-23
+
+Self-review of head `8566f47` and the full final diff. Decision: changes needed, 1 finding.
+
+| Finding                                                                                                                                                              | Handling                                                                          |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `issue:` `decodeURIComponent` on the hash threw `URIError` for a malformed address such as `/bucket-list/reading#%E0%A4%A`, which would crash the bucket list screen | The hash is compared as is (anchors are plain `item-<id>`), so nothing is decoded |
+
+### Verification
+
+- Test: "an address with the unknown item … shows the list without moving the focus" now runs for `#item-99`, `#%E0%A4%A` and `#item-1%`. With the round 1 code the two malformed cases failed with `URIError: URI malformed`; now `npm run test -w frontend -- src/items-table.test.tsx src/bucket-list.test.tsx`: 78 passed.
+- `npm run check`: pass after formatting this record. Format, lint, contract 3 passed, typecheck, backend 142 passed and 24 DB tests skipped (no `TEST_DATABASE_URL`), frontend 266 passed and 3 skipped, skills 4 passed, build.

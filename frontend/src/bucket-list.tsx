@@ -496,7 +496,8 @@ const FORM_TITLES = {
 function useLinkedItem() {
   const { hash } = useLocation();
   const handled = useRef('');
-  const linked = hash ? decodeURIComponent(hash.slice(1)) : '';
+  // Anchors are plain `item-<id>`, so the hash is used as is: decoding could throw on `#%`.
+  const linked = hash.slice(1);
   useEffect(() => {
     if (!linked || hash === handled.current) return;
     const target = document.getElementById(linked);

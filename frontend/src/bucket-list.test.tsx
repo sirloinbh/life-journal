@@ -730,10 +730,12 @@ test('a linked item is focused once, and a later reload does not move the focus'
   await waitFor(() => expect(document.activeElement).toBe(edit));
 });
 
-test('an address with an unknown item shows the list without moving the focus', async () => {
-  fakeApi([{ title: '데미안' }]);
-  openAt('/bucket-list/reading#item-99');
-  const item = (await screen.findByRole('heading', { name: /데미안/ })).closest('li');
-  expect(document.activeElement).toBe(document.body);
-  expect(item).not.toHaveAttribute('aria-current');
-});
+for (const hash of ['#item-99', '#%E0%A4%A', '#item-1%']) {
+  test(`an address with the unknown item ${hash} shows the list without moving the focus`, async () => {
+    fakeApi([{ title: '데미안' }]);
+    openAt(`/bucket-list/reading${hash}`);
+    const item = (await screen.findByRole('heading', { name: /데미안/ })).closest('li');
+    expect(document.activeElement).toBe(document.body);
+    expect(item).not.toHaveAttribute('aria-current');
+  });
+}
