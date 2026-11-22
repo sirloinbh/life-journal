@@ -303,6 +303,25 @@ test('a failed list can be tried again', async () => {
   expect(await screen.findByRole('heading', { level: 2, name: /Tannin/ })).toBeInTheDocument();
 });
 
+test('a failed refresh keeps the terms on screen, says so, and can be tried again', async () => {
+  const api = fakeApi();
+  openAt('/terms/wine');
+  const tannin = await box('Tannin learned');
+  api.failNext = { status: 404, error: 'Term not found' };
+  api.terms = api.terms.filter(({ id }) => id !== 'wine-tannin');
+  api.failList = true;
+  fireEvent.click(tannin);
+  expect(await screen.findByText('Tannin: Term not found')).toBeInTheDocument();
+  expect(await screen.findByText('A server error occurred')).toHaveAttribute('role', 'alert');
+  expect(await box('Terroir learned')).toBeInTheDocument();
+
+  api.failList = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  await waitFor(() => expect(screen.queryByText('Tannin')).not.toBeInTheDocument());
+  expect(screen.queryByText('A server error occurred')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+});
+
 // #151: a server with no domains has no tab to open, so the page says so instead of going blank.
 test.each(['/terms', '/terms/wine'])('no domains at %s shows an empty state', async (path) => {
   const api = fakeApi();

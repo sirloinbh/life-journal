@@ -33,6 +33,7 @@ import {
   type Category,
   type Item,
   itemAnchor,
+  itemCount,
   itemFields,
   itemSummary,
   MAX_REVIEW_LENGTH,
@@ -432,15 +433,15 @@ function ItemCard({
               Review
             </Button>
             <ConfirmDialog
-              title="Undo done?"
+              title="Mark as not done?"
               description="The status goes back to want to do, and the completed date, rating, and review are cleared."
-              confirmLabel="Undo done"
+              confirmLabel="Mark as not done"
               cancelLabel="Close"
               destructive={false}
               onConfirm={onReopen}
               trigger={
-                <Button size="sm" variant="outline" aria-label={`Undo done for ${item.title}`}>
-                  Undo done
+                <Button size="sm" variant="outline" aria-label={`Mark ${item.title} as not done`}>
+                  Mark as not done
                 </Button>
               }
             />
@@ -554,7 +555,8 @@ function CategoryItems({
         body: fields,
       });
       keepSaved(saved);
-      await reload();
+      // The list already shows the saved item, so the form closes without waiting for a full reload.
+      void reload();
       status(done);
       setFormOpen(false);
     } catch (cause) {
@@ -566,22 +568,22 @@ function CategoryItems({
   };
 
   // Failures close the dialog and show on the page; the list is reloaded in case the item is gone.
+  // The change already shows, so the dialog does not wait for the reload.
   const changeFromDialog = async (change: () => Promise<unknown>, done: string) => {
     try {
       await change();
-      await reload();
       status(done);
     } catch (cause) {
       error(cause);
-      await reload();
     }
+    void reload();
   };
 
   return (
     <>
       <div className="flex items-center justify-between gap-4">
         <p className="text-body-sm text-muted-foreground">
-          {category.description} · {shown.length} items
+          {category.description} · {itemCount(shown.length)}
         </p>
         <Button ref={addButton} onClick={(event) => openForm({ kind: 'new' }, event)}>
           Add item
@@ -624,7 +626,7 @@ function CategoryItems({
                         },
                       }),
                     );
-                  }, 'Undid done')
+                  }, 'Marked as not done')
                 }
                 onDelete={() =>
                   changeFromDialog(async () => {
@@ -692,6 +694,8 @@ export function BucketList({ path }: { path: string }) {
   return (
     <div className="flex flex-col gap-4">
       <CategoryTabs path={path} tabs={categories} />
+      {/* A failed reload keeps the last list on screen, but says so and offers a retry. */}
+      {items !== null && loadError ? <LoadFailed cause={loadError} reload={reload} /> : null}
       {items === null ? (
         loadError ? (
           <LoadFailed cause={loadError} reload={reload} />

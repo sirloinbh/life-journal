@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
-import { categories, formatDate, formatKrw, type Item, itemAnchor } from './items';
+import { categories, formatDate, formatKrw, type Item, itemAnchor, itemCount } from './items';
 import { requestJson } from './lib/api';
 import { errorText } from './lib/use-notice';
 
@@ -238,7 +238,7 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
       </p>
       <div className="flex min-h-9 items-center justify-between gap-4">
         <p role="status" className="text-body-sm text-muted-foreground">
-          {loading ? 'Loading…' : items ? `${items.length} items` : ''}
+          {loading ? 'Loading…' : items ? itemCount(items.length) : ''}
         </p>
         {search ? (
           <Button

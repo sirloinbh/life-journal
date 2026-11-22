@@ -403,3 +403,13 @@ test('an item title opens that item on the bucket list, scrolled to and focused'
   expect(window.location.pathname + window.location.hash).toBe('/bucket-list/reading#item-2');
   scroll.mockRestore();
 });
+
+test('the count reads 1 item, and more than one as items', async () => {
+  fakeApi((search) =>
+    json({ items: search.includes('status=done') ? [row(1, {})] : [row(1, {}), row(2, {})] }),
+  );
+  openAt('/table');
+  expect(await screen.findByText('2 items')).toHaveAttribute('role', 'status');
+  await choose('Status', 'Done');
+  expect(await screen.findByText('1 item')).toHaveAttribute('role', 'status');
+});
