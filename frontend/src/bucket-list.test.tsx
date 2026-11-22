@@ -706,3 +706,26 @@ for (const name of ['Add item', 'Edit 데미안', 'Mark 데미안 as done', 'Del
     await waitFor(() => expect(document.activeElement).toBe(button));
   });
 }
+
+test('a linked item is focused once, and a later reload does not move the focus', async () => {
+  fakeApi([{ title: '데미안' }, { title: '수레바퀴' }]);
+  openAt('/bucket-list/reading#item-2');
+  const item = (await screen.findByRole('heading', { name: /수레바퀴/ })).closest('li');
+  await waitFor(() => expect(document.activeElement).toBe(item));
+
+  const edit = screen.getByRole('button', { name: 'Edit 데미안' });
+  edit.focus();
+  const dialog = await openDialog('Edit 데미안');
+  type(dialog, 'Title', '고친 제목');
+  fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
+  await dialogClosed();
+  await screen.findByText('고친 제목');
+  await waitFor(() => expect(document.activeElement).toBe(edit));
+});
+
+test('an address with an unknown item shows the list without moving the focus', async () => {
+  fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading#item-99');
+  await screen.findByText('데미안');
+  expect(document.activeElement).toBe(document.body);
+});

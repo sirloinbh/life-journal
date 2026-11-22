@@ -1,6 +1,6 @@
 import type { FormEvent, MouseEvent } from 'react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Navigate, useParams } from 'react-router';
+import { Navigate, useLocation, useParams } from 'react-router';
 
 import { CategoryTabs } from './category-tabs';
 import { Badge } from './components/ui/badge';
@@ -32,6 +32,7 @@ import {
   categories,
   type Category,
   type Item,
+  itemAnchor,
   itemFields,
   itemSummary,
   MAX_REVIEW_LENGTH,
@@ -487,6 +488,23 @@ const FORM_TITLES = {
   review: 'Review',
 };
 
+/**
+ * A link such as `#item-12` from the items table scrolls to that item and focuses it once. Later
+ * reloads do not move the focus again; a new link with another item does.
+ */
+function useLinkedItem() {
+  const { hash } = useLocation();
+  const handled = useRef('');
+  useEffect(() => {
+    if (!hash || hash === handled.current) return;
+    const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+    if (!target) return;
+    handled.current = hash;
+    target.scrollIntoView({ block: 'center' });
+    target.focus({ preventScroll: true });
+  });
+}
+
 function CategoryItems({
   category,
   items,
@@ -506,6 +524,7 @@ function CategoryItems({
   const opener = useRef<HTMLElement | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const shown = items.filter((item) => item.category === category.key);
+  useLinkedItem();
   // A closing form is still on screen during its animation and must not submit again.
   const pending = saving || !formOpen;
 
@@ -573,7 +592,12 @@ function CategoryItems({
       ) : (
         <ul className="flex flex-col gap-3">
           {shown.map((item) => (
-            <li key={item.id}>
+            <li
+              key={item.id}
+              id={itemAnchor(item.id)}
+              tabIndex={-1}
+              className="scroll-mt-4 rounded-xl outline-none focus:ring-[3px] focus:ring-ring/50"
+            >
               <ItemCard
                 item={item}
                 category={category}

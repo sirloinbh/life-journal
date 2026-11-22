@@ -79,7 +79,7 @@ test('the main menu opens the table, which shows every column', async () => {
   fireEvent.click(within(menu).getByRole('link', { name: 'Table view' }));
   expect(await screen.findByRole('link', { name: '라 보엠' })).toHaveAttribute(
     'href',
-    '/bucket-list/stage',
+    '/bucket-list/stage#item-1',
   );
   const cells = within(rows()[1])
     .getAllByRole('cell')
@@ -126,7 +126,7 @@ test('the coffee category is a table filter and names its rows', async () => {
   await screen.findByRole('link', { name: 'Item 1' });
   await choose('Category', 'Coffee');
   const link = await screen.findByRole('link', { name: '케냐 AA' });
-  expect(link).toHaveAttribute('href', '/bucket-list/coffee');
+  expect(link).toHaveAttribute('href', '/bucket-list/coffee#item-3');
   expect(link.closest('tr')).toHaveTextContent('Coffee');
   expect(asked.at(-1)).toBe('category=coffee');
 });
@@ -381,4 +381,25 @@ test('a slow answer for an old filter cannot replace the current one', async () 
   });
   expect(screen.getByRole('link', { name: 'Current filters' })).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Old filters' })).toBeNull();
+});
+
+test('an item title opens that item on the bucket list, scrolled to and focused', async () => {
+  fakeApi(() =>
+    json({ items: [row(1, {}), row(2, { title: '데미안' }), row(3, { category: 'coffee' })] }),
+  );
+  const scrolled: Element[] = [];
+  const scroll = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(function (
+    this: Element,
+  ) {
+    scrolled.push(this);
+  });
+  openAt('/table');
+  const link = await screen.findByRole('link', { name: '데미안' });
+  expect(link).toHaveAttribute('href', '/bucket-list/reading#item-2');
+  fireEvent.click(link);
+  const item = (await screen.findByRole('heading', { name: /데미안/ })).closest('li');
+  await waitFor(() => expect(document.activeElement).toBe(item));
+  expect(scrolled).toEqual([item]);
+  expect(window.location.pathname + window.location.hash).toBe('/bucket-list/reading#item-2');
+  scroll.mockRestore();
 });
