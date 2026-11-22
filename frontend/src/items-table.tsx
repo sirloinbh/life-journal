@@ -63,7 +63,8 @@ function useFilteredItems(search: string) {
         if (current) setResult({ items, total, nextOffset, failure: null, request });
       },
       (failure: unknown) => {
-        if (current) setResult((last) => ({ ...last, failure, request }));
+        // The old rows stay on screen with the error, but their next page belongs to the old address.
+        if (current) setResult((last) => ({ ...last, nextOffset: null, failure, request }));
       },
     );
     return () => {

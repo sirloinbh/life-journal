@@ -48,3 +48,11 @@ Real API (`server.ts` on a temporary port with the throwaway DB, 130 reading and
 
 - `npm run check` with `TEST_DATABASE_URL` set to a throwaway PostgreSQL 17 (`postgres:17-alpine`, `journal_test`, migrations 001-009 applied): pass. Backend 191 passed, 0 skipped; frontend 297 passed, 3 skipped (existing); contract 3 passed; skills 4 passed; build passed.
 - Browser e2e (`npm run test:e2e`) was not run locally because ports 3204/5304 are shared with the other lanes; CI runs it on the PR.
+
+## Review — 2026-11-23
+
+- Round 1 (self-review of head `67fd11d`): two findings, fixed in the next commit with regression tests.
+  - `issue:` after a failed refresh on new filters, the table kept the old rows with the old `nextOffset`, so "Load more" would append a page of the new filters to the old rows. The failure now clears `nextOffset`; test "after a failed refresh the old rows offer no "Load more" of the new filters".
+  - `issue:` a table address that already had `offset=` (typed by hand) made "Load more" send `offset` twice, which the API answers with 400. `fetchItemPage` now replaces it; test ""Load more" replaces an offset that is already in the address".
+  - Checked without findings: the count query uses a copy of the filter parameters taken before `LIMIT`/`OFFSET` are added; the AI tool still answers `{ items }` from offset 0 with its own limit; ties are broken by `id`, so pages are stable.
+  - `npm run check` after the fixes, with the same `TEST_DATABASE_URL`: pass. Backend 191 passed, 0 skipped; frontend 299 passed, 3 skipped (existing); contract 3; skills 4; build.

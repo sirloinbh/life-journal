@@ -471,3 +471,28 @@ test('a page that arrives after the filters changed is not appended', async () =
   expect(rows()).toHaveLength(2);
   expect(screen.getByText('1 item')).toHaveAttribute('role', 'status');
 });
+
+test('after a failed refresh the old rows offer no "Load more" of the new filters', async () => {
+  const asked = fakeApi((search) =>
+    search.includes('status=done')
+      ? json({ error: 'A server error occurred' }, 500)
+      : page([1, 2], 2, 3),
+  );
+  openAt('/table');
+  await screen.findByRole('button', { name: 'Load more' });
+  await choose('Status', 'Done');
+  expect(await screen.findByText('A server error occurred')).toBeInTheDocument();
+  expect(rows()).toHaveLength(3);
+  expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+  expect(asked.some((search) => search.includes('offset='))).toBe(false);
+});
+
+test('"Load more" replaces an offset that is already in the address', async () => {
+  const asked = fakeApi((search) =>
+    search.includes('offset=4') ? page([5], null, 5) : page([3, 4], 4, 5),
+  );
+  openAt('/table?offset=2');
+  fireEvent.click(await screen.findByRole('button', { name: 'Load more' }));
+  expect(await screen.findByText('5 items · showing 3')).toHaveAttribute('role', 'status');
+  expect(asked).toEqual(['offset=2', 'offset=4']);
+});

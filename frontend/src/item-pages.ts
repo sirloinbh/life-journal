@@ -8,12 +8,17 @@ export type ItemPage = { items: Item[]; nextOffset: number | null; total: number
 export const MAX_PAGE_SIZE = 500;
 
 /**
- * Asks for the page at `offset` of the list `search` (the query string without `offset`). An answer without the
+ * Asks for the page at `offset` of the list `search` (the table address; its own `offset` is replaced). An answer without the
  * paging fields counts as the whole list, and a next offset that does not move forward ends the list, so a loop
  * over the pages always stops.
  */
 export async function fetchItemPage(search: string, offset = 0): Promise<ItemPage> {
-  const query = offset > 0 ? [search, `offset=${offset}`].filter(Boolean).join('&') : search;
+  // An offset already in the address (typed by hand) is replaced, not sent twice.
+  const rest = search
+    .split('&')
+    .filter((part) => part && !part.startsWith('offset='))
+    .join('&');
+  const query = offset > 0 ? [rest, `offset=${offset}`].filter(Boolean).join('&') : search;
   const data = await requestJson<{ items: Item[]; nextOffset?: unknown; total?: unknown }>(
     `/api/items${query ? `?${query}` : ''}`,
   );
