@@ -27,3 +27,7 @@ The bucket list and the items table always said "items", so one item read "1 ite
 ## Review round 1 — 2026-11-23
 
 Self-review (std-code-review section 8). Decision: approve, no blocking comments. Both counts use the helper, "0 items" stays plural, no source, e2e test or doc still uses the old texts, and the new aria label mirrors "Mark <title> as done". The button wording beyond the card waits for the coordinator's answer.
+
+## Decision — 2026-11-23
+
+- The decision was answered on 2026-11-23: option A, both buttons read 'Mark as not done', recorded on #153.
