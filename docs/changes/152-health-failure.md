@@ -29,3 +29,7 @@ The centrally managed `health.ts` also exports a `useHealth` that retries every 
 ### `npm run check` (2026-11-23)
 
 - Pass. Format, lint, contract 3 passed, typecheck, backend 148 passed and 29 DB tests skipped (no `TEST_DATABASE_URL`, so the DB is not verified), frontend 273 passed and 3 skipped, skills 4 passed, build.
+
+## Review round 1 — 2026-11-23
+
+Self-review (std-code-review section 8). Decision: approve, no blocking comments. Non-blocking notes left as they are: a 200 answer with an `error` field and no `today` now shows the fallback instead of that `error` (the route never sends it), and adopting the managed `health.ts` hook is a possible later cleanup outside this card.
