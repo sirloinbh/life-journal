@@ -1,6 +1,14 @@
-import { Pool } from 'pg';
+import { Pool, TypeOverrides } from 'pg';
 
-import { createPool } from './standard/db.js';
+import { createPool, setInt8Parser } from './standard/db.js';
+
+// #143: the pg type parsers belong to this app's pools, not to pg's global registry, so importing app.ts (scripts,
+// tests, the OpenAPI CLI) changes nothing. DATE columns stay YYYY-MM-DD strings so the service time zone never shifts
+// them, and BIGINT ids come back as JS numbers; a value a number cannot hold exactly throws (ADR-0025).
+const DATE_OID = 1082;
+export const pgTypes = new TypeOverrides();
+pgTypes.setTypeParser(DATE_OID, (value: string) => value);
+setInt8Parser(pgTypes);
 
 // #142: a DB that cannot be reached fails a request within seconds instead of holding it (and a pool client) until the
 // OS TCP timeout, and the server cancels a runaway query. The migration runner opens its own client, so a long
@@ -18,6 +26,7 @@ export function connectPool(
   return createPool(
     new Pool({
       connectionString,
+      types: pgTypes,
       connectionTimeoutMillis: limits.connectTimeoutMs ?? CONNECT_TIMEOUT_MS,
       statement_timeout: limits.statementTimeoutMs ?? STATEMENT_TIMEOUT_MS,
     }),

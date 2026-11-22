@@ -2,9 +2,8 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync, randomUUID, sign } from 'node:crypto';
 import { test } from 'node:test';
 
-import { Pool } from 'pg';
-
 import { createApp } from '../src/app.js';
+import { testPool } from './helpers.js';
 
 // project-standards#711: shared-ai calls the AI tool with a signed token; each call is checked for
 // its scope and leaves one audit_log row. Needs the dedicated test DB with the migrations applied.
@@ -21,7 +20,7 @@ function token(scope: string, tool: string, key = privateKey) {
 }
 
 test('AI tools: list_items with scopes, signatures and audit rows', { skip }, async () => {
-  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const pool = testPool();
   const toolsPublicKey = publicKey.export({ type: 'spki', format: 'pem' }).toString();
   const server = createApp(pool, { toolsPublicKey }).listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', resolve));
@@ -120,7 +119,7 @@ test('AI tools: list_items with scopes, signatures and audit rows', { skip }, as
 });
 
 test('AI tools are off without the shared-ai public key', { skip }, async () => {
-  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const pool = testPool();
   const server = createApp(pool).listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', resolve));
   const address = server.address();
