@@ -42,6 +42,9 @@ export const formatKrw = (amount: number) => krw.format(amount);
 /** A `YYYY-MM-DD` date as shown on screen, e.g. `October 22, 2026`. */
 export const formatDate = (date: string) => day.format(new Date(`${date}T00:00:00Z`));
 
+/** An item count as shown on screen: `1 item`, `2 items`, `0 items`. */
+export const itemCount = (count: number) => (count === 1 ? '1 item' : `${count} items`);
+
 // The element id of an item on the bucket list, used as the link anchor from the items table.
 export const itemAnchor = (id: number) => `item-${id}`;
 

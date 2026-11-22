@@ -203,8 +203,8 @@ for (const { tab, key, field, detail, ...rest } of cases) {
     expect(api.requests.at(-1)?.body).toEqual({ status: 'done', completedDate: TODAY });
     expect(await screen.findByText(new RegExp(`Completed October 31, 2026`))).toBeInTheDocument();
 
-    dialog = await openDialog('Undo done for 고친 항목');
-    fireEvent.click(dialog.getByRole('button', { name: 'Undo done' }));
+    dialog = await openDialog('Mark 고친 항목 as not done');
+    fireEvent.click(dialog.getByRole('button', { name: 'Mark as not done' }));
     await dialogClosed();
     expect(api.requests.at(-1)?.body).toEqual({
       status: 'wishlist',
@@ -602,8 +602,8 @@ test('changes show the server response even when the reload after them fails', a
   dialog = await openDialog('Mark 고친 제목 as done');
   fireEvent.click(dialog.getByRole('button', { name: 'Mark as done' }));
   await dialogClosed();
-  dialog = await openDialog('Undo done for 고친 제목');
-  fireEvent.click(dialog.getByRole('button', { name: 'Undo done' }));
+  dialog = await openDialog('Mark 고친 제목 as not done');
+  fireEvent.click(dialog.getByRole('button', { name: 'Mark as not done' }));
   await dialogClosed();
   expect(await screen.findByRole('button', { name: 'Mark 고친 제목 as done' })).toBeInTheDocument();
 
@@ -774,3 +774,26 @@ for (const hash of ['#item-99', '#%E0%A4%A', '#item-1%']) {
     expect(item).not.toHaveAttribute('aria-current');
   });
 }
+
+test('the count reads 1 item, and more than one as items', async () => {
+  const api = fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading');
+  expect(await screen.findByText(/· 1 item$/)).toBeInTheDocument();
+  const dialog = await openDialog('Add item');
+  type(dialog, 'Title', '수레바퀴');
+  fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
+  await dialogClosed();
+  expect(await screen.findByText(/· 2 items$/)).toBeInTheDocument();
+  expect(api.items).toHaveLength(2);
+});
+
+test('reopening a done item asks and reports "Mark as not done"', async () => {
+  fakeApi([{ title: '데미안', status: 'done', completedDate: '2026-10-01' }]);
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('Mark 데미안 as not done');
+  expect(dialog.getByRole('heading', { name: 'Mark as not done?' })).toBeInTheDocument();
+  fireEvent.click(dialog.getByRole('button', { name: 'Mark as not done' }));
+  await dialogClosed();
+  expect(await screen.findByText('Marked as not done')).toHaveAttribute('role', 'status');
+  expect(screen.getByRole('button', { name: 'Mark 데미안 as done' })).toBeInTheDocument();
+});
