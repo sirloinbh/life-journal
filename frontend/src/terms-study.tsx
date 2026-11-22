@@ -186,8 +186,13 @@ export function TermsStudy({ path }: { path: string }) {
       <Spinner label="Loading terms" />
     );
   }
+  // With no domain there is no tab to go to, so the page says so instead of failing.
+  const first = data.domains.at(0);
+  if (!first) {
+    return <EmptyState title="No terms yet" description="The study areas are being added." />;
+  }
   const domain = data.domains.find(({ key }) => key === params.domain);
-  if (!domain) return <Navigate to={`${path}/${data.domains[0].key}`} replace />;
+  if (!domain) return <Navigate to={`${path}/${first.key}`} replace />;
 
   return (
     <div className="flex flex-col gap-4">
