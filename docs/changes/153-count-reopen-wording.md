@@ -23,3 +23,7 @@ The bucket list and the items table always said "items", so one item read "1 ite
 ### `npm run check` (2026-11-23)
 
 - Pass. Format, lint, contract 3 passed, typecheck, backend 152 passed and 30 DB tests skipped (no `TEST_DATABASE_URL`, so the DB is not verified), frontend 285 passed and 3 skipped, skills 4 passed, build.
+
+## Review round 1 — 2026-11-23
+
+Self-review (std-code-review section 8). Decision: approve, no blocking comments. Both counts use the helper, "0 items" stays plural, no source, e2e test or doc still uses the old texts, and the new aria label mirrors "Mark <title> as done". The button wording beyond the card waits for the coordinator's answer.
