@@ -49,6 +49,12 @@ function fakeApi() {
     changeGate: null as Promise<void> | null,
     holdNextList: null as Promise<void> | null,
     terms: [...TERMS],
+    domains: [
+      { key: 'wine', label: 'Wine' },
+      { key: 'movie', label: 'Movie' },
+      { key: 'opera', label: 'Opera' },
+      { key: 'musical', label: 'Musical' },
+    ],
   };
   vi.stubGlobal(
     'fetch',
@@ -59,12 +65,7 @@ function fakeApi() {
         if (api.failList) return json({ error: 'A server error occurred' }, 500);
         // A held list answers with what was true when it was asked.
         const answer = json({
-          domains: [
-            { key: 'wine', label: 'Wine' },
-            { key: 'movie', label: 'Movie' },
-            { key: 'opera', label: 'Opera' },
-            { key: 'musical', label: 'Musical' },
-          ],
+          domains: api.domains,
           terms: api.terms.map((term) => ({ ...term, learned: api.learned.has(term.id) })),
         });
         const hold = api.holdNextList;
@@ -307,4 +308,15 @@ test('a failed list can be tried again', async () => {
   api.failList = false;
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
   expect(await screen.findByRole('heading', { level: 2, name: /Tannin/ })).toBeInTheDocument();
+});
+
+// #151: a server with no domains has no tab to open, so the page says so instead of going blank.
+test.each(['/terms', '/terms/wine'])('no domains at %s shows an empty state', async (path) => {
+  const api = fakeApi();
+  api.domains = [];
+  api.terms = [];
+  openAt(path);
+  expect(await screen.findByText('No terms yet')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 1, name: 'Study terms' })).toBeInTheDocument();
+  expect(window.location.pathname).toBe(path);
 });
