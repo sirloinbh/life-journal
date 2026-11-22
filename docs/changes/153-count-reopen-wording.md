@@ -31,3 +31,8 @@ Self-review (std-code-review section 8). Decision: approve, no blocking comments
 ## Decision — 2026-11-23
 
 - The decision was answered on 2026-11-23: option A, both buttons read 'Mark as not done', recorded on #153.
+
+## Merged `origin/main` after #150 — 2026-11-23
+
+- #150 (PR #191) also changed `bucket-list.tsx` and its tests. The merge was automatic; no "Undo done" or "Undid done" is left in `frontend/src` or `e2e`.
+- `npm run check`: pass. Backend 153 passed and 30 DB tests skipped (no `TEST_DATABASE_URL`), frontend 289 passed and 3 skipped, skills 4, contract 3, build.
