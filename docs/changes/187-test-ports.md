@@ -24,3 +24,7 @@ No new test: `listenLocally` itself is covered by `standard-api.test.ts` (manage
 ### `npm run check` (2026-11-23)
 
 - Pass. Format, lint, contract 3 passed, typecheck, backend 153 passed and 30 DB tests skipped, frontend 293 passed and 3 skipped, skills 4 passed, build.
+
+## Review round 1 — 2026-11-23
+
+Self-review (std-code-review section 8). Decision: approve, no blocking comments. `createServer(app)` is what `app.listen` builds, `listenLocally` still rejects on a listen `'error'` (so `helpers.ts` keeps failing loudly), and the `pool.test.ts` listener is never reached by `fetch`. The two DB integration tests run only in CI; checked there before merging.
