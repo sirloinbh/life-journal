@@ -34,3 +34,9 @@ The scratch-schema tests use their own schema so they do not lock the shared `it
 - `grep` finds no code that refers to a generated constraint name.
 - `npm run check` with `TEST_DATABASE_URL` set to that DB (migrations 001-009 applied): pass. Backend 171 passed, 0 skipped; frontend 263 passed, 3 skipped (existing); contract 3 passed; skills 4 passed; build passed.
 - No screen change, so no browser check.
+
+## Review — 2026-11-23
+
+- Round 1 (self-review of head `c36cf71`): no findings that need a change, so no second round.
+  - The first commit's record said `db.integration.test.ts` re-applies `009`, but that edit had not been applied; `c36cf71` added it before the review (21 DB tests pass).
+  - Checked: `NOT LIKE '%''coffee''%'` matches `pg_get_constraintdef` output (`'coffee'::text`), so 007's `items_category_check` is never the one dropped; a re-run from `001` on a DB with no record table is safe (`003`-`005` skip `ADD COLUMN IF NOT EXISTS` with its CHECK, `007` re-adds `items_category_check` by name, `009` then skips every name); the runner and psql both accept the `DO` block.
