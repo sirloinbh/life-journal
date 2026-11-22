@@ -39,6 +39,7 @@ test('the items migration can be applied again without errors', { skip: !url }, 
     '005_item_link.sql',
     '006_learned_terms.sql',
     '007_coffee_category.sql',
+    '009_items_check_names.sql',
   ]) {
     const sql = await readFile(
       new URL(`../../database/migrations/${file}`, import.meta.url),
