@@ -1,4 +1,8 @@
-// Category rules follow backend/src/items.ts. The server checks every value again.
+import { CATEGORIES, MAX_REVIEW_LENGTH, MAX_REVIEW_LINES, SCORES } from '../../shared/contract';
+
+// Category rules come from shared/contract.ts, which the server also uses. It checks every value again.
+export { MAX_REVIEW_LENGTH, MAX_REVIEW_LINES, SCORES };
+
 export type Item = {
   id: number;
   category: string;
@@ -24,8 +28,6 @@ export type Category = {
   criteria: { key: string; label: string }[];
 };
 
-export const SCORES = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
-
 const krw = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'KRW' });
 const day = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
@@ -43,117 +45,14 @@ export const formatDate = (date: string) => day.format(new Date(`${date}T00:00:0
 // The element id of an item on the bucket list, used as the link anchor from the items table.
 export const itemAnchor = (id: number) => `item-${id}`;
 
-export const categories: Category[] = [
-  {
-    key: 'reading',
-    label: 'Reading',
-    description: 'Books to read and books read',
-    subtypes: [],
-    fields: [
-      { key: 'author', label: 'Author' },
-      { key: 'publisher', label: 'Publisher' },
-    ],
-    criteria: [
-      { key: 'content', label: 'Content' },
-      { key: 'prose', label: 'Prose' },
-      { key: 'afterglow', label: 'Lingering impression' },
-    ],
-  },
-  {
-    key: 'screen',
-    label: 'Movies & TV',
-    description: 'Movies and TV dramas to watch and ones watched',
-    subtypes: [
-      { value: 'movie', label: 'Movie' },
-      { value: 'drama', label: 'TV drama' },
-    ],
-    fields: [
-      { key: 'director', label: 'Director' },
-      { key: 'cast', label: 'Cast' },
-    ],
-    criteria: [
-      { key: 'story', label: 'Story' },
-      { key: 'direction', label: 'Direction' },
-      { key: 'acting', label: 'Acting' },
-    ],
-  },
-  {
-    key: 'stage',
-    label: 'Stage',
-    description: 'Plays, performances, musicals, and operas',
-    subtypes: [
-      { value: 'play', label: 'Play' },
-      { value: 'performance', label: 'Stage' },
-      { value: 'musical', label: 'Musical' },
-      { value: 'opera', label: 'Opera' },
-    ],
-    fields: [
-      { key: 'venue', label: 'Venue' },
-      { key: 'cast', label: 'Cast' },
-    ],
-    criteria: [
-      { key: 'acting', label: 'Acting' },
-      { key: 'direction', label: 'Direction' },
-      { key: 'stage', label: 'Staging' },
-      { key: 'music', label: 'Music' },
-    ],
-  },
-  {
-    key: 'drink',
-    label: 'Drinks',
-    description: 'Wine, whisky, and sake',
-    subtypes: [
-      { value: 'wine', label: 'Wine' },
-      { value: 'whisky', label: 'Whisky' },
-      { value: 'sake', label: 'Sake' },
-    ],
-    fields: [
-      { key: 'producer', label: 'Producer' },
-      { key: 'region', label: 'Region' },
-      { key: 'vintage', label: 'Vintage', numeric: true },
-    ],
-    criteria: [
-      { key: 'aroma', label: 'Aroma' },
-      { key: 'taste', label: 'Taste' },
-      { key: 'finish', label: 'Lingering impression' },
-      { key: 'value', label: 'Value' },
-    ],
-  },
-  {
-    key: 'travel',
-    label: 'Travel',
-    description: 'Places to visit and places visited',
-    subtypes: [],
-    fields: [
-      { key: 'country', label: 'Country' },
-      { key: 'city', label: 'City' },
-    ],
-    criteria: [
-      { key: 'scenery', label: 'Scenery' },
-      { key: 'food', label: 'Food' },
-      { key: 'lodging', label: 'Lodging' },
-      { key: 'transport', label: 'Transport' },
-    ],
-  },
-  {
-    key: 'coffee',
-    label: 'Coffee',
-    description: 'Coffee to try and coffee tried',
-    subtypes: [],
-    fields: [
-      { key: 'roastery', label: 'Roastery' },
-      { key: 'origin', label: 'Origin' },
-      { key: 'brewMethod', label: 'Brew method' },
-    ],
-    criteria: [
-      { key: 'aroma', label: 'Aroma' },
-      { key: 'acidity', label: 'Acidity' },
-      { key: 'sweetness', label: 'Sweetness' },
-      { key: 'body', label: 'Body' },
-      { key: 'finish', label: 'Lingering impression' },
-    ],
-  },
-];
+export const categories: Category[] = CATEGORIES.map((rule) => ({
+  key: rule.key,
+  label: rule.label,
+  description: rule.description,
+  subtypes: [...rule.subtypes],
+  fields: rule.fields.map(({ key, label, type }) => ({ key, label, numeric: type === 'year' })),
+  criteria: [...rule.criteria],
+}));
 
 /** Today in the service time zone. The server rejects a completed date after its own today. */
 export function serviceToday() {
@@ -167,7 +66,7 @@ export function serviceToday() {
 
 // Only plain integers such as 15000 or 15,000 become numbers. Anything else, such as 15.000 or 1e3,
 // goes to the server as it is, so the server's Korean message explains it.
-function numberOrText(value: string) {
+export function numberOrText(value: string) {
   return /^-?(\d+|\d{1,3}(,\d{3})+)$/.test(value) ? Number(value.replaceAll(',', '')) : value;
 }
 
@@ -203,9 +102,6 @@ export function itemSummary(item: Item, category: Category) {
   if (item.completedDate) parts.push(`Completed ${formatDate(item.completedDate)}`);
   return parts;
 }
-
-export const MAX_REVIEW_LINES = 5;
-export const MAX_REVIEW_LENGTH = 500;
 
 /** The review as the server stores it, with its size. The server checks the same limits. */
 export function measureReview(text: string) {

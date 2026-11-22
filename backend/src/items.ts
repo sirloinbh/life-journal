@@ -2,6 +2,16 @@ import { Router } from 'express';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod/v4';
 
+import {
+  CATEGORIES as CATEGORY_RULES,
+  CATEGORY_KEYS,
+  type CategoryKey,
+  type CategoryRule,
+  type DetailField,
+  MAX_REVIEW_LENGTH,
+  MAX_REVIEW_LINES,
+  SCORES,
+} from './contract.js';
 import { withTransaction } from './standard/db.js';
 import { HttpError, parseId } from './standard/http.js';
 
@@ -62,22 +72,20 @@ const details = (label: string, fields: z.ZodRawShape) =>
     () => `${label} details are not valid`,
   );
 
+const scores: readonly number[] = SCORES;
+const scoreRange = `from ${scores[0]} to ${scores.at(-1)} in steps of ${scores[1] - scores[0]}`;
+
 const score = (label: string) => {
-  const message = `${label} must be from 0.5 to 5 in steps of 0.5`;
-  return z
-    .number({ error: message })
-    .refine((value) => value >= 0.5 && value <= 5 && Number.isInteger(value * 2), message);
+  const message = `${label} must be ${scoreRange}`;
+  return z.number({ error: message }).refine((value) => scores.includes(value), message);
 };
 
-const criteria = (label: string, names: Record<string, string>) =>
+const criteria = (label: string, names: readonly { key: string; label: string }[]) =>
   strictObject(
-    Object.fromEntries(Object.entries(names).map(([key, name]) => [key, score(name).optional()])),
+    Object.fromEntries(names.map(({ key, label: name }) => [key, score(name).optional()])),
     `${label} ratings contain an unknown criterion`,
     () => `${label} ratings are not valid`,
   );
-
-const MAX_REVIEW_LINES = 5;
-const MAX_REVIEW_LENGTH = 500;
 
 const reviewText = z
   .string({ error: 'Review must be text' })
@@ -106,105 +114,37 @@ const linkText = z
   .refine(maxLength(2000), 'Link must be 2000 characters or fewer')
   .refine((value) => value === '' || isWebLink(value), linkMessage);
 
-const vintageMessage = 'Vintage must be a 4-digit year';
+const year = (label: string) => {
+  const message = `${label} must be a 4-digit year`;
+  return z
+    .number({ error: message })
+    .refine((value) => Number.isInteger(value) && value >= 1000 && value <= 9999, message);
+};
 
-// Menu order. The CHECK constraint of items.category (database/migrations) lists the same keys.
-const CATEGORY_KEYS = ['reading', 'screen', 'stage', 'drink', 'travel', 'coffee'] as const;
+const detailField = (field: DetailField) =>
+  field.type === 'year' ? year(field.label) : text(field.label, field.maxLength);
 
-const CATEGORIES = {
-  reading: {
-    label: 'Reading',
-    subtypes: [],
-    details: details('Reading', {
-      author: text('Author', 100).optional(),
-      publisher: text('Publisher', 100).optional(),
-    }),
-    criteria: criteria('Reading', {
-      content: 'Content',
-      prose: 'Prose',
-      afterglow: 'Lingering impression',
-    }),
-  },
-  screen: {
-    label: 'Movies & TV',
-    subtypes: ['movie', 'drama'],
-    details: details('Movies & TV', {
-      director: text('Director', 100).optional(),
-      cast: text('Cast', 200).optional(),
-    }),
-    criteria: criteria('Movies & TV', { story: 'Story', direction: 'Direction', acting: 'Acting' }),
-  },
-  stage: {
-    label: 'Stage',
-    subtypes: ['play', 'performance', 'musical', 'opera'],
-    details: details('Stage', {
-      venue: text('Venue', 100).optional(),
-      cast: text('Cast', 200).optional(),
-    }),
-    criteria: criteria('Stage', {
-      acting: 'Acting',
-      direction: 'Direction',
-      stage: 'Staging',
-      music: 'Music',
-    }),
-  },
-  drink: {
-    label: 'Drinks',
-    subtypes: ['wine', 'whisky', 'sake'],
-    details: details('Drinks', {
-      producer: text('Producer', 100).optional(),
-      region: text('Region', 100).optional(),
-      vintage: z
-        .number({ error: vintageMessage })
-        .refine((year) => Number.isInteger(year) && year >= 1000 && year <= 9999, vintageMessage)
-        .optional(),
-    }),
-    criteria: criteria('Drinks', {
-      aroma: 'Aroma',
-      taste: 'Taste',
-      finish: 'Lingering impression',
-      value: 'Value',
-    }),
-  },
-  travel: {
-    label: 'Travel',
-    subtypes: [],
-    details: details('Travel', {
-      country: text('Country', 100).optional(),
-      city: text('City', 100).optional(),
-    }),
-    criteria: criteria('Travel', {
-      scenery: 'Scenery',
-      food: 'Food',
-      lodging: 'Lodging',
-      transport: 'Transport',
-    }),
-  },
-  coffee: {
-    label: 'Coffee',
-    subtypes: [],
-    details: details('Coffee', {
-      roastery: text('Roastery', 100).optional(),
-      origin: text('Origin', 100).optional(),
-      brewMethod: text('Brew method', 50).optional(),
-    }),
-    criteria: criteria('Coffee', {
-      aroma: 'Aroma',
-      acidity: 'Acidity',
-      sweetness: 'Sweetness',
-      body: 'Body',
-      finish: 'Lingering impression',
-    }),
-  },
-} satisfies Record<
-  (typeof CATEGORY_KEYS)[number],
-  {
-    label: string;
-    subtypes: readonly string[];
-    details: z.ZodTypeAny;
-    criteria: z.ZodTypeAny;
-  }
->;
+type CategorySchemas = {
+  label: string;
+  subtypes: readonly string[];
+  details: z.ZodTypeAny;
+  criteria: z.ZodTypeAny;
+};
+
+const categorySchemas = (rule: CategoryRule): CategorySchemas => ({
+  label: rule.label,
+  subtypes: rule.subtypes.map(({ value }) => value),
+  details: details(
+    rule.label,
+    Object.fromEntries(rule.fields.map((field) => [field.key, detailField(field).optional()])),
+  ),
+  criteria: criteria(rule.label, rule.criteria),
+});
+
+// The schemas of each category, built from the shared table (shared/contract.ts).
+const CATEGORIES = Object.fromEntries(
+  CATEGORY_RULES.map((rule) => [rule.key, categorySchemas(rule)]),
+) as Record<CategoryKey, CategorySchemas>;
 
 const categoryMessage = 'The category is not valid';
 const statusMessage = 'Status must be wishlist or done';
@@ -260,7 +200,7 @@ function parseItem(input: unknown, today: string) {
   const item = itemFields.parse(input);
   const category = CATEGORIES[item.category];
   const subtype = item.subtype ?? null;
-  const subtypes: readonly string[] = category.subtypes;
+  const { subtypes } = category;
   if (subtypes.length === 0 && subtype !== null) {
     throw new HttpError(400, `${category.label} items cannot have a subtype`);
   }
