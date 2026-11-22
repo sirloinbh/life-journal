@@ -712,6 +712,13 @@ test('a linked item is focused once, and a later reload does not move the focus'
   openAt('/bucket-list/reading#item-2');
   const item = (await screen.findByRole('heading', { name: /수레바퀴/ })).closest('li');
   await waitFor(() => expect(document.activeElement).toBe(item));
+  // The mark follows the address, not the focus, so a click elsewhere in a card marks nothing.
+  const other = screen.getByRole('heading', { name: /데미안/ }).closest('li');
+  expect(item).toHaveAttribute('aria-current', 'true');
+  expect(other).not.toHaveAttribute('aria-current');
+  other?.focus();
+  expect(other).not.toHaveAttribute('aria-current');
+  expect(item).toHaveAttribute('aria-current', 'true');
 
   const edit = screen.getByRole('button', { name: 'Edit 데미안' });
   edit.focus();
@@ -726,6 +733,7 @@ test('a linked item is focused once, and a later reload does not move the focus'
 test('an address with an unknown item shows the list without moving the focus', async () => {
   fakeApi([{ title: '데미안' }]);
   openAt('/bucket-list/reading#item-99');
-  await screen.findByText('데미안');
+  const item = (await screen.findByRole('heading', { name: /데미안/ })).closest('li');
   expect(document.activeElement).toBe(document.body);
+  expect(item).not.toHaveAttribute('aria-current');
 });

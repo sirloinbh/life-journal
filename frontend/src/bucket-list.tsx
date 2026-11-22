@@ -490,19 +490,22 @@ const FORM_TITLES = {
 
 /**
  * A link such as `#item-12` from the items table scrolls to that item and focuses it once. Later
- * reloads do not move the focus again; a new link with another item does.
+ * reloads do not move the focus again; a new link with another item does. Returns the linked
+ * element id, so the item stays marked while the address points to it.
  */
 function useLinkedItem() {
   const { hash } = useLocation();
   const handled = useRef('');
+  const linked = hash ? decodeURIComponent(hash.slice(1)) : '';
   useEffect(() => {
-    if (!hash || hash === handled.current) return;
-    const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+    if (!linked || hash === handled.current) return;
+    const target = document.getElementById(linked);
     if (!target) return;
     handled.current = hash;
     target.scrollIntoView({ block: 'center' });
     target.focus({ preventScroll: true });
   });
+  return linked;
 }
 
 function CategoryItems({
@@ -524,7 +527,7 @@ function CategoryItems({
   const opener = useRef<HTMLElement | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const shown = items.filter((item) => item.category === category.key);
-  useLinkedItem();
+  const linked = useLinkedItem();
   // A closing form is still on screen during its animation and must not submit again.
   const pending = saving || !formOpen;
 
@@ -596,7 +599,8 @@ function CategoryItems({
               key={item.id}
               id={itemAnchor(item.id)}
               tabIndex={-1}
-              className="scroll-mt-4 rounded-xl outline-none focus:ring-[3px] focus:ring-ring/50"
+              aria-current={linked === itemAnchor(item.id) || undefined}
+              className="rounded-xl outline-none aria-[current=true]:ring-[3px] aria-[current=true]:ring-ring/50"
             >
               <ItemCard
                 item={item}

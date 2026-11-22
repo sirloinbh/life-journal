@@ -13,7 +13,7 @@ There is no page for a single item, so the link uses the second option the card 
 
 - `items.ts`: `itemAnchor(id)` gives the element id `item-<id>`, shared by the link and the list.
 - `items-table.tsx`: a title links to `/bucket-list/<category>#item-<id>`.
-- `bucket-list.tsx`: each item `<li>` has that id, `tabIndex={-1}` and a focus ring in the card shape. `useLinkedItem` reads the address hash; once the item is on screen it scrolls it to the middle of the view and focuses it, so a screen reader also starts there. It runs once per hash, so a later reload after a save does not pull the focus back. An unknown item id leaves the list as it was.
+- `bucket-list.tsx`: each item `<li>` has that id and `tabIndex={-1}`. The linked item gets `aria-current="true"` and a ring in the card shape while the address points to it (changed in review round 1, below). `useLinkedItem` reads the address hash; once the item is on screen it scrolls it to the middle of the view and focuses it, so a screen reader also starts there. It runs once per hash, so a later reload after a save does not pull the focus back. An unknown item id leaves the list as it was.
 
 No new screen text.
 
@@ -30,3 +30,22 @@ No new screen text.
 
 - First run: failed in one backend test unrelated to this change. `backend/test/sign-in.test.ts` "without a session every /api path but /api/health is 401" got `TypeError: fetch failed` with cause `bad port`: the test listens on port 0, and this Windows machine's dynamic port range is 1024–15000, which includes ports that `fetch` refuses (such as 6000 and 10080). Reported separately.
 - Second run: pass. Format, lint, contract (3 passed), typecheck, backend 166 tests (142 passed, 24 DB tests skipped because `TEST_DATABASE_URL` is not set, so the DB is not verified), frontend 42 files and 267 tests (264 passed, 3 skipped), skills 4 passed, build.
+
+## Review round 1 — 2026-11-23
+
+Self-review of head `1628e1c` (std-code-review section 8). Decision: changes needed, 1 finding.
+
+| Finding                                                                                                                                          | Handling                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `issue:` the ring used `focus:` on a `tabIndex={-1}` `<li>`, so a mouse click on any card text focused the `<li>` and drew the ring on that card | The ring now follows the address: the linked item gets `aria-current="true"` (also read by screen readers) and the ring is styled from it. `focus:` styles removed |
+| `nit:` unused `scroll-mt-4` (the item is centered)                                                                                               | Removed                                                                                                                                                            |
+
+### Verification
+
+- Tests: the focus test also checks that only the linked item has `aria-current`, and that focusing another card does not mark it; the unknown-id test checks no item is marked. `npm run test -w frontend -- src/items-table.test.tsx src/bucket-list.test.tsx`: 76 passed.
+- Browser (same setup): at 390×844 and 1440×900 the linked item is focused, marked and ringed; clicking and focusing another card draws no ring on it. No page overflow, no console warnings or errors.
+- `npm run check`: see below.
+
+### `npm run check` after round 1 (2026-11-23)
+
+- Pass. Format, lint, contract 3 passed, typecheck, backend 142 passed and 24 DB tests skipped (no `TEST_DATABASE_URL`), frontend 264 passed and 3 skipped, skills 4 passed, build.
