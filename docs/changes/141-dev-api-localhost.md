@@ -28,3 +28,7 @@ The central sync for project-standards#898 ([record](project-standards-898-liste
 - Host run with `AUTH_INTERNAL_URL` set (`PORT=3495`): the log line says `0.0.0.0` and `signIn: true`, and `netstat` shows `0.0.0.0:3495`.
 - Container: not run (building the image needs the user's GitHub Packages token). The container sets `AUTH_INTERNAL_URL`, so it still binds `0.0.0.0` and the compose health check (`fetch('http://127.0.0.1:3104/api/health')`) reaches it; this PR does not change the host choice.
 - `npm run check` with `TEST_DATABASE_URL` set to a throwaway PostgreSQL 17 (`postgres:17-alpine`, `journal_test`, migrations 001-008 applied by the runner): pass. Backend 167 passed, 0 skipped; frontend 261 passed, 3 skipped (the existing skipped frontend tests); contract 3 passed; skills 4 passed; build passed.
+
+## Review — 2026-11-23
+
+- Round 1 (self-review of head `1f23427`): one finding, fixed in the next commit. `issue:` the test parsed the last stdout chunk even when it ended in the middle of the JSON line, so a split chunk could throw in the `data` handler. It now only looks at complete lines. Re-ran `server-listen.test.ts`, prettier, and eslint: pass. No other findings (bind logic unchanged, log uses the real bound address, `.env.example` line is not passed into the container).

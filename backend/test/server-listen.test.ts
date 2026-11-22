@@ -23,7 +23,11 @@ function startServer(env: Record<string, string>) {
     child.stderr.setEncoding('utf8').on('data', (chunk: string) => (err += chunk));
     child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
       out += chunk;
-      const found = out.split('\n').find((text) => text.includes('"api_listening"'));
+      // Only whole lines: a chunk can end in the middle of the JSON line.
+      const found = out
+        .split('\n')
+        .slice(0, -1)
+        .find((text) => text.includes('"api_listening"'));
       if (found) {
         clearTimeout(timer);
         resolve(JSON.parse(found) as Record<string, unknown>);
