@@ -1,35 +1,14 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeAll, expect, test, vi } from 'vitest';
 
-import { App } from './app';
 import type { Item } from './items';
+import { allowSelect, json, openAt } from './test/app';
+import { itemRow } from './test/items-api';
 import { findLive, queryLive } from './test/live';
 
-beforeAll(() => {
-  Element.prototype.hasPointerCapture ??= () => false;
-  Element.prototype.setPointerCapture ??= () => {};
-  Element.prototype.releasePointerCapture ??= () => {};
-  Element.prototype.scrollIntoView ??= () => {};
-});
+beforeAll(allowSelect);
 
-const row = (id: number, fields: Partial<Item>): Item => ({
-  id,
-  category: 'reading',
-  subtype: null,
-  title: `Item ${id}`,
-  status: 'wishlist',
-  costKrw: null,
-  plannedDate: null,
-  completedDate: null,
-  details: {},
-  rating: null,
-  subRatings: {},
-  review: null,
-  link: null,
-  ...fields,
-});
-
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+const row = (id: number, fields: Partial<Item>) => itemRow(id, { title: `Item ${id}`, ...fields });
 
 // Answers with `answer(search)`, and keeps every list address it was asked for.
 function fakeApi(answer: (search: string) => Response | Promise<Response>) {
@@ -44,11 +23,6 @@ function fakeApi(answer: (search: string) => Response | Promise<Response>) {
     }),
   );
   return asked;
-}
-
-function openAt(path: string) {
-  window.history.replaceState(null, '', path);
-  render(<App />);
 }
 
 const rows = () => within(screen.getByRole('region', { name: 'Items table' })).getAllByRole('row');
@@ -178,27 +152,19 @@ test('a date filter applies on leaving the field, not while it is typed', async 
   expect(asked).toHaveLength(2);
 });
 
-test('a half-typed date keeps the existing condition, until the conditions are cleared', async () => {
+// A half-typed date cannot be typed in jsdom; filter-field.test.ts covers it through the helpers
+// this field uses (#154). Here a typed but not applied date is emptied by clearing the conditions.
+test('clearing the conditions empties a date that was typed but not applied', async () => {
   const asked = fakeApi(() => json({ items: [] }));
   openAt('/table?to=2026-03-28&status=done');
   await screen.findByText('No items match the filters');
   const field = screen.getByLabelText<HTMLInputElement>('Period end');
-  // jsdom has no partial date input; this is how a browser reports one.
-  fireEvent.change(field, { target: { value: '' } });
-  Object.defineProperty(field, 'validity', { configurable: true, value: { badInput: true } });
-  fireEvent.blur(field);
-  fireEvent.keyDown(field, { key: 'Enter' });
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+  fireEvent.change(field, { target: { value: '2026-04-01' } });
   expect(asked).toEqual(['to=2026-03-28&status=done']);
-  expect(window.location.search).toBe('?to=2026-03-28&status=done');
-
-  const setValue = vi.fn();
-  Object.defineProperty(field, 'value', { configurable: true, get: () => '', set: setValue });
   fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
   await waitFor(() => expect(window.location.search).toBe(''));
-  await waitFor(() => expect(setValue).toHaveBeenLastCalledWith(''));
+  await waitFor(() => expect(field).toHaveValue(''));
+  await waitFor(() => expect(asked.at(-1)).toBe(''));
 });
 
 test('leaving a field and pressing a header before a render keeps both changes', async () => {

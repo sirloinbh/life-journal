@@ -268,8 +268,8 @@ const queryCost = (label: string) => {
 const queryDate = (label: string) => date(label).optional();
 
 // #144: offset paging of the list (user decision 2026-11-23: limit 1-500, default 100).
-export const DEFAULT_PAGE_SIZE = 100;
-export const MAX_PAGE_SIZE = 500;
+const DEFAULT_PAGE_SIZE = 100;
+const MAX_PAGE_SIZE = 500;
 const MAX_OFFSET = 1_000_000;
 
 const queryWhole = (label: string, min: number, max: number) => {
@@ -372,7 +372,7 @@ export async function listItems(db: Db, query: unknown, limit: number) {
 }
 
 // The route (#144): one page, the offset of the next page (null on the last one), and the number of matching items.
-export async function listItemsPage(db: Db, input: unknown) {
+async function listItemsPage(db: Db, input: unknown) {
   const sql = listSql(input);
   const offset = sql.query.offset ?? 0;
   const page = sql.page(sql.query.limit ?? DEFAULT_PAGE_SIZE, offset);

@@ -5,7 +5,7 @@ import { requestJson } from './lib/api';
 export type ItemPage = { items: Item[]; nextOffset: number | null; total: number };
 
 /** The largest page the API answers; the bucket list asks for it so it needs the fewest requests. */
-export const MAX_PAGE_SIZE = 500;
+const MAX_PAGE_SIZE = 500;
 
 /**
  * Asks for the page at `offset` of the list `search` (the table address; its own `offset` is replaced). An answer without the

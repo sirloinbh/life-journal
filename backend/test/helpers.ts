@@ -1,9 +1,10 @@
-import { type IncomingHttpHeaders, request } from 'node:http';
+import { createServer, type IncomingHttpHeaders, request } from 'node:http';
 
 import { Pool, type PoolConfig } from 'pg';
 
 import { createApp } from '../src/app.js';
 import { pgTypes } from '../src/pool.js';
+import { listenLocally } from './standard/api.js';
 
 // A pool on the test DB with the app's type parsers (#143): DATE as YYYY-MM-DD, BIGINT as a number.
 export function testPool(config: PoolConfig = {}) {
@@ -57,19 +58,14 @@ export async function withApi(
   run: (call: Call) => Promise<void>,
   options: { today?: () => string } = {},
 ) {
-  const server = createApp(pool, options).listen(0, '127.0.0.1');
-  await new Promise<void>((resolve, reject) => {
-    server.once('listening', resolve);
-    server.once('error', reject);
-  });
+  const server = createServer(createApp(pool, options));
+  const port = await listenLocally(server);
   try {
-    const address = server.address();
-    if (!address || typeof address === 'string') throw new Error('No TCP address');
     await run(async (path, init = {}) => {
       const body =
         init.rawBody ?? (init.body === undefined ? undefined : JSON.stringify(init.body));
       const { status, raw, headers } = await send(
-        address.port,
+        port,
         path,
         init.method ?? 'GET',
         body,

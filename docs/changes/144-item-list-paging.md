@@ -57,3 +57,9 @@ Real API (`server.ts` on a temporary port with the throwaway DB, 130 reading and
   - Checked without findings: the count query uses a copy of the filter parameters taken before `LIMIT`/`OFFSET` are added; the AI tool still answers `{ items }` from offset 0 with its own limit; ties are broken by `id`, so pages are stable.
   - `npm run check` after the fixes, with the same `TEST_DATABASE_URL`: pass. Backend 191 passed, 0 skipped; frontend 299 passed, 3 skipped (existing); contract 3; skills 4; build.
 - Round 2 (head `0faaf99`): both fixes are applied as described, and the full diff has no further findings. A typed `offset` is only replaced for "Load more"; the first request still uses the address as it is. The bucket list could see a duplicated or missing row if an item were added between two of its page requests; with one user who is the one making the change, and the list reloaded after every change, this is accepted.
+
+## CI fix and merge of main — 2026-11-23
+
+- The first CI run failed in `npm run knip` (not part of `npm run check`): `DEFAULT_PAGE_SIZE`, `MAX_PAGE_SIZE` (backend and frontend), and `listItemsPage` were exported but not imported anywhere. They are now module-local.
+- Merged `origin/main` (screens lane #154 and #187 moved the test helpers to `frontend/src/test/` and the test ports). Conflict in the `items-table.tsx` imports resolved by keeping both (`filter-field` and `item-pages`). The bucket-list paging test now uses the shared `json` and `itemRow` helpers.
+- After the merge, with the same `TEST_DATABASE_URL`: `npm run check` pass (backend 191 passed, 0 skipped; frontend 303 passed, 3 skipped (existing); contract 3; skills 4; build), and `npm run knip` pass. Locally knip needs `TEST_DATABASE_URL` to load `playwright.config.ts`, as in CI; without it, it reports `e2e/smoke.spec.ts` and `@axe-core/playwright` as unused.
