@@ -29,17 +29,28 @@ const nav: NavItem[] = [
   { to: pages.settings, label: 'Settings', icon: Settings2 },
 ];
 
+const healthFailure = (response: Response) =>
+  response.ok
+    ? 'Cannot check the server status'
+    : `Cannot check the server status (HTTP ${response.status})`;
+
 function useHealth() {
   const [health, setHealth] = useState<Health>({ state: 'loading' });
   useEffect(() => {
     fetch('/api/health')
       .then(async (response) => {
-        const data = (await response.json()) as { today?: string; error?: string };
-        setHealth(
-          response.ok && data.today
-            ? { state: 'ok', today: data.today }
-            : { state: 'error', message: data.error ?? 'Cannot check the server status' },
-        );
+        // A proxy error page (nginx 502/504) is HTML: the server answered, so say which status.
+        const data = (await response.json().catch(() => null)) as {
+          today?: unknown;
+          error?: unknown;
+        } | null;
+        if (response.ok && typeof data?.today === 'string' && data.today) {
+          setHealth({ state: 'ok', today: data.today });
+        } else if (!response.ok && typeof data?.error === 'string' && data.error) {
+          setHealth({ state: 'error', message: data.error });
+        } else {
+          setHealth({ state: 'error', message: healthFailure(response) });
+        }
       })
       .catch(() => setHealth({ state: 'error', message: 'Cannot reach the server' }));
   }, []);
