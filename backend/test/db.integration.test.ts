@@ -585,6 +585,80 @@ test('search, filters, and sorting return the right items', { skip: !url }, asyn
   );
 });
 
+test(
+  'the list answers pages with the next offset and the total (#144)',
+  { skip: !url },
+  async (t) => {
+    const pool = testPool();
+    t.after(() => pool.end());
+    await pool.query('DELETE FROM items');
+    // 101 wishlist reading items and 4 done travel items; created_at ties are broken by id.
+    await pool.query(`INSERT INTO items (category, title, cost_krw)
+    SELECT 'reading', 'book ' || n, n FROM generate_series(1, 101) AS n`);
+    await pool.query(`INSERT INTO items (category, title, status, completed_date, cost_krw)
+    SELECT 'travel', 'trip ' || n, 'done', DATE '2026-01-01' + n, n * 1000 FROM generate_series(1, 4) AS n`);
+    await withApi(
+      pool,
+      async (call) => {
+        const list = async (query: string) => {
+          const { status, data } = await call(`/api/items?${query}`);
+          assert.equal(status, 200, query);
+          return {
+            titles: (data.items as { title: string }[]).map((item) => item.title),
+            nextOffset: data.nextOffset,
+            total: data.total,
+          };
+        };
+
+        // Default page size 100.
+        const first = await list('');
+        assert.equal(first.titles.length, 100);
+        assert.equal(first.nextOffset, 100);
+        assert.equal(first.total, 105);
+        const rest = await list('offset=100');
+        assert.deepEqual(rest.nextOffset, null);
+        assert.equal(rest.titles.length, 5);
+        assert.equal(new Set([...first.titles, ...rest.titles]).size, 105);
+
+        // Pages of a filtered, sorted list join into the same list without repeats or gaps.
+        const query = 'category=reading&sort=costKrw&order=asc';
+        const pages: string[] = [];
+        let offset: unknown = 0;
+        let calls = 0;
+        while (offset !== null) {
+          const page = await list(`${query}&limit=30&offset=${String(offset)}`);
+          assert.equal(page.total, 101);
+          pages.push(...page.titles);
+          offset = page.nextOffset;
+          calls += 1;
+        }
+        assert.equal(calls, 4);
+        assert.deepEqual(pages, (await list(`${query}&limit=500`)).titles);
+        assert.deepEqual(pages.slice(0, 3), ['book 1', 'book 2', 'book 3']);
+
+        // A filter changes the total; a page past the end is empty and the last one.
+        assert.deepEqual(await list('status=done&sort=costKrw&order=desc&limit=3'), {
+          titles: ['trip 4', 'trip 3', 'trip 2'],
+          nextOffset: 3,
+          total: 4,
+        });
+        assert.deepEqual(await list('status=done&limit=3&offset=3'), {
+          titles: ['trip 1'],
+          nextOffset: null,
+          total: 4,
+        });
+        assert.deepEqual(await list('status=done&offset=10'), {
+          titles: [],
+          nextOffset: null,
+          total: 4,
+        });
+        assert.deepEqual(await list('category=coffee'), { titles: [], nextOffset: null, total: 0 });
+      },
+      { today: () => TODAY },
+    );
+  },
+);
+
 test('a link is stored, kept by other edits, and cleared', { skip: !url }, async (t) => {
   const pool = testPool();
   t.after(() => pool.end());

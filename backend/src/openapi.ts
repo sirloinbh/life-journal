@@ -13,7 +13,8 @@ export const operations: Record<string, Operation> = {
     public: true,
   },
   'GET /api/items': {
-    summary: 'List items, filtered and sorted (the start date must not be after the end date)',
+    summary:
+      'List one page of items, filtered and sorted (the start date must not be after the end date; limit 1-500, default 100; offset); answers { items, nextOffset, total }',
     query: listQuery,
     status: [200, 400, 401, 500, 503],
   },
