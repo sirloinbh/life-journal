@@ -23,6 +23,40 @@ test('reports a server error as an alert', async () => {
   expect(await findLive('alert')).toHaveTextContent('Cannot connect to the database');
 });
 
+test('a server that cannot be reached says so', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
+  );
+  render(<App />);
+  expect(await findLive('alert')).toHaveTextContent('Cannot reach the server');
+});
+
+test.each([502, 504])('a proxy error page (HTML %i) shows its status', async (status) => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() =>
+      Promise.resolve(
+        new Response(`<html><body>${status} Bad Gateway</body></html>`, {
+          status,
+          headers: { 'content-type': 'text/html' },
+        }),
+      ),
+    ),
+  );
+  render(<App />);
+  expect(await findLive('alert')).toHaveTextContent(
+    `Cannot check the server status (HTTP ${status})`,
+  );
+});
+
+test('a 200 answer without the date is not reported as connected', async () => {
+  health({});
+  render(<App />);
+  expect(await findLive('alert')).toHaveTextContent(/^Cannot check the server status$/);
+  expect(screen.queryByText(/Server connected/)).toBeNull();
+});
+
 test('each page has its own address and is marked in the main menu', async () => {
   health({ today: '2026-10-26' });
   render(<App />);
