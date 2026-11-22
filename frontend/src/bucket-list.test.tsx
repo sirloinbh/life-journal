@@ -1,129 +1,23 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeAll, beforeEach, expect, test, vi } from 'vitest';
 
 import { CATEGORIES } from '../../shared/contract';
-import { App } from './app';
 import type { Item } from './items';
+import { allowSelect, gate, openAt } from './test/app';
+import { choose, dialogClosed, openDialog, pressEscape, type } from './test/dialog';
+import { fakeItemsApi } from './test/items-api';
 import { findLive, getLive, queryLive } from './test/live';
 
 const TODAY = '2026-10-31';
 
-// jsdom has none of these; the Select component needs them.
-beforeAll(() => {
-  Element.prototype.hasPointerCapture ??= () => false;
-  Element.prototype.setPointerCapture ??= () => {};
-  Element.prototype.releasePointerCapture ??= () => {};
-  Element.prototype.scrollIntoView ??= () => {};
-});
+beforeAll(allowSelect);
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-10-31T03:00:00Z'));
 });
 
-const json = (body: unknown, status = 200) =>
-  new Response(body === undefined ? null : JSON.stringify(body), { status });
-
-// An in-memory API with the rules the screen depends on. `failNext` answers the next change with an
-// error, and a `gate` holds requests until it resolves.
-function fakeApi(initial: Partial<Item>[] = []) {
-  let nextId = 1;
-  const row = (fields: Partial<Item>): Item => ({
-    id: nextId++,
-    category: 'reading',
-    subtype: null,
-    title: '',
-    status: 'wishlist',
-    costKrw: null,
-    plannedDate: null,
-    completedDate: null,
-    details: {},
-    rating: null,
-    subRatings: {},
-    review: null,
-    link: null,
-    ...fields,
-  });
-  const api = {
-    items: initial.map(row),
-    requests: [] as { method: string; path: string; body: Record<string, unknown> }[],
-    failNext: null as { status: number; error: string } | null,
-    failList: false,
-    gate: null as Promise<void> | null,
-    listGate: null as Promise<void> | null,
-  };
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (path: string, init: { method?: string; body?: string } = {}) => {
-      const method = init.method ?? 'GET';
-      if (path === '/api/health') return json({ today: TODAY });
-      if (api.gate) await api.gate;
-      if (method === 'GET') {
-        // A held list answers with what was true when it was asked.
-        const items = api.items;
-        if (api.listGate) {
-          await api.listGate;
-          return json({ items });
-        }
-        return api.failList
-          ? json({ error: 'A server error occurred' }, 500)
-          : json({ items: api.items });
-      }
-      const body = (init.body ? JSON.parse(init.body) : {}) as Record<string, unknown>;
-      api.requests.push({ method, path, body });
-      if (api.failNext) {
-        const { status, error } = api.failNext;
-        api.failNext = null;
-        return json({ error }, status);
-      }
-      if (body.title === '') return json({ error: 'Title is required' }, 400);
-      if (method === 'POST') {
-        const created = row(body);
-        api.items.push(created);
-        return json(created, 201);
-      }
-      const id = Number(path.split('/').pop());
-      if (method === 'DELETE') {
-        api.items = api.items.filter((item) => item.id !== id);
-        return json(undefined, 204);
-      }
-      api.items = api.items.map((item) => (item.id === id ? { ...item, ...body } : item));
-      return json(api.items.find((item) => item.id === id));
-    }),
-  );
-  return api;
-}
-
-function gate() {
-  let open = () => {};
-  const promise = new Promise<void>((resolve) => {
-    open = resolve;
-  });
-  return { promise, open };
-}
-
-function openAt(path: string) {
-  window.history.replaceState(null, '', path);
-  render(<App />);
-}
-
-const openDialog = async (buttonName: string) => {
-  fireEvent.click(await screen.findByRole('button', { name: buttonName }));
-  return within(await screen.findByRole('dialog'));
-};
-
-const dialogClosed = () => waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-
-const type = (dialog: ReturnType<typeof within>, label: string, value: string) =>
-  fireEvent.change(dialog.getByLabelText(label), { target: { value } });
-
-const pressEscape = () =>
-  fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
-
-async function choose(dialog: ReturnType<typeof within>, label: string, option: string) {
-  fireEvent.click(dialog.getByRole('combobox', { name: label }));
-  fireEvent.click(await screen.findByRole('option', { name: option }));
-}
+const fakeApi = (initial: Partial<Item>[] = []) => fakeItemsApi(initial, TODAY);
 
 const cases = [
   { tab: 'Reading', key: 'reading', field: 'Author (optional)', detail: { author: '헤세' } },

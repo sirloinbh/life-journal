@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
+import { needsReset, typedCondition } from './filter-field';
 import { categories, formatDate, formatKrw, type Item, itemAnchor, itemCount } from './items';
 import { requestJson } from './lib/api';
 import { errorText } from './lib/use-notice';
@@ -120,11 +121,12 @@ function InputFilter({
   // clearing the conditions, which also has to empty a half-typed date (its value reads as empty).
   useEffect(() => {
     const input = field.current;
-    if (input && (input.value.trim() !== value || input.validity.badInput)) input.value = value;
+    if (input && needsReset(input, value)) input.value = value;
   }, [value, resetCount]);
   // A half-typed or impossible date reads as empty, but the user did not clear the condition.
   const apply = (input: HTMLInputElement) => {
-    if (!input.validity.badInput) onChange(input.value.trim());
+    const condition = typedCondition(input);
+    if (condition !== null) onChange(condition);
   };
   return (
     <div className="flex flex-col gap-2">

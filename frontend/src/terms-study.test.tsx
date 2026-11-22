@@ -1,11 +1,8 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 
-import { App } from './app';
+import { json, openAt } from './test/app';
 import { findLive, queryLive } from './test/live';
-
-const json = (body: unknown, status = 200) =>
-  new Response(body === undefined ? null : JSON.stringify(body), { status });
 
 // `original` comes only when it differs from the name; Montage's copy checks the screen still
 // prints the name once if the server sends one (#147).
@@ -38,6 +35,9 @@ function fakeApi() {
     failList: false,
     changeGate: null as Promise<void> | null,
     holdNextList: null as Promise<void> | null,
+    // Set once the screen has read the body of a held list, so a test knows that answer arrived.
+    heldListRead: false,
+    lists: 0,
     terms: [...TERMS],
     domains: [
       { key: 'wine', label: 'Wine' },
@@ -58,9 +58,17 @@ function fakeApi() {
           domains: api.domains,
           terms: api.terms.map((term) => ({ ...term, learned: api.learned.has(term.id) })),
         });
+        api.lists++;
         const hold = api.holdNextList;
         api.holdNextList = null;
-        if (hold) await hold;
+        if (!hold) return answer;
+        await hold;
+        const read = answer.json.bind(answer);
+        answer.json = async () => {
+          const body: unknown = await read();
+          api.heldListRead = true;
+          return body;
+        };
         return answer;
       }
       api.requests.push({ method, path });
@@ -77,11 +85,6 @@ function fakeApi() {
     }),
   );
   return api;
-}
-
-function openAt(path: string) {
-  window.history.replaceState(null, '', path);
-  render(<App />);
 }
 
 const box = (name: string) => screen.findByRole('checkbox', { name });
@@ -268,14 +271,20 @@ test('a mark confirmed during a list on its way keeps both the mark and the refr
   fireEvent.click(tannin);
   expect(await findLive('alert')).toHaveTextContent('Term not found');
 
-  // The held list was read before this mark.
+  // The held list was read before this mark, so the mark asks for a newer one.
   fireEvent.click(terroir);
-  await waitFor(async () => expect(await box('Terroir learned')).toBeChecked());
+  await waitFor(() => expect(api.lists).toBe(3));
+  // Tannin leaves only with the newer list: the held one has not answered yet.
   await waitFor(() => expect(screen.queryByText('Tannin')).not.toBeInTheDocument());
+  expect(await box('Terroir learned')).toBeChecked();
+  expect(api.heldListRead).toBe(false);
 
+  // #154: wait until the screen has read the stale answer and let it settle before checking that
+  // it changed nothing.
+  open();
+  await waitFor(() => expect(api.heldListRead).toBe(true));
   await act(async () => {
-    open();
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
   expect(await box('Terroir learned')).toBeChecked();
   expect(screen.getByText('Wine · 1/1 terms learned')).toBeInTheDocument();
