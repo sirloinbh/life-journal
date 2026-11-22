@@ -30,3 +30,10 @@
 
 - `npm run check` with `TEST_DATABASE_URL` set to a throwaway PostgreSQL 17 (`postgres:17-alpine`, `journal_test`, migrations 001-008 applied by the runner): pass. Backend 171 passed, 0 skipped; frontend 261 passed, 3 skipped (existing); contract 3 passed; skills 4 passed; build passed.
 - No screen change, so no browser check.
+
+## Review — 2026-11-23
+
+- Round 1 (self-review of head `2a31c00`): no findings that need a change, so no second round.
+  - Checked that `statement_timeout` is the safer choice: in pg 8 `query_timeout` rejects the promise but, outside pipeline mode, leaves the query running on the connection (`node_modules/pg/lib/client.js`), so the next query on that client would wait behind it.
+  - Checked that the only transaction (`PATCH /api/items/:id`, `withTransaction`) runs short statements, and that the migration runner uses its own `Client`.
+  - `thought:` a connection whose network dies mid-query still waits for the OS TCP timeout; pg's `keepAlive` could shorten that. Not part of this card (it is about an unreachable DB at connect time) and small, so no issue was filed.
