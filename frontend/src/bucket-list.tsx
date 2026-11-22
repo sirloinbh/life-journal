@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { FormEvent, MouseEvent } from 'react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router';
@@ -28,7 +29,7 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
-import { fetchAllItems } from './item-pages';
+import { allItemsKey, fetchAllItems, tablePagesKey } from './item-pages';
 import {
   categories,
   type Category,
@@ -48,38 +49,57 @@ import {
   SCORES,
   serviceToday,
 } from './items';
-import { RequestError, requestJson } from './lib/api';
+import { RequestError } from './lib/api';
+import { useApiMutation } from './lib/query';
 import { useNotice } from './lib/use-notice';
 import { LoadFailed } from './load-failed';
+import { useSettledError } from './settled-error';
 
 type SaveItem = (id: number | null, fields: object, done: string) => Promise<void>;
 
 function useItems() {
-  const [items, setItems] = useState<Item[] | null>(null);
-  const [loadError, setLoadError] = useState<unknown>(null);
-  const latest = useRef(0);
-  // Only the latest request may change the screen.
+  const client = useQueryClient();
+  // #144: the API answers pages; the bucket list groups every item, so it asks until the last page.
+  const query = useQuery({
+    queryKey: allItemsKey,
+    queryFn: ({ signal }) => fetchAllItems(signal),
+  });
+  const loadError = useSettledError(query);
+  // A new reload cancels one still on its way, so only the latest answer reaches the screen.
+  const { refetch } = query;
   const reload = useCallback(async () => {
-    const request = ++latest.current;
-    try {
-      // #144: the API answers pages; the bucket list groups every item, so it asks until the last page.
-      const all = await fetchAllItems();
-      if (request === latest.current) {
-        setItems(all);
-        setLoadError(null);
-      }
-    } catch (error) {
-      if (request === latest.current) setLoadError(error);
-    }
-  }, []);
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+    await refetch();
+  }, [refetch]);
   // Applies a change the server confirmed. The list stays right even if the next reload fails.
-  const update = useCallback((change: (current: Item[]) => Item[]) => {
-    setItems((current) => current && change(current));
-  }, []);
-  return { items, loadError, reload, update };
+  const update = useCallback(
+    (change: (current: Item[]) => Item[]) => {
+      client.setQueryData<Item[]>(allItemsKey, (current) => current && change(current));
+    },
+    [client],
+  );
+  return { items: query.data ?? null, loadError, reload, update };
+}
+
+/**
+ * One item write (#158): a new item (no id) or a change to one, and a delete. Each marks the table's cached pages stale,
+ * so the table shows the change when it opens next, even within the cache time. The table is not on screen, so the
+ * write does not wait for it. The bucket list itself takes the server's answer and reloads on its own.
+ */
+function useItemWrites() {
+  const invalidate = [tablePagesKey];
+  const save = useApiMutation<Item, { id: number | null; fields: object }>(
+    ({ id, fields }) => ({
+      path: id === null ? '/api/items' : `/api/items/${id}`,
+      method: id === null ? 'POST' : 'PATCH',
+      body: fields,
+    }),
+    { invalidate },
+  );
+  const remove = useApiMutation<void, number>(
+    (id) => ({ path: `/api/items/${id}`, method: 'DELETE' }),
+    { invalidate },
+  );
+  return { save: save.mutateAsync, remove: remove.mutateAsync };
 }
 
 function Field({
@@ -524,6 +544,7 @@ function CategoryItems({
   update: (change: (current: Item[]) => Item[]) => void;
 }) {
   const { notice, status, error } = useNotice();
+  const writes = useItemWrites();
   // The last form stays in `modal` after closing, so the closing animation keeps its content.
   const [modal, setModal] = useState<FormModal>({ kind: 'new' });
   const [formOpen, setFormOpen] = useState(false);
@@ -552,10 +573,7 @@ function CategoryItems({
   const save: SaveItem = async (id, fields, done) => {
     setSaving(true);
     try {
-      const saved = await requestJson<Item>(id === null ? '/api/items' : `/api/items/${id}`, {
-        method: id === null ? 'POST' : 'PATCH',
-        body: fields,
-      });
+      const saved = await writes.save({ id, fields });
       keepSaved(saved);
       // The list already shows the saved item, so the form closes without waiting for a full reload.
       void reload();
@@ -617,9 +635,9 @@ function CategoryItems({
                 onReopen={() =>
                   changeFromDialog(async () => {
                     keepSaved(
-                      await requestJson<Item>(`/api/items/${item.id}`, {
-                        method: 'PATCH',
-                        body: {
+                      await writes.save({
+                        id: item.id,
+                        fields: {
                           status: 'wishlist',
                           completedDate: null,
                           rating: null,
@@ -632,7 +650,7 @@ function CategoryItems({
                 }
                 onDelete={() =>
                   changeFromDialog(async () => {
-                    await requestJson<void>(`/api/items/${item.id}`, { method: 'DELETE' });
+                    await writes.remove(item.id);
                     update((current) => current.filter(({ id }) => id !== item.id));
                   }, 'Deleted')
                 }

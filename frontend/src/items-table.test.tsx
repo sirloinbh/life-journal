@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeAll, expect, test, vi } from 'vitest';
 
 import type { Item } from './items';
-import { allowSelect, json, openAt } from './test/app';
+import { allowSelect, gate, json, openAt } from './test/app';
 import { itemRow } from './test/items-api';
 import { findLive, queryLive } from './test/live';
 
@@ -461,4 +461,52 @@ test('"Load more" replaces an offset that is already in the address', async () =
   fireEvent.click(await screen.findByRole('button', { name: 'Load more' }));
   expect(await screen.findByText('5 items · showing 3')).toHaveAttribute('role', 'status');
   expect(asked).toEqual(['offset=2', 'offset=4']);
+});
+
+test('leaving the table cancels a list request still on its way (#158)', async () => {
+  const signals: AbortSignal[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((path: string, init?: RequestInit) => {
+      if (path === '/api/health') return Promise.resolve(json({ today: '2026-10-31' }));
+      if (init?.signal) signals.push(init.signal);
+      // Never answers; only a cancel ends it.
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () =>
+          reject(new DOMException('aborted', 'AbortError')),
+        );
+      });
+    }),
+  );
+  openAt('/table');
+  await waitFor(() => expect(signals).toHaveLength(1));
+  expect(signals[0]?.aborted).toBe(false);
+  const menu = screen.getByRole('navigation', { name: 'Main menu' });
+  fireEvent.click(within(menu).getByRole('link', { name: 'Dashboard' }));
+  await waitFor(() => expect(signals[0]?.aborted).toBe(true));
+});
+
+test('a refresh in the background keeps the count and "Load more" with the focus (#158)', async () => {
+  let held: Promise<void> | null = null;
+  const asked = fakeApi(async (search) => {
+    if (held) await held;
+    return search.includes('offset=2') ? page([3], null, 3) : page([1, 2], 2, 3);
+  });
+  const client = openAt('/table');
+  const more = await screen.findByRole('button', { name: 'Load more' });
+  more.focus();
+  const hold = gate();
+  held = hold.promise;
+  act(() => {
+    void client.refetchQueries();
+  });
+  await waitFor(() => expect(asked).toHaveLength(2));
+  expect(screen.getByText('3 items · showing 2')).toBeInTheDocument();
+  expect(more).toBeInTheDocument();
+  expect(more).toHaveFocus();
+  await act(async () => {
+    hold.open();
+    await hold.promise;
+  });
+  expect(screen.getByRole('button', { name: 'Load more' })).toHaveFocus();
 });

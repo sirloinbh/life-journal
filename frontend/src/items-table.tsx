@@ -1,3 +1,4 @@
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
@@ -15,8 +16,8 @@ import {
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
 import { needsReset, typedCondition } from './filter-field';
-import { fetchItemPage } from './item-pages';
-import { categories, formatDate, formatKrw, type Item, itemAnchor, itemCount } from './items';
+import { fetchItemPage, type ItemPage, itemPagesKey } from './item-pages';
+import { categories, formatDate, formatKrw, itemAnchor, itemCount } from './items';
 import { errorText } from './lib/use-notice';
 
 const ANY = 'any';
@@ -33,83 +34,44 @@ const COLUMNS = [
 
 const STATUS_LABELS = { wishlist: 'Want to do', done: 'Done' };
 
-type Result = {
-  items: Item[] | null;
-  total: number;
-  nextOffset: number | null;
-  failure: unknown;
-  request: string | null;
-};
+type Shown = { pages: ItemPage[] | null; failure: unknown };
 
-// "Load more" of one list address: whether it is running and how the last try failed.
-type More = { request: string | null; loading: boolean; failure: unknown };
-
-// Only the answer for the current address reaches the screen, so a slow old answer cannot replace it.
-// The API answers pages (#144): the first page comes with the address, "Load more" appends the next one.
+// The API answers pages (#144); the first page comes with the address and "Load more" appends the next one. Each address
+// has its own query (#158), so a slow answer for an old address or a page asked for it never reaches the current list.
+// Until the current address answers, the screen keeps the last list it showed, and a failure keeps it too.
 function useFilteredItems(search: string) {
-  const [result, setResult] = useState<Result>({
-    items: null,
-    total: 0,
-    nextOffset: null,
-    failure: null,
-    request: null,
+  const query = useInfiniteQuery({
+    queryKey: itemPagesKey(search),
+    queryFn: ({ pageParam, signal }) => fetchItemPage(search, pageParam, signal),
+    initialPageParam: 0,
+    getNextPageParam: (last: ItemPage) => last.nextOffset ?? undefined,
   });
-  const [more, setMore] = useState<More>({ request: null, loading: false, failure: null });
-  const [attempt, setAttempt] = useState(0);
-  const request = `${attempt}?${search}`;
-  useEffect(() => {
-    let current = true;
-    fetchItemPage(search).then(
-      ({ items, total, nextOffset }) => {
-        if (current) setResult({ items, total, nextOffset, failure: null, request });
-      },
-      (failure: unknown) => {
-        // The old rows stay on screen with the error, but their next page belongs to the old address.
-        if (current) setResult((last) => ({ ...last, nextOffset: null, failure, request }));
-      },
-    );
-    return () => {
-      current = false;
-    };
-  }, [search, request]);
-  const current = result.request === request;
-  const loadMore = () => {
-    const offset = result.nextOffset;
-    if (!current || offset === null || (more.request === request && more.loading)) return;
-    setMore({ request, loading: true, failure: null });
-    fetchItemPage(search, offset).then(
-      (page) => {
-        // Appends only to the list it was asked for, and only once.
-        setResult((last) =>
-          last.request === request && last.nextOffset === offset
-            ? {
-                ...last,
-                items: [...(last.items ?? []), ...page.items],
-                total: page.total,
-                nextOffset: page.nextOffset,
-              }
-            : last,
-        );
-        setMore((last) =>
-          last.request === request ? { request, loading: false, failure: null } : last,
-        );
-      },
-      (failure: unknown) => {
-        setMore((last) => (last.request === request ? { request, loading: false, failure } : last));
-      },
-    );
-  };
-  const moreHere = more.request === request;
+  const [shown, setShown] = useState<Shown>({ pages: null, failure: null });
+  const pages = query.data?.pages ?? shown.pages;
+  // A failure stays until a request of this address answers; a failed "Load more" is not a failure of the list.
+  const failure = query.isFetching
+    ? shown.failure
+    : query.isError && !query.isFetchNextPageError
+      ? query.error
+      : null;
+  if (pages !== shown.pages || failure !== shown.failure) setShown({ pages, failure });
+  // Loading means the address has no list yet or is being tried again. A refresh in the background (window focus,
+  // a change on the bucket list) keeps the count and "Load more", so the keyboard focus on it is not lost.
+  const loading =
+    query.isFetching && !query.isFetchingNextPage && (query.data === undefined || failure !== null);
   return {
-    items: result.items,
-    total: result.total,
-    hasMore: current && result.nextOffset !== null,
-    failure: result.failure,
-    loading: !current,
-    loadingMore: moreHere && more.loading,
-    moreFailure: moreHere ? more.failure : null,
-    loadMore,
-    retry: () => setAttempt((count) => count + 1),
+    items: pages?.flatMap((page) => page.items) ?? null,
+    total: pages?.at(-1)?.total ?? 0,
+    // The rows kept after a failed new address have no next page of that address.
+    hasMore: !loading && query.data !== undefined && query.hasNextPage,
+    failure,
+    loading,
+    loadingMore: query.isFetchingNextPage,
+    moreFailure: query.isFetchNextPageError && !query.isFetchingNextPage ? query.error : null,
+    loadMore: () => {
+      if (!query.isFetchingNextPage) void query.fetchNextPage();
+    },
+    retry: () => void query.refetch(),
   };
 }
 
