@@ -200,6 +200,8 @@ export function TermsStudy({ path }: { path: string }) {
   return (
     <div className="flex flex-col gap-4">
       <CategoryTabs path={path} tabs={data.domains} />
+      {/* A failed reload keeps the last terms on screen, but says so and offers a retry. */}
+      {loadError ? <LoadFailed cause={loadError} reload={reload} /> : null}
       <Notice notice={notice} className="wrap-anywhere" />
       <DomainTerms
         key={domain.key}

@@ -554,7 +554,8 @@ function CategoryItems({
         body: fields,
       });
       keepSaved(saved);
-      await reload();
+      // The list already shows the saved item, so the form closes without waiting for a full reload.
+      void reload();
       status(done);
       setFormOpen(false);
     } catch (cause) {
@@ -566,15 +567,15 @@ function CategoryItems({
   };
 
   // Failures close the dialog and show on the page; the list is reloaded in case the item is gone.
+  // The change already shows, so the dialog does not wait for the reload.
   const changeFromDialog = async (change: () => Promise<unknown>, done: string) => {
     try {
       await change();
-      await reload();
       status(done);
     } catch (cause) {
       error(cause);
-      await reload();
     }
+    void reload();
   };
 
   return (
@@ -692,6 +693,8 @@ export function BucketList({ path }: { path: string }) {
   return (
     <div className="flex flex-col gap-4">
       <CategoryTabs path={path} tabs={categories} />
+      {/* A failed reload keeps the last list on screen, but says so and offers a retry. */}
+      {items !== null && loadError ? <LoadFailed cause={loadError} reload={reload} /> : null}
       {items === null ? (
         loadError ? (
           <LoadFailed cause={loadError} reload={reload} />

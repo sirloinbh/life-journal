@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, expect, test, vi } from 'vitest';
 
 import { App } from './app';
 import type { Item } from './items';
-import { queryLive } from './test/live';
+import { findLive, getLive, queryLive } from './test/live';
 
 const TODAY = '2026-10-31';
 
@@ -598,7 +598,8 @@ test('changes show the server response even when the reload after them fails', a
   await dialogClosed();
   expect(await screen.findByText('수레바퀴')).toBeInTheDocument();
   expect(screen.getByText('Saved')).toHaveAttribute('role', 'status');
-  expect(queryLive('alert')).toBeNull();
+  // The failed reload is reported, but the list keeps the saved item.
+  expect(await findLive('alert')).toHaveTextContent('A server error occurred');
 
   // The next edit starts from the saved values, so it cannot bring old ones back.
   dialog = await openDialog('Edit 데미안');
@@ -623,7 +624,53 @@ test('changes show the server response even when the reload after them fails', a
   await dialogClosed();
   await waitFor(() => expect(screen.queryByText('고친 제목')).toBeNull());
   expect(screen.getByText('수레바퀴')).toBeInTheDocument();
-  expect(queryLive('alert')).toBeNull();
+  expect(getLive('alert')).toHaveTextContent('A server error occurred');
+});
+
+test('a save closes the form and shows the item without waiting for the list', async () => {
+  const api = fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading');
+  await screen.findByText('데미안');
+  const held = gate();
+  api.listGate = held.promise;
+
+  let dialog = await openDialog('Add item');
+  type(dialog, 'Title', '수레바퀴');
+  fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
+  await dialogClosed();
+  expect(screen.getByText('수레바퀴')).toBeInTheDocument();
+  expect(screen.getByText('Saved')).toHaveAttribute('role', 'status');
+
+  dialog = await openDialog('Delete 데미안');
+  fireEvent.click(dialog.getByRole('button', { name: 'Delete' }));
+  await dialogClosed();
+  expect(screen.queryByText('데미안')).toBeNull();
+  expect(screen.getByText('Deleted')).toHaveAttribute('role', 'status');
+
+  await act(async () => {
+    held.open();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(screen.getByText('수레바퀴')).toBeInTheDocument();
+});
+
+test('a failed reload after the first load keeps the list, says so, and can be tried again', async () => {
+  const api = fakeApi([{ title: '데미안' }]);
+  openAt('/bucket-list/reading');
+  const dialog = await openDialog('Edit 데미안');
+  api.failList = true;
+  type(dialog, 'Title', '고친 제목');
+  fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
+  await dialogClosed();
+  expect(await findLive('alert')).toHaveTextContent('A server error occurred');
+  expect(screen.getByText('고친 제목')).toBeInTheDocument();
+
+  api.failList = false;
+  api.items = [...api.items, { ...api.items[0], id: 9, title: '수레바퀴' }];
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(await screen.findByText('수레바퀴')).toBeInTheDocument();
+  await waitFor(() => expect(queryLive('alert')).toBeNull());
+  expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
 });
 
 test('a slow older list response cannot replace a newer one', async () => {
