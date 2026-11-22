@@ -48,3 +48,7 @@ Real API (`server.ts` on a temporary port with the throwaway DB, 130 reading and
   - `openAt` (test helper) takes an optional `staleTime` and returns its query client for these tests.
   - Checked without findings: the bucket list and terms keep their list on screen during a background refresh (their loading shows only without data); `useSettledError` keeps "Try again" during a retry; mutations still reject with `RequestError`, so the 404 handling and form errors are unchanged.
   - After the fixes, with the same `TEST_DATABASE_URL`: `npm run check` pass (backend 191 passed, 0 skipped; frontend 316 passed, 3 skipped (existing); contract 3; skills 4; build); `npm run lint` and `npm run knip` pass.
+- Round 2 (head `bdea3f5`): both fixes are applied as described, and the full diff has no further findings. Checked:
+  - Going back to a cached table address shows its rows at once and refreshes them in the background. An earlier failure stays with "Try again" until that address answers.
+  - A save or delete on the bucket list reloads the list right after it answers, and that reload cancels a focus refresh still on its way, so an older list cannot replace the change. The terms mark does the same with `invalidateQueries`.
+  - Invalidating the inactive table pages only marks them stale, so a save does not wait for any request it does not need.
