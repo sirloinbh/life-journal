@@ -1,11 +1,11 @@
 {
-  "centralSha": "28d9e3bf7c8513aef9b96c1b11c28a271f397d8d",
+  "centralSha": "ecf825fb15cb0a03c924f7f1a20a1b7754fe0f73",
   "profile": "app",
   "project": "life-journal",
   "files": {
     ".claude/hooks/block-forbidden-commands.mjs": {
       "mode": "full",
-      "sha256": "f2209c4d1d703155fa794ea9f5b6be13351227c074f77ff16943adebdd1195ec",
+      "sha256": "790b43ff72a29e9c9c47f29ddae893a93ab406613918f4833290cb8d1d599288",
       "source": "templates/common/.claude/hooks/block-forbidden-commands.mjs"
     },
     ".claude/hooks/block-package-installs.mjs": {
@@ -180,7 +180,7 @@
     },
     ".standards/check.mjs": {
       "mode": "full",
-      "sha256": "61108495fe719aafbdf1abd5756e291a25546107bbe7826787a34123b0501243",
+      "sha256": "9189de77515827bb3fe6e4875c0808d9a3d58e87d134659058498aff7e8f4cd6",
       "source": "scripts/standards-check.mjs"
     },
     ".standards/ci-migrate.sh": {
@@ -420,7 +420,7 @@
     },
     "deploy/report.sh": {
       "mode": "full",
-      "sha256": "7b773d696a5e548780ab6c2a2bb7d7eb3f6bac034ffcbe2c6608a735a65a0057",
+      "sha256": "2e08768374def7e1b34cb271ba26376a2db92ccb6a80c7293fcf8785ef2ef486",
       "source": "templates/deploy/deploy/report.sh.tmpl"
     },
     "deploy/report.timer": {
