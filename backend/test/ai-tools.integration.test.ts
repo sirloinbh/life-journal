@@ -41,9 +41,10 @@ test('AI tools: list_items with scopes, signatures and audit rows', { skip }, as
   const marker = `aitool${randomUUID().replaceAll('-', '')}`;
   try {
     for (const n of [1, 2, 3]) {
-      await pool.query("INSERT INTO items (category, title) VALUES ('reading', $1)", [
-        `${marker} ${n}`,
-      ]);
+      await pool.query(
+        "INSERT INTO items (category, title, tags, companions) VALUES ('reading', $1, '{book club}', '{엄마}')",
+        [`${marker} ${n}`],
+      );
     }
 
     const listed = await fetch(base, {
@@ -79,6 +80,11 @@ test('AI tools: list_items with scopes, signatures and audit rows', { skip }, as
     const { result } = (await read.json()) as { result: { items: { title: string }[] } };
     assert.equal(result.items.length, 3);
     assert.ok(result.items.every((item) => item.title.startsWith(marker)));
+    // #215: companion names are personal data and never reach shared-ai; tags do.
+    for (const item of result.items as Record<string, unknown>[]) {
+      assert.deepEqual(item.tags, ['book club']);
+      assert.equal('companions' in item, false);
+    }
 
     const limited = await call('list_items', token('life-journal:read', 'list_items'), {
       q: marker,

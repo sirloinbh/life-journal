@@ -75,6 +75,8 @@ for (const { tab, key, field, detail, ...rest } of cases) {
         plannedDate: '2027-03-01',
         link: null,
         details: detail,
+        tags: [],
+        companions: [],
       },
     });
     expect(await screen.findByText('첫 항목')).toBeInTheDocument();
@@ -726,4 +728,50 @@ test('a change on the bucket list shows on the table at once, within the cache t
   await dialogClosed();
   fireEvent.click(within(menu).getByRole('link', { name: 'Table view' }));
   expect(await screen.findByRole('link', { name: 'New title' })).toBeInTheDocument();
+});
+
+test('tags and companions are added, suggested, saved, shown, and removed (#215)', async () => {
+  const api = fakeApi([
+    { category: 'travel', title: '교토', tags: ['with family'], companions: ['엄마'] },
+  ]);
+  openAt('/bucket-list/reading');
+  let dialog = await openDialog('Add item');
+  type(dialog, 'Title', '데미안');
+  const tags = dialog.getByLabelText('Tags (optional)');
+  // A name used on another item, even in another category, is suggested.
+  fireEvent.change(tags, { target: { value: 'fam' } });
+  fireEvent.click(await screen.findByRole('option', { name: 'with family' }));
+  fireEvent.keyDown(tags, { key: 'Enter' });
+  fireEvent.change(tags, { target: { value: '  birthday ' } });
+  fireEvent.keyDown(tags, { key: ',' });
+  // The same name again in other letters is not added twice.
+  fireEvent.change(tags, { target: { value: 'BIRTHDAY' } });
+  fireEvent.click(dialog.getByRole('button', { name: 'Add tag' }));
+  expect(
+    within(dialog.getByRole('list', { name: 'Added tags' }))
+      .getAllByRole('listitem')
+      .map((item) => item.textContent),
+  ).toEqual(['with family', 'birthday']);
+  // A name still in the field when the form is saved goes with it.
+  type(dialog, 'Companions (optional)', '아빠');
+  fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body).toMatchObject({
+    tags: ['with family', 'birthday'],
+    companions: ['아빠'],
+  });
+  const card = within(await screen.findByRole('list', { name: 'Tags of 데미안' }));
+  expect(card.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+    'with family',
+    'birthday',
+  ]);
+  expect(screen.getByText('With 아빠')).toBeInTheDocument();
+
+  dialog = await openDialog('Edit 데미안');
+  fireEvent.click(dialog.getByRole('button', { name: 'Remove tag with family' }));
+  fireEvent.click(dialog.getByRole('button', { name: 'Remove companion 아빠' }));
+  fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
+  await dialogClosed();
+  expect(api.requests.at(-1)?.body).toMatchObject({ tags: ['birthday'], companions: [] });
+  await waitFor(() => expect(screen.queryByText('With 아빠')).toBeNull());
 });

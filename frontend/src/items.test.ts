@@ -2,13 +2,17 @@ import { expect, test } from 'vitest';
 
 import { CATEGORIES } from '../../shared/contract';
 import {
+  addName,
   categories,
   type Item,
+  itemFields,
   measureReview,
   numberOrText,
   ratingSummary,
   reviewPreview,
+  usedNames,
 } from './items';
+import { itemRow } from './test/items-api';
 
 test.each([
   ['15000', 15000],
@@ -54,6 +58,8 @@ const item = (subRatings: Record<string, number>): Item => ({
   subRatings,
   review: null,
   link: null,
+  tags: [],
+  companions: [],
 });
 
 test('ratingSummary lists scored criteria in table order with their average', () => {
@@ -69,4 +75,33 @@ test('the screen categories follow the shared table', () => {
   expect(categories.map(({ key }) => key)).toEqual(CATEGORIES.map(({ key }) => key));
   const drink = categories.find(({ key }) => key === 'drink')!;
   expect(drink.fields.filter(({ numeric }) => numeric).map(({ key }) => key)).toEqual(['vintage']);
+});
+
+test('addName trims a name and skips blanks and names already there in any letter case', () => {
+  expect(addName(['Family'], '  birthday ')).toEqual(['Family', 'birthday']);
+  expect(addName(['Family'], 'FAMILY')).toEqual(['Family']);
+  expect(addName(['Family'], '   ')).toEqual(['Family']);
+  // Decomposed Hangul (as some keyboards send it) is the same name as the composed one.
+  expect(addName(['엄마'], '엄마'.normalize('NFD'))).toEqual(['엄마']);
+});
+
+test('itemFields sends the added names and the text still in the field', () => {
+  const form = new FormData();
+  for (const value of ['family', ' birthday ', 'Family', '']) form.append('tags', value);
+  form.append('companions', '엄마');
+  const fields = itemFields(categories[0], form);
+  expect(fields.tags).toEqual(['family', 'birthday']);
+  expect(fields.companions).toEqual(['엄마']);
+  expect(itemFields(categories[0], new FormData())).toMatchObject({ tags: [], companions: [] });
+});
+
+test('usedNames suggests names from every item, the most used first, one per letter case', () => {
+  const items = [
+    itemRow(1, { tags: ['birthday', 'family'], companions: ['엄마'] }),
+    itemRow(2, { category: 'travel', tags: ['Family', 'autumn'] }),
+    itemRow(3, { tags: ['family'], companions: ['아빠', '엄마'] }),
+  ];
+  expect(usedNames(items, 'tags')).toEqual(['family', 'autumn', 'birthday']);
+  expect(usedNames(items, 'companions')).toEqual(['엄마', '아빠']);
+  expect(usedNames([], 'tags')).toEqual([]);
 });

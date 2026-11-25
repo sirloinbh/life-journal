@@ -18,6 +18,8 @@ export const itemRow = (id: number, fields: Partial<Item> = {}): Item => ({
   subRatings: {},
   review: null,
   link: null,
+  tags: [],
+  companions: [],
   ...fields,
 });
 

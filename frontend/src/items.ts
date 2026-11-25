@@ -1,7 +1,14 @@
-import { CATEGORIES, MAX_REVIEW_LENGTH, MAX_REVIEW_LINES, SCORES } from '../../shared/contract';
+import {
+  CATEGORIES,
+  MAX_ITEM_NAME_LENGTH,
+  MAX_ITEM_NAMES,
+  MAX_REVIEW_LENGTH,
+  MAX_REVIEW_LINES,
+  SCORES,
+} from '../../shared/contract';
 
 // Category rules come from shared/contract.ts, which the server also uses. It checks every value again.
-export { MAX_REVIEW_LENGTH, MAX_REVIEW_LINES, SCORES };
+export { MAX_ITEM_NAME_LENGTH, MAX_ITEM_NAMES, MAX_REVIEW_LENGTH, MAX_REVIEW_LINES, SCORES };
 
 export type Item = {
   id: number;
@@ -17,6 +24,10 @@ export type Item = {
   subRatings: Record<string, number>;
   review: string | null;
   link: string | null;
+  /** Free tags, such as "birthday" (#215). */
+  tags: string[];
+  /** Who was there. Personal data: the server never passes these to the AI tools. */
+  companions: string[];
 };
 
 export type Category = {
@@ -85,6 +96,8 @@ export function itemFields(category: Category, form: FormData) {
     if (value) details[key] = numeric ? numberOrText(value) : value;
   }
   const cost = text('costKrw');
+  const names = (name: string) =>
+    form.getAll(name).reduce<string[]>((list, value) => addName(list, String(value)), []);
   return {
     title: text('title'),
     subtype: text('subtype') || null,
@@ -92,7 +105,39 @@ export function itemFields(category: Category, form: FormData) {
     plannedDate: text('plannedDate') || null,
     link: text('link') || null,
     details,
+    tags: names('tags'),
+    companions: names('companions'),
   };
+}
+
+const caseless = (name: string) => name.normalize('NFC').toLowerCase();
+
+/**
+ * `names` with `name` added at the end, trimmed (#215). A blank name, or one already there when letter case is ignored,
+ * leaves the list as it is. The server applies the same rules.
+ */
+export function addName(names: readonly string[], name: string) {
+  const trimmed = name.normalize('NFC').trim();
+  if (!trimmed || names.some((other) => caseless(other) === caseless(trimmed))) return [...names];
+  return [...names, trimmed];
+}
+
+/**
+ * The tags or companions already used on any item, as suggestions: the most used first, then in alphabetical order.
+ * Spellings that differ only in letter case count as one name, shown as it was first seen.
+ */
+export function usedNames(items: readonly Item[], key: 'tags' | 'companions') {
+  const counts = new Map<string, { name: string; count: number }>();
+  for (const item of items) {
+    for (const name of item[key]) {
+      const entry = counts.get(caseless(name));
+      if (entry) entry.count += 1;
+      else counts.set(caseless(name), { name, count: 1 });
+    }
+  }
+  return [...counts.values()]
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .map(({ name }) => name);
 }
 
 export function itemSummary(item: Item, category: Category) {
