@@ -1,7 +1,7 @@
 // Question picking for the terms quiz (#218). Kept apart from the screen so it can be tested with a
 // fixed random source.
 
-export type QuizTerm = { id: string; term: string; learned: boolean };
+export type QuizTerm = { id: string; term: string; original?: string; learned: boolean };
 
 // A question names terms by id, so a learned mark that changes a term does not change the question.
 export type QuizQuestion = { answerId: string; choiceIds: string[] };
@@ -57,4 +57,27 @@ export function pickQuestion(
   if (others.length === 0) return null;
   const choices = shuffle([answer, ...others.slice(0, CHOICE_COUNT - 1)], random);
   return { answerId: answer.id, choiceIds: choices.map(({ id }) => id) };
+}
+
+export const HIDDEN_TERM = '(this term)';
+
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The meaning with the term's own names replaced, so the question does not give the answer away.
+ * A name such as "Syrah / Shiraz" counts each part, and the original-language name counts too. Only
+ * whole words are replaced, ignoring case.
+ */
+export function hideTerm(meaning: string, term: Pick<QuizTerm, 'term' | 'original'>) {
+  const names = [...term.term.split('/'), ...(term.original ? [term.original] : [])]
+    .map((name) => name.trim())
+    .filter((name) => name !== '')
+    // Longer names first, so "Single Cask" is replaced before "Cask" could be.
+    .sort((a, b) => b.length - a.length);
+  if (names.length === 0) return meaning;
+  const pattern = new RegExp(
+    `(?<![\\p{L}\\p{N}])(?:${names.map(escape).join('|')})(?![\\p{L}\\p{N}])`,
+    'giu',
+  );
+  return meaning.replace(pattern, HIDDEN_TERM);
 }

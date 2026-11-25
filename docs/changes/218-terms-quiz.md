@@ -27,3 +27,10 @@ The terms page only listed terms and let me mark them as learned. There was no w
 ## Check result
 
 - `npm run check` (2026-11-26, before the first push): pass. Format, lint, contract, typecheck pass; backend `node --test` 192 tests, 161 pass, 0 fail, 31 skipped (DB tests without `TEST_DATABASE_URL`; this change has no backend code); frontend Vitest 47 files, 332 passed, 3 skipped; skills tests 4 pass; build passes.
+
+## Review round 1
+
+- Finding (issue): 21 of the 300 meanings contain the term's own name (for example Syrah / Shiraz: "It is called Shiraz in Australia."), so the quiz gave the answer away.
+- Fix: `hideTerm` in `frontend/src/terms-study-pick.ts` replaces each part of the term's name (split on `/`) and its original-language name with "(this term)", whole words only, ignoring case, longest name first. `QuizTerm` gains the optional `original`. Tests: 7 cases in `terms-study-pick.test.ts` (slash parts, every case, longer name first, original name, regex characters, accents, no match inside a longer word) and one screen test.
+- Checked against the real 300 terms with a scratch script: 18 meanings change; 3 still contain an inflected form ("tilts" for Tilt, "lyrical" for Lyric, "scene changes" for Scene Change). Those are left as they are: matching word forms would also hide ordinary words.
+- `npm run test -w frontend -- src/terms-study`: 43 passed. `npm run check`: pass (backend 161 pass, 0 fail, 31 DB tests skipped; frontend 340 passed, 3 skipped; build passes).

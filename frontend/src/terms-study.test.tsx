@@ -466,3 +466,14 @@ test('a domain with one term says there are not enough terms for a quiz', async 
   await quizMode();
   expect(await screen.findByText('Not enough terms for a quiz')).toBeInTheDocument();
 });
+
+test('the quiz meaning hides the name of the term it asks for', async () => {
+  const api = fakeApi();
+  api.learned.add('wine-terroir');
+  api.terms = api.terms.map((term) =>
+    term.id === 'wine-tannin' ? { ...term, meaning: 'Tannin makes a wine astringent.' } : term,
+  );
+  openAt('/terms/wine');
+  await quizMode();
+  expect(await screen.findByText('(this term) makes a wine astringent.')).toBeInTheDocument();
+});

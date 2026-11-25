@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { CHOICE_COUNT, pickQuestion, type QuizTerm } from './terms-study-pick';
+import { CHOICE_COUNT, hideTerm, pickQuestion, type QuizTerm } from './terms-study-pick';
 
 const term = (id: string, learned = false, name = id.toUpperCase()): QuizTerm => ({
   id,
@@ -90,4 +90,50 @@ test('a small domain gives fewer choices, and fewer than two terms give no quest
   expect(pickQuestion([term('a')])).toBeNull();
   expect(pickQuestion([])).toBeNull();
   expect(pickQuestion([term('a', false, 'Same'), term('b', false, 'same')])).toBeNull();
+});
+
+test.each([
+  [
+    'a part of a name with a slash',
+    'Syrah / Shiraz',
+    undefined,
+    'It is called Shiraz in Australia.',
+    'It is called (this term) in Australia.',
+  ],
+  [
+    'every case of a name',
+    'Mosel',
+    undefined,
+    'A region around the mosel river. MOSEL wine.',
+    'A region around the (this term) river. (this term) wine.',
+  ],
+  ['the longer name first', 'Single Cask', undefined, 'From a single cask.', 'From a (this term).'],
+  [
+    'the original name',
+    'Terroir',
+    'Le terroir',
+    'Le terroir is the place.',
+    '(this term) is the place.',
+  ],
+  [
+    'a name with regex characters',
+    'C++ (lang)',
+    undefined,
+    'Write C++ (lang) here.',
+    'Write (this term) here.',
+  ],
+  [
+    'names with accents',
+    'Rhône',
+    undefined,
+    'Along the Rhône river.',
+    'Along the (this term) river.',
+  ],
+])('the meaning hides %s', (_name, term, original, meaning, hidden) => {
+  expect(hideTerm(meaning, { term, original })).toBe(hidden);
+});
+
+test('the meaning keeps a name that is only part of a longer word', () => {
+  expect(hideTerm('A nosegay of aromas.', { term: 'Nose' })).toBe('A nosegay of aromas.');
+  expect(hideTerm('No name here.', { term: ' / ' })).toBe('No name here.');
 });

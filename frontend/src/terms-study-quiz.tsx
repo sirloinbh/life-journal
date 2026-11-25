@@ -5,7 +5,7 @@ import { Button } from './components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './components/ui/card';
 import { EmptyState } from './components/ui/empty-state';
 import { cn } from './lib/utils';
-import { pickQuestion, type QuizQuestion, type QuizTerm } from './terms-study-pick';
+import { hideTerm, pickQuestion, type QuizQuestion, type QuizTerm } from './terms-study-pick';
 
 // A meaning and up to four terms of the same domain to pick from (#218). Results are not stored;
 // only the learned mark can change, through the same request as the list's checkbox.
@@ -66,7 +66,7 @@ export function TermsQuiz<Term extends QuizTerm & { meaning: string }>({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <p className="wrap-anywhere">{answer.meaning}</p>
+        <p className="wrap-anywhere">{hideTerm(answer.meaning, answer)}</p>
         <ul aria-labelledby={titleId} className="grid gap-2 sm:grid-cols-2">
           {choices.map((choice) => {
             const isAnswer = choice.id === answer.id;
