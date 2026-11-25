@@ -9,12 +9,14 @@ import { EmptyState } from './components/ui/empty-state';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
+import { SegmentedControl, type SegmentOption } from './components/ui/segmented-control';
 import { Spinner } from './components/ui/spinner';
 import { RequestError } from './lib/api';
 import { apiKey, useApiMutation, useApiQuery } from './lib/query';
 import { errorText, useNotice } from './lib/use-notice';
 import { LoadFailed } from './load-failed';
 import { useSettledError } from './settled-error';
+import { TermsQuiz } from './terms-study-quiz';
 
 type Term = {
   id: string;
@@ -25,6 +27,13 @@ type Term = {
   meaning: string;
   learned: boolean;
 };
+
+type Mode = 'list' | 'quiz';
+
+const MODES = [
+  { value: 'list', label: 'List' },
+  { value: 'quiz', label: 'Quiz' },
+] as const satisfies readonly SegmentOption<Mode>[];
 
 type TermsAnswer = { domains: { key: string; label: string }[]; terms: Term[] };
 
@@ -149,6 +158,8 @@ export function TermsStudy({ path }: { path: string }) {
   const params = useParams();
   const { data, loadError, reload, keepLearned } = useTerms();
   const { notice, error, clear } = useNotice();
+  // The mode stays while moving between domain tabs; each domain starts its own quiz.
+  const [mode, setMode] = useState<Mode>('list');
   // A mark on its way ignores more clicks, so the answers cannot arrive out of order. The box stays
   // enabled because disabling it would drop the keyboard focus.
   const saving = useRef(new Set<string>());
@@ -190,6 +201,7 @@ export function TermsStudy({ path }: { path: string }) {
   }
   const domain = data.domains.find(({ key }) => key === params.domain);
   if (!domain) return <Navigate to={`${path}/${first.key}`} replace />;
+  const domainTerms = data.terms.filter((term) => term.domain === domain.key);
 
   return (
     <div className="flex flex-col gap-4">
@@ -197,12 +209,28 @@ export function TermsStudy({ path }: { path: string }) {
       {/* A failed reload keeps the last terms on screen, but says so and offers a retry. */}
       {loadError ? <LoadFailed cause={loadError} reload={reload} /> : null}
       <Notice notice={notice} className="wrap-anywhere" />
-      <DomainTerms
-        key={domain.key}
-        label={domain.label}
-        terms={data.terms.filter((term) => term.domain === domain.key)}
-        onChange={(term, learned) => void changeLearned(term, learned)}
+      <SegmentedControl
+        label="Study mode"
+        options={MODES}
+        value={mode}
+        onValueChange={setMode}
+        className="self-start"
       />
+      {mode === 'quiz' ? (
+        <TermsQuiz
+          key={domain.key}
+          label={domain.label}
+          terms={domainTerms}
+          onMarkLearned={(term) => void changeLearned(term, true)}
+        />
+      ) : (
+        <DomainTerms
+          key={domain.key}
+          label={domain.label}
+          terms={domainTerms}
+          onChange={(term, learned) => void changeLearned(term, learned)}
+        />
+      )}
     </div>
   );
 }

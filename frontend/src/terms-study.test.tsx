@@ -352,3 +352,117 @@ test('a term card reads its name once when the original is the same', async () =
     /^Montage$/,
   );
 });
+
+// #218: a quiz shows a meaning and asks for the term among terms of the same domain.
+const quizMode = async () => fireEvent.click(await screen.findByRole('radio', { name: 'Quiz' }));
+const quizTitle = 'Which Wine term has this meaning?';
+
+function getStatus() {
+  const quiz = screen
+    .getByRole('heading', { level: 2, name: /term has this meaning/ })
+    .closest('[data-slot="card"]');
+  return within(quiz as HTMLElement).getByRole('status');
+}
+
+test('a wrong answer shows the right term, and the term can be marked as learned from the quiz', async () => {
+  const api = fakeApi();
+  // Terroir is learned, so Tannin, the only unlearned wine term, is asked.
+  api.learned.add('wine-terroir');
+  openAt('/terms/wine');
+  await quizMode();
+  expect(await screen.findByRole('heading', { level: 2, name: quizTitle })).toBeInTheDocument();
+  expect(screen.getByText('An astringent compound')).toBeInTheDocument();
+  const choices = within(screen.getByRole('list', { name: quizTitle })).getAllByRole('button');
+  expect(choices.map((choice) => choice.textContent).sort()).toEqual(['Tannin', 'Terroir']);
+
+  const wrong = screen.getByRole('button', { name: 'Terroir' });
+  wrong.focus();
+  fireEvent.click(wrong);
+  expect(getStatus()).toHaveTextContent('Not quite. The answer is Tannin.');
+  expect(screen.getByRole('button', { name: 'Terroir (your pick)' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(screen.getByRole('button', { name: 'Terroir (your pick)' })).toHaveFocus();
+  // Another click after the answer changes nothing.
+  fireEvent.click(screen.getByRole('button', { name: 'Tannin (answer)' }));
+  expect(getStatus()).toHaveTextContent('Not quite.');
+  expect(screen.getByText('0/1 right')).toBeInTheDocument();
+
+  const mark = screen.getByRole('button', { name: 'Mark Tannin as learned' });
+  mark.focus();
+  fireEvent.click(mark);
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Tannin is learned' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    ),
+  );
+  expect(screen.getByRole('button', { name: 'Tannin is learned' })).toHaveFocus();
+  expect(api.requests).toEqual([{ method: 'PUT', path: '/api/terms/wine-tannin/learned' }]);
+  // The question stays after the mark.
+  expect(screen.getByText('An astringent compound')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('radio', { name: 'List' }));
+  expect(await box('Tannin learned')).toBeChecked();
+  expect(screen.getByText('Wine · 2/2 terms learned')).toBeInTheDocument();
+});
+
+test('a right answer says so, counts it, and the next question starts unanswered', async () => {
+  const api = fakeApi();
+  api.learned.add('wine-terroir');
+  openAt('/terms/wine');
+  await quizMode();
+  fireEvent.click(await screen.findByRole('button', { name: 'Tannin' }));
+  expect(getStatus()).toHaveTextContent('Right: Tannin.');
+  expect(screen.getByText('1/1 right')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Next question' }));
+  expect(getStatus()).toHaveTextContent('');
+  expect(screen.getByRole('button', { name: 'Tannin' })).not.toHaveAttribute('aria-disabled');
+  expect(screen.queryByRole('button', { name: /Mark .* as learned/ })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument();
+  expect(api.requests).toEqual([]);
+});
+
+test('a failed mark from the quiz shows the message and keeps the button', async () => {
+  const api = fakeApi();
+  api.learned.add('wine-terroir');
+  openAt('/terms/wine');
+  await quizMode();
+  fireEvent.click(await screen.findByRole('button', { name: 'Tannin' }));
+  api.failNext = { status: 500, error: 'A server error occurred' };
+  fireEvent.click(screen.getByRole('button', { name: 'Mark Tannin as learned' }));
+  expect(await findLive('alert')).toHaveTextContent('Tannin: A server error occurred');
+  expect(screen.getByRole('button', { name: 'Mark Tannin as learned' })).not.toHaveAttribute(
+    'aria-disabled',
+  );
+});
+
+test('the quiz mode stays on another domain, which asks its own terms', async () => {
+  const api = fakeApi();
+  api.terms.push(
+    { id: 'opera-libretto', domain: 'opera', term: 'Libretto', meaning: 'The text' },
+    { id: 'opera-overture', domain: 'opera', term: 'Overture', meaning: 'The opening' },
+  );
+  openAt('/terms/wine');
+  await quizMode();
+  await screen.findByRole('heading', { level: 2, name: quizTitle });
+  fireEvent.click(screen.getByRole('link', { name: 'Opera' }));
+  const title = 'Which Opera term has this meaning?';
+  expect(await screen.findByRole('heading', { level: 2, name: title })).toBeInTheDocument();
+  const choices = within(screen.getByRole('list', { name: title })).getAllByRole('button');
+  expect(choices.map((choice) => choice.textContent).sort()).toEqual([
+    'Aria',
+    'Libretto',
+    'Overture',
+  ]);
+  expect(screen.getByRole('radio', { name: 'Quiz' })).toBeChecked();
+});
+
+test('a domain with one term says there are not enough terms for a quiz', async () => {
+  fakeApi();
+  openAt('/terms/movie');
+  await quizMode();
+  expect(await screen.findByText('Not enough terms for a quiz')).toBeInTheDocument();
+});
