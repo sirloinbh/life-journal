@@ -18,7 +18,7 @@
   "paths": {
     "/api/items/{id}": {
       "delete": {
-        "summary": "Delete an item, with its quotes",
+        "summary": "Delete an item, with its quotes and journal links",
         "parameters": [
           {
             "name": "id",

@@ -35,7 +35,7 @@ export const operations: Record<string, Operation> = {
     status: [200, 400, 401, 404, 413, 500, 503],
   },
   'DELETE /api/items/:id': {
-    summary: 'Delete an item, with its quotes',
+    summary: 'Delete an item, with its quotes and journal links',
     status: [204, 400, 401, 404, 500, 503],
   },
   'GET /api/items/:id/quotes': {

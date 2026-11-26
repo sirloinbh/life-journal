@@ -284,11 +284,12 @@ function DoneThatDay({
 
   useEffect(() => {
     if (!focusNext) return;
-    const target = section.current?.querySelector<HTMLElement>(`[data-focus="${focusNext}"]`);
-    if (!target) return;
+    // A disabled button cannot take the focus, so wait until the write has finished.
+    const target = section.current?.querySelector<HTMLButtonElement>(`[data-focus="${focusNext}"]`);
+    if (!target || target.disabled) return;
     target.focus();
     setFocusNext(null);
-  }, [focusNext, query.data]);
+  }, [focusNext, query.data, busy]);
 
   const change = async (item: DayItem, linking: boolean) => {
     if (busy) return;

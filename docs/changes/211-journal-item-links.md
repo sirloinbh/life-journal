@@ -54,3 +54,14 @@ A journal entry often talks about a play, a book, or a trip that is already an i
   - Keyboard: Enter on "Link Hamlet ..." links it, "Linked Hamlet ..." appears, and the focus lands on its "Unlink" button.
   - Console: only the 403s for the Pretendard font files (this worktree's `node_modules` is outside the Vite allow list), not related.
 - `npm run check` and `npm run knip` with `TEST_DATABASE_URL` on a fresh lane DB (migrations 001-013): pass. Backend 264 passed, 0 skipped; frontend 369 passed, 3 skipped (existing); contract 3; skills 4; build passed; knip shows only its two existing configuration hints.
+
+## Review round 1
+
+- nit: the focus hand-off after Link or Unlink cleared its target even when the button was still disabled for a moment, which would drop the focus to the page. It now waits until the button is enabled (it also re-runs when the write ends).
+- nit: the item delete route's summary now says it also removes the item's journal links (`docs/openapi.json` regenerated).
+- Checked, no change:
+  - `PATCH /api/items/:id` always sets `completed_date`, so the trigger runs on every date change. It removes the link only when the date really changes.
+  - A link and a date change at the same time cannot leave a wrong link: the link locks the item row, so the change waits and its trigger runs after the link exists. A change that came first is seen by the lock.
+  - A bad date or ID is refused before any query.
+  - Deleting the entry reloads the section.
+- `vitest run src/journal.test.tsx`: 9 passed. `npm run check` and `npm run knip` with `TEST_DATABASE_URL` after the fix: pass (backend 264/0 skipped, frontend 369 passed + 3 skipped).
