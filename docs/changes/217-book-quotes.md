@@ -86,3 +86,7 @@ Self-review of head `1daec78` and the full final diff. Decision: approve, no blo
 CI `verify` failed in four DB tests: node runs test files in parallel, and `db.integration.test.ts` empties the shared `items` table (`DELETE FROM items`) while `item-quotes.integration.test.ts` was adding items there, so quotes hit deleted items (404) and the other file counted extra rows. Locally the runs happened not to overlap. Fixed the way `calendar.integration.test.ts` (#213) does it: the quotes integration tests now run on their own schema `test_item_quotes` with migrations 002-011 applied, dropped after each test.
 
 `npm run check` with `TEST_DATABASE_URL` on `journal_test` (011 applied, then taken back out): pass. Backend 229 passed (DB tests included, none skipped), frontend 353 passed and 3 skipped, contract 3, skills 4, format, lint, typecheck, build.
+
+## Merge of `origin/main` — 2026-11-26
+
+Merged main (#212 yearly statistics): no conflicts, `docs/openapi.json` regenerated with no change. `npm run check` with `TEST_DATABASE_URL` on `journal_test` (011 applied, then taken back out): pass. Backend 237 passed (DB tests included, none skipped), frontend 358 passed and 3 skipped, contract 3, skills 4, format, lint, typecheck, build.
