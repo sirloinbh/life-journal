@@ -173,6 +173,8 @@ test('deleting an entry asks first, then empties the day and the list', async ()
   expect(api.entries.size).toBe(0);
   expect(await screen.findByText('No entries yet.')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+  // The Delete button is gone, so the focus goes back to the text field.
+  await waitFor(async () => expect(await editor()).toHaveFocus());
 });
 
 test('the list loads more entries page by page', async () => {

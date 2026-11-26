@@ -44,3 +44,11 @@ The service is described as a place for reviews and diary entries, but only buck
   - Keyboard: typing in the entry and one Tab reaches Save; Enter saves, "Saved" appears, and the entry is first in the list.
   - Console: the expected 404 for a day with no entry, and 403s for the Pretendard font files (this worktree's `node_modules` is outside the Vite allow list); not related.
 - `npm run check` and `npm run knip` with `TEST_DATABASE_URL` on a fresh lane DB (migrations 001-010, 012): pass. Backend 234 passed, 0 skipped; frontend 364 passed, 3 skipped (existing); contract 3; skills 4; build passed; knip shows only its two existing configuration hints.
+
+## Review round 1
+
+- issue: after a delete the Delete button is gone, so the confirmation dialog had nowhere to return the focus. It now returns it to the entry field (`returnFocusRef`). The delete screen test checks the focus; it fails without the fix.
+- nit, left as is: an unsaved draft is dropped without a warning when moving to another day (each day gets a fresh editor); while a new day loads after a failed one, the old error stays until the answer arrives (shared `useSettledError` behavior).
+- Checked, no change: the date is validated before any query, the upsert relies on the unique date so two saves cannot create two rows, the counter and the server count characters the same way, and the integration test runs in its own schema.
+- `vitest run src/journal.test.tsx`: 7 passed.
+- `npm run check` and `npm run knip` with `TEST_DATABASE_URL` after the fix: pass (backend 234/0 skipped, frontend 364 passed + 3 skipped).

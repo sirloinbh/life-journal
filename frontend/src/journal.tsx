@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { type FormEvent, useId, useState } from 'react';
+import { type FormEvent, useId, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 
 import { Button } from './components/ui/button';
@@ -115,6 +115,8 @@ function DayNav({ date, today, path }: { date: string; today: string; path: stri
 function Editor({ date, entry }: { date: string; entry: Entry | null }) {
   const client = useQueryClient();
   const id = useId();
+  // After a delete the Delete button is gone, so the dialog returns the focus to the text field.
+  const field = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState(entry?.body ?? '');
   const { notice, status, error, clear } = useNotice();
   const keep = async (saved: Entry | null) => {
@@ -170,6 +172,7 @@ function Editor({ date, entry }: { date: string; entry: Entry | null }) {
       <Label htmlFor={id}>Entry for {formatDate(date)}</Label>
       <Textarea
         id={id}
+        ref={field}
         rows={10}
         limit={MAX_LENGTH}
         value={text}
@@ -186,6 +189,7 @@ function Editor({ date, entry }: { date: string; entry: Entry | null }) {
             title="Delete this entry?"
             description={`This deletes the entry for ${formatDate(date)}.`}
             onConfirm={deleteEntry}
+            returnFocusRef={field}
             trigger={
               <Button type="button" variant="outline">
                 Delete
