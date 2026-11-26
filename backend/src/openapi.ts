@@ -102,7 +102,7 @@ export const operations: Record<string, Operation> = {
   },
   'PUT /api/journal/:date': {
     summary:
-      'Write the journal entry of a date (plain text up to 10,000 characters; not after today in Asia/Seoul); 201 when new, 200 when it replaced the text',
+      'Write the journal entry of a date (optional title up to 200 characters, plain text up to 10,000 characters; not after today in Asia/Seoul); 201 when new, 200 when it replaced the entry',
     params: { date: entryDate },
     body: ['JournalEntryInput', entryInput],
     status: [200, 201, 400, 401, 413, 500, 503],

@@ -71,10 +71,31 @@ const refused: {
     error: 'Entry text contains a character that is not allowed',
   },
   {
-    name: 'a title, which entries do not have',
+    name: 'a title over 200 characters',
     method: 'PUT',
     path: TODAY,
-    body: { body: 'Text', title: 'A title' },
+    body: { body: 'Text', title: 'a'.repeat(201) },
+    error: 'Entry title must be 200 characters or fewer',
+  },
+  {
+    name: 'a title that is not text',
+    method: 'PUT',
+    path: TODAY,
+    body: { body: 'Text', title: 7 },
+    error: 'Entry title must be text',
+  },
+  {
+    name: 'a title with a NUL character',
+    method: 'PUT',
+    path: TODAY,
+    body: { body: 'Text', title: 'a\u0000b' },
+    error: 'Entry title contains a character that is not allowed',
+  },
+  {
+    name: 'an unknown field',
+    method: 'PUT',
+    path: TODAY,
+    body: { body: 'Text', mood: 'happy' },
     error: 'The request contains an unknown field',
   },
   {
@@ -113,7 +134,16 @@ test('a text of 10,000 characters with CRLF line breaks reaches the database as 
     query: (_text: string, params: unknown[]) => {
       saved.push(params);
       return Promise.resolve({
-        rows: [{ date: TODAY, body: params[1], createdAt: 'x', updatedAt: 'x', created: true }],
+        rows: [
+          {
+            date: TODAY,
+            title: params[1],
+            body: params[2],
+            createdAt: 'x',
+            updatedAt: 'x',
+            created: true,
+          },
+        ],
       });
     },
   } as unknown as Pool;
@@ -131,5 +161,37 @@ test('a text of 10,000 characters with CRLF line breaks reaches the database as 
     },
     { today: () => TODAY },
   );
-  assert.deepEqual(saved, [[TODAY, `${'a'.repeat(4_999)}\n${'b'.repeat(5_000)}`]]);
+  assert.deepEqual(saved, [[TODAY, null, `${'a'.repeat(4_999)}\n${'b'.repeat(5_000)}`]]);
 });
+
+// The title is optional: trimmed, with 200 characters allowed, and a blank or null title stored as null.
+for (const [name, title, stored] of [
+  ['a title of 200 characters, trimmed', `  ${'t'.repeat(200)} `, 't'.repeat(200)],
+  ['a blank title', '   ', null],
+  ['a null title', null, null],
+] as const) {
+  test(`the journal saves ${name}`, async () => {
+    const saved: unknown[][] = [];
+    const pool = {
+      query: (_text: string, params: unknown[]) => {
+        saved.push(params);
+        return Promise.resolve({
+          rows: [{ date: TODAY, title: params[1], body: params[2], created: false }],
+        });
+      },
+    } as unknown as Pool;
+    await withApi(
+      pool,
+      async (call) => {
+        const { status, data } = await call(`/api/journal/${TODAY}`, {
+          method: 'PUT',
+          body: { title, body: 'Text' },
+        });
+        assert.equal(status, 200);
+        assert.equal(data.title, stored);
+      },
+      { today: () => TODAY },
+    );
+    assert.deepEqual(saved, [[TODAY, stored, 'Text']]);
+  });
+}

@@ -32,7 +32,13 @@ async function scratchPool(t: { after: (fn: () => Promise<void>) => void }) {
   return pool;
 }
 
-type Entry = { date: string; body: string; createdAt: string; updatedAt: string };
+type Entry = {
+  date: string;
+  title: string | null;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 test(
   'saving twice on one date updates its one entry, and entries list newest first',
@@ -42,18 +48,21 @@ test(
     await withApi(
       pool,
       async (call) => {
-        const put = (date: string, body: string) =>
-          call(`/api/journal/${date}`, { method: 'PUT', body: { body } });
+        const put = (date: string, body: string, title?: string) =>
+          call(`/api/journal/${date}`, { method: 'PUT', body: { title, body } });
 
-        const first = await put(TODAY, 'Saw a play tonight.');
+        const first = await put(TODAY, 'Saw a play tonight.', ' 연극 보러 간 날 ');
         assert.equal(first.status, 201);
         const created = first.data as Entry;
         assert.equal(created.date, TODAY);
+        assert.equal(created.title, '연극 보러 간 날');
         assert.equal(created.body, 'Saw a play tonight.');
 
+        // Saving without a title removes it: PUT replaces the whole entry.
         const second = await put(TODAY, 'Saw a play tonight.\r\nThe second act was better.');
         assert.equal(second.status, 200);
         const updated = second.data as Entry;
+        assert.equal(updated.title, null);
         assert.equal(updated.body, 'Saw a play tonight.\nThe second act was better.');
         assert.equal(updated.createdAt, created.createdAt);
         assert.ok(updated.updatedAt >= created.updatedAt);
@@ -99,10 +108,19 @@ test(
 );
 
 test(
-  'the database refuses an empty entry and a second entry for a date',
+  'the database refuses an empty entry, an empty or long title, and a second entry for a date',
   { skip: !url },
   async (t) => {
     const pool = await scratchPool(t);
+    for (const title of ['', 'a'.repeat(201)]) {
+      await assert.rejects(
+        pool.query(
+          "INSERT INTO journal_entries (entry_date, title, body) VALUES ('2026-11-01', $1, 'a')",
+          [title],
+        ),
+        /journal_entries_title_check/,
+      );
+    }
     await assert.rejects(
       pool.query("INSERT INTO journal_entries (entry_date, body) VALUES ('2026-11-01', '')"),
       /journal_entries_body_check/,

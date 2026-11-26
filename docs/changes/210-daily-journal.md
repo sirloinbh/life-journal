@@ -2,7 +2,7 @@
 
 - Issue: [#210](https://github.com/sirloinbh/life-journal/issues/210)
 - Branch: `feat/210-daily-journal`
-- Entry rules: **the owner's decision is still pending** and will be relayed by the coordinator ([comment](https://github.com/sirloinbh/life-journal/issues/210#issuecomment-7178067083)). The issue's recommendation (option A) is implemented so the PR can be reviewed: plain text with line breaks, up to 10,000 characters, no title, no dates after today (Asia/Seoul). The PR is not merged until the decision arrives.
+- Entry rules: the owner chose **option B** on 2026-11-26 ([comment](https://github.com/sirloinbh/life-journal/issues/210#issuecomment-7188786200)): an optional title up to 200 characters, plain text with line breaks up to 10,000 characters, no dates after today (Asia/Seoul). The first version of this PR was built on option A (no title); the title was added after the decision (see "Owner decision: optional title" below).
 
 ## Purpose
 
@@ -56,3 +56,12 @@ The service is described as a place for reviews and diary entries, but only buck
 - `npm run check` and `npm run knip` with `TEST_DATABASE_URL` (fresh DB, migrations 001-012) after the merge: pass. Backend 253 passed, 0 skipped; frontend 365 passed, 3 skipped (existing); contract 3; skills 4; build passed.
 - Merged `origin/main` again (#216 tag filters) without conflicts; `docs/openapi.json` stayed current after `npm run openapi`.
 - `npm run check` and `npm run knip` with `TEST_DATABASE_URL` after that merge: pass (backend 258/0 skipped, frontend 367 passed + 3 skipped).
+
+## Owner decision: optional title
+
+- `database/migrations/012_journal_entries.sql`: a nullable `title` column with `journal_entries_title_check` (NULL, or 1 to 200 characters). The migration is not on `main` yet, so it is changed in place.
+- `backend/src/journal.ts`: `entryInput` takes an optional `title` (text, trimmed, at most 200 characters, no NUL or lone surrogate); a missing, null, or blank title is stored as null. `PUT` writes and replaces the title with the text, so saving without a title removes it. Every answer has `title`. `backend/src/openapi.ts` and `docs/openapi.json` (regenerated) describe it.
+- `frontend/src/journal.tsx`: a "Title (optional)" field above the text (`maxLength` 200), counted in "Unsaved changes", sent trimmed or as null; the past-entries list shows the title between the date and the first line.
+- Tests: `backend/test/journal.test.ts` (a title over 200 characters, not text, or with NUL is refused; a 200-character title is trimmed; a blank or null title is stored as null; an unknown field is still refused), `backend/test/journal.integration.test.ts` (a Korean title round-trips trimmed, a save without a title clears it, the CHECK refuses an empty or 201-character title), `frontend/src/journal.test.tsx` (a title is saved trimmed, shown in the list, and cleared as null).
+- `origin/main` merged in (#214, #226 and others); no conflicts.
+- `npm run check` (2026-11-26, after merging `origin/main`, without `TEST_DATABASE_URL`: the local DB credentials were not available to the agent): pass. Backend 287 tests, 242 pass, 0 fail, 45 skipped (the DB tests); frontend 375 passed, 3 skipped; skills 4 pass; build passes. The DB tests run in CI against its own Postgres.

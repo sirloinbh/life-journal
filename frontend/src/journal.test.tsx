@@ -4,7 +4,13 @@ import { expect, test, vi } from 'vitest';
 import { json, openAt } from './test/app';
 import { findLive } from './test/live';
 
-type Entry = { date: string; body: string; createdAt: string; updatedAt: string };
+type Entry = {
+  date: string;
+  title: string | null;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 const TODAY = '2026-11-10';
 
@@ -15,7 +21,13 @@ function fakeApi(initial: Record<string, string> = {}) {
   const entries = new Map<string, Entry>(
     Object.entries(initial).map(([date, body]) => [
       date,
-      { date, body, createdAt: `${date}T12:00:00Z`, updatedAt: `${date}T12:00:00Z` },
+      {
+        date,
+        title: null,
+        body,
+        createdAt: `${date}T12:00:00Z`,
+        updatedAt: `${date}T12:00:00Z`,
+      },
     ]),
   );
   const writes: { method: string; path: string; body?: unknown }[] = [];
@@ -47,7 +59,9 @@ function fakeApi(initial: Record<string, string> = {}) {
           found ? json(found) : json({ error: 'Journal entry not found' }, 404),
         );
       }
-      const body = init.body ? (JSON.parse(init.body) as { body: string }) : undefined;
+      const body = init.body
+        ? (JSON.parse(init.body) as { title: string | null; body: string })
+        : undefined;
       writes.push({ method, path, body });
       if (method === 'DELETE') {
         if (!found) return Promise.resolve(json({ error: 'Journal entry not found' }, 404));
@@ -57,7 +71,13 @@ function fakeApi(initial: Record<string, string> = {}) {
       if (api.failSave) return Promise.resolve(json({ error: api.failSave }, 400));
       const text = (body?.body ?? '').trim();
       const now = new Date().toISOString();
-      const entry = { date, body: text, createdAt: found?.createdAt ?? now, updatedAt: now };
+      const entry = {
+        date,
+        title: body?.title?.trim() || null,
+        body: text,
+        createdAt: found?.createdAt ?? now,
+        updatedAt: now,
+      };
       entries.set(date, entry);
       return Promise.resolve(json(entry, found ? 200 : 201));
     }),
@@ -89,7 +109,7 @@ test('writing an entry for today keeps it after a reload and lists it', async ()
     {
       method: 'PUT',
       path: `/api/journal/${TODAY}`,
-      body: { body: '  A quiet day.\nRead in the park.  ' },
+      body: { title: null, body: '  A quiet day.\nRead in the park.  ' },
     },
   ]);
 
@@ -121,6 +141,35 @@ test('saving again on the same day updates the one entry', async () => {
     ).toHaveLength(1),
   );
   expect(screen.getByRole('list', { name: 'Past entries' })).toHaveTextContent('Second draft');
+});
+
+test('an optional title is saved trimmed, shown in the list, and removed when cleared', async () => {
+  const api = fakeApi({ [TODAY]: 'Body text' });
+  openAt(`/journal/${TODAY}`);
+  await waitFor(async () => expect(await editor()).toHaveValue('Body text'));
+  const title = screen.getByLabelText('Title (optional)');
+  expect(title).toHaveValue('');
+  expect(title).toHaveAttribute('maxLength', '200');
+
+  fireEvent.change(title, { target: { value: '  공원 산책  ' } });
+  expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  expect(await screen.findByText('Saved')).toBeInTheDocument();
+  expect(title).toHaveValue('공원 산책');
+  expect(api.writes.at(-1)?.body).toEqual({ title: '공원 산책', body: 'Body text' });
+  await waitFor(() =>
+    expect(screen.getByRole('list', { name: 'Past entries' })).toHaveTextContent(
+      'November 10, 2026공원 산책Body text',
+    ),
+  );
+
+  // A blank title is sent as null, so the entry has none again.
+  fireEvent.change(title, { target: { value: '   ' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() => expect(api.writes).toHaveLength(2));
+  expect(api.writes.at(-1)?.body).toEqual({ title: null, body: 'Body text' });
+  await waitFor(() => expect(api.entries.get(TODAY)?.title).toBeNull());
+  expect(title).toHaveValue('');
 });
 
 test("a refused save shows the server's message and keeps the text", async () => {
