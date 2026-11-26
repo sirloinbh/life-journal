@@ -16,8 +16,11 @@ test(
     const pool = testPool();
     t.after(() => pool.end());
     const client = await pool.connect();
-    await client.query('BEGIN');
     try {
+      await client.query('BEGIN');
+      // Other test files write these tables at the same time; the lock makes them wait until the
+      // rollback, so every statement here sees the same rows. Reads still go through.
+      await client.query('LOCK TABLE items, learned_terms IN EXCLUSIVE MODE');
       const { rows: inserted } = await client.query<{ id: number }>(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
            details, rating, sub_ratings, review, link, tags, companions, created_at, updated_at)
