@@ -8,6 +8,8 @@ import {
   type CategoryKey,
   type CategoryRule,
   type DetailField,
+  MAX_ITEM_NAME_LENGTH,
+  MAX_ITEM_NAMES,
   MAX_REVIEW_LENGTH,
   MAX_REVIEW_LINES,
   SCORES,
@@ -20,10 +22,12 @@ export type Db = Pick<Pool, 'query'> | PoolClient;
 
 const MAX_COST_KRW = 2_147_483_647; // items.cost_krw is a PostgreSQL integer.
 
-const COLUMNS = `id, category, subtype, title, status, cost_krw AS "costKrw",
+// Every column except companions, which are personal data and never reach the AI tools (#215).
+const SHARED_COLUMNS = `id, category, subtype, title, status, cost_krw AS "costKrw",
   planned_date AS "plannedDate", completed_date AS "completedDate", details,
-  rating::float8 AS rating, sub_ratings AS "subRatings", review, link,
+  rating::float8 AS rating, sub_ratings AS "subRatings", review, link, tags,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
+const COLUMNS = `${SHARED_COLUMNS}, companions`;
 
 // Length checks as refinements: zod 4's .min() and .max() also run after a type failure on anything with
 // a length, such as an array, and would add a second message.
@@ -114,6 +118,37 @@ const linkText = z
   .refine(maxLength(2000), 'Link must be 2000 characters or fewer')
   .refine((value) => value === '' || isWebLink(value), linkMessage);
 
+// #215: a list of free names (tags or companions). Each name is trimmed, and a name that repeats an earlier one when
+// letter case is ignored is dropped, so the first spelling stays. The limits apply after that.
+const caseless = (name: string) => name.toLowerCase();
+
+const nameList = (label: string, plural: string) =>
+  z
+    .array(
+      z
+        .string({ error: `${label} must be text` })
+        .transform((value) => value.normalize('NFC').trim())
+        .refine(minLength(1), `${label} cannot be empty`)
+        .refine(
+          maxLength(MAX_ITEM_NAME_LENGTH),
+          `${label} must be ${MAX_ITEM_NAME_LENGTH} characters or fewer`,
+        )
+        .refine(isStorable, `${label} contains a character that is not allowed`),
+      { error: `${plural} must be a list of names` },
+    )
+    .transform((names) =>
+      names.filter(
+        (name, index) => names.findIndex((other) => caseless(other) === caseless(name)) === index,
+      ),
+    )
+    .refine(
+      (names) => names.length <= MAX_ITEM_NAMES,
+      `${plural} can have at most ${MAX_ITEM_NAMES} names`,
+    );
+
+const tagList = nameList('Tag', 'Tags');
+const companionList = nameList('Companion', 'Companions');
+
 const year = (label: string) => {
   const message = `${label} must be a 4-digit year`;
   return z
@@ -178,6 +213,8 @@ const itemShape = {
   subRatings: subRatingsRecord,
   review: reviewText.nullable().optional(),
   link: linkText.nullable().optional(),
+  tags: tagList,
+  companions: companionList,
 };
 
 const itemObject = <Shape extends z.ZodRawShape>(shape: Shape) =>
@@ -190,6 +227,8 @@ export const itemFields = itemObject({
   status: status.default('wishlist'),
   details: detailsRecord.default({}),
   subRatings: subRatingsRecord.default({}),
+  tags: tagList.default([]),
+  companions: companionList.default([]),
 });
 
 // No defaults here: zod 4 applies a default inside .optional(), so PATCH would overwrite fields it did not get.
@@ -239,6 +278,8 @@ function parseItem(input: unknown, today: string) {
     subRatings,
     review,
     link: item.link || null,
+    tags: item.tags,
+    companions: item.companions,
   };
 }
 
@@ -325,7 +366,7 @@ export const listQuery = strictObject(
   () => 'Search filters are not valid',
 );
 
-function listSql(input: unknown) {
+function listSql(input: unknown, columns = COLUMNS) {
   const query = listQuery.parse(input);
   if (query.from && query.to && query.from > query.to) {
     throw new HttpError(400, 'Start date cannot be after end date');
@@ -355,7 +396,7 @@ function listSql(input: unknown) {
   const order = `ORDER BY ${SORT_COLUMNS[query.sort]} ${direction} NULLS LAST, id DESC`;
   return {
     page: (limit: number, offset: number) => ({
-      text: `SELECT ${COLUMNS} FROM items ${filter} ${order}
+      text: `SELECT ${columns} FROM items ${filter} ${order}
         LIMIT ${param(Math.trunc(limit))} OFFSET ${param(Math.trunc(offset))}`,
       params,
     }),
@@ -364,9 +405,9 @@ function listSql(input: unknown) {
   };
 }
 
-// The AI tool list_items: the first `limit` items (project-standards#711).
+// The AI tool list_items: the first `limit` items (project-standards#711), without companions (#215).
 export async function listItems(db: Db, query: unknown, limit: number) {
-  const { text, params } = listSql(query).page(limit, 0);
+  const { text, params } = listSql(query, SHARED_COLUMNS).page(limit, 0);
   const { rows } = await db.query(text, params);
   return { items: rows };
 }
@@ -397,8 +438,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
     const { rows } = await pool.query(
       `INSERT INTO items
          (category, subtype, title, status, cost_krw, planned_date, completed_date, details,
-          rating, sub_ratings, review, link)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          rating, sub_ratings, review, link, tags, companions)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING ${COLUMNS}`,
       [
         item.category,
@@ -413,6 +454,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         item.subRatings,
         item.review,
         item.link,
+        item.tags,
+        item.companions,
       ],
     );
     res.status(201).json(rows[0]);
@@ -448,6 +491,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         subRatings,
         review,
         link,
+        tags,
+        companions,
       } = current[0];
       const item = parseItem(
         {
@@ -463,6 +508,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
           subRatings,
           review,
           link,
+          tags,
+          companions,
           ...patch,
         },
         today(),
@@ -471,7 +518,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         `UPDATE items
          SET category = $2, subtype = $3, title = $4, status = $5, cost_krw = $6,
              planned_date = $7, completed_date = $8, details = $9, rating = $10,
-             sub_ratings = $11, review = $12, link = $13, updated_at = now()
+             sub_ratings = $11, review = $12, link = $13, tags = $14, companions = $15,
+             updated_at = now()
          WHERE id = $1
          RETURNING ${COLUMNS}`,
         [
@@ -488,6 +536,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
           item.subRatings,
           item.review,
           item.link,
+          item.tags,
+          item.companions,
         ],
       );
       return rows[0];
