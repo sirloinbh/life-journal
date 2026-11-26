@@ -40,6 +40,7 @@ test('the items migration can be applied again without errors', { skip: !url }, 
     '006_learned_terms.sql',
     '007_coffee_category.sql',
     '009_items_check_names.sql',
+    '010_item_tags_companions.sql',
   ]) {
     const sql = await readFile(
       new URL(`../../database/migrations/${file}`, import.meta.url),
@@ -242,6 +243,8 @@ test('items of all six categories are stored and read back', { skip: !url }, asy
           subRatings: {},
           review: null,
           link: null,
+          tags: [],
+          companions: [],
           createdAt: created.data.createdAt,
           updatedAt: created.data.updatedAt,
           ...sample,
@@ -691,6 +694,55 @@ test('a link is stored, kept by other edits, and cleared', { skip: !url }, async
     "INSERT INTO items (category, title, link) VALUES ('reading', '데미안', 'https://' || repeat('a', 2000))",
   ]) {
     await assert.rejects(pool.query(sql), { code: '23514' }, sql);
+  }
+});
+
+test('tags and companions are trimmed, merged, kept, and replaced', { skip: !url }, async (t) => {
+  const pool = testPool();
+  t.after(() => pool.end());
+  await withApi(pool, async (call) => {
+    const created = await call('/api/items', {
+      method: 'POST',
+      body: {
+        category: 'travel',
+        title: '교토 단풍',
+        tags: ['  With family ', 'birthday', 'with FAMILY'],
+        companions: ['엄마', ' 아빠 '],
+      },
+    });
+    assert.equal(created.status, 201);
+    assert.deepEqual(created.data.tags, ['With family', 'birthday']);
+    assert.deepEqual(created.data.companions, ['엄마', '아빠']);
+    const path = `/api/items/${String(created.data.id)}`;
+    const patch = (body: unknown) => call(path, { method: 'PATCH', body });
+
+    const renamed = await patch({ title: '교토 가을' });
+    assert.deepEqual(
+      [renamed.data.tags, renamed.data.companions],
+      [
+        ['With family', 'birthday'],
+        ['엄마', '아빠'],
+      ],
+    );
+    const rejected = await patch({ tags: ['ok', ' '] });
+    assert.deepEqual([rejected.status, rejected.data], [400, { error: 'Tag cannot be empty' }]);
+    assert.deepEqual((await call(path)).data.tags, ['With family', 'birthday']);
+    const replaced = await patch({ tags: ['단풍'], companions: [] });
+    assert.deepEqual([replaced.data.tags, replaced.data.companions], [['단풍'], []]);
+  });
+  for (const value of [
+    "ARRAY[' padded']",
+    "ARRAY['']",
+    "ARRAY['Same', 'same']",
+    'ARRAY[NULL]::text[]',
+    "ARRAY[repeat('a', 51)]",
+    'ARRAY(SELECT n::text FROM generate_series(1, 21) AS n)',
+    "ARRAY[['a'], ['b']]",
+  ]) {
+    for (const column of ['tags', 'companions']) {
+      const sql = `INSERT INTO items (category, title, ${column}) VALUES ('reading', 'x', ${value})`;
+      await assert.rejects(pool.query(sql), { code: '23514' }, sql);
+    }
   }
 });
 

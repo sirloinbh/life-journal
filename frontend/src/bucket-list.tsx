@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { FormEvent, MouseEvent } from 'react';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router';
 
 import { CategoryTabs } from './category-tabs';
@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
+import { ItemNamesField } from './item-names-field';
 import { allItemsKey, fetchAllItems, tablePagesKey } from './item-pages';
 import {
   categories,
@@ -48,6 +49,7 @@ import {
   reviewProblem,
   SCORES,
   serviceToday,
+  usedNames,
 } from './items';
 import { RequestError } from './lib/api';
 import { useApiMutation } from './lib/query';
@@ -56,6 +58,9 @@ import { LoadFailed } from './load-failed';
 import { useSettledError } from './settled-error';
 
 type SaveItem = (id: number | null, fields: object, done: string) => Promise<void>;
+
+/** Tags and companions already used on any item, offered on the item form (#215). */
+type NameSuggestions = { tags: string[]; companions: string[] };
 
 function useItems() {
   const client = useQueryClient();
@@ -136,11 +141,13 @@ function ItemForm({
   item,
   pending,
   save,
+  suggestions,
 }: {
   category: Category;
   item: Item | null;
   pending: boolean;
   save: SaveItem;
+  suggestions: NameSuggestions;
 }) {
   const id = useId();
   const { notice, error } = useNotice();
@@ -221,6 +228,22 @@ function ItemForm({
         defaultValue={item?.link ?? undefined}
         inputMode="url"
         autoComplete="off"
+      />
+      <ItemNamesField
+        id={`${id}-tags`}
+        label="Tags (optional)"
+        name="tags"
+        noun="tag"
+        initial={item?.tags ?? []}
+        suggestions={suggestions.tags}
+      />
+      <ItemNamesField
+        id={`${id}-companions`}
+        label="Companions (optional)"
+        name="companions"
+        noun="companion"
+        initial={item?.companions ?? []}
+        suggestions={suggestions.companions}
       />
       {item?.status === 'done' ? (
         <Field
@@ -408,6 +431,7 @@ function ItemCard({
   const summary = itemSummary(item, category);
   const ratings = ratingSummary(item, category);
   const preview = item.review ? reviewPreview(item.review) : null;
+  const names = item.tags.length > 0 || item.companions.length > 0;
   return (
     <Card>
       <CardHeader>
@@ -420,9 +444,21 @@ function ItemCard({
           {item.rating !== null ? <Badge variant="outline">Rating {item.rating}</Badge> : null}
         </CardTitle>
       </CardHeader>
-      {summary.length > 0 || ratings || preview || item.link ? (
+      {summary.length > 0 || ratings || preview || item.link || names ? (
         <CardContent className="flex flex-col gap-1 text-body-sm wrap-anywhere text-muted-foreground">
           {summary.length > 0 ? <p>{summary.join(' · ')}</p> : null}
+          {item.tags.length > 0 ? (
+            <ul aria-label={`Tags of ${item.title}`} className="flex flex-wrap gap-1">
+              {item.tags.map((tag) => (
+                <li key={tag}>
+                  <Badge variant="outline" className="max-w-full whitespace-normal">
+                    {tag}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {item.companions.length > 0 ? <p>With {item.companions.join(', ')}</p> : null}
           {ratings ? <p>{ratings}</p> : null}
           {preview ? <p className="truncate">{preview}</p> : null}
           {item.link ? (
@@ -552,6 +588,10 @@ function CategoryItems({
   const opener = useRef<HTMLElement | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const shown = items.filter((item) => item.category === category.key);
+  const suggestions = useMemo(
+    () => ({ tags: usedNames(items, 'tags'), companions: usedNames(items, 'companions') }),
+    [items],
+  );
   const linked = useLinkedItem();
   // A closing form is still on screen during its animation and must not submit again.
   const pending = saving || !formOpen;
@@ -697,6 +737,7 @@ function CategoryItems({
               item={modal.kind === 'edit' ? modal.item : null}
               pending={pending}
               save={save}
+              suggestions={suggestions}
             />
           )}
         </DialogContent>

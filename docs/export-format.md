@@ -29,6 +29,8 @@ File name: `life-journal-YYYY-MM-DD.json` (the service date, Asia/Seoul).
 
 All tables are read in one `REPEATABLE READ` snapshot, so the tables of a file agree with each other.
 
+The file holds personal data (reviews, and the names in `companions`), so keep it private: it is for my own backup, not for sharing.
+
 ### Value rules
 
 - Every column of the table is in every row, with `null` for an empty column. A row never leaves a column out.
@@ -36,11 +38,12 @@ All tables are read in one `REPEATABLE READ` snapshot, so the tables of a file a
 - `date` columns are `YYYY-MM-DD`.
 - `bigint` and `integer` columns are JSON numbers. `numeric` columns (such as `rating`) are JSON numbers.
 - `jsonb` columns are JSON values as stored (objects for `details` and `sub_ratings`).
+- `text[]` columns (`tags`, `companions`) are JSON arrays of strings; an empty list is `[]`.
 - Rows are sorted by primary key.
 
 ### Tables in version 1
 
-`items` (ordered by `id`): `id`, `category`, `subtype`, `title`, `status`, `cost_krw`, `planned_date`, `completed_date`, `details`, `rating`, `sub_ratings`, `review`, `link`, `created_at`, `updated_at`. The column meanings and checks are in `database/migrations/002_items.sql` to `009_items_check_names.sql`.
+`items` (ordered by `id`): `id`, `category`, `subtype`, `title`, `status`, `cost_krw`, `planned_date`, `completed_date`, `details`, `rating`, `sub_ratings`, `review`, `link`, `tags`, `companions`, `created_at`, `updated_at`. The column meanings and checks are in `database/migrations/002_items.sql` to `010_item_tags_companions.sql`.
 
 `learned_terms` (ordered by `term_id`): `term_id`, `learned_at`. A `term_id` refers to a term in `backend/src/terms-data.ts`; ids are never renamed (`backend/test/term-ids.txt`).
 
@@ -73,5 +76,5 @@ File name: `life-journal-items-YYYY-MM-DD.csv`. It is for reading in a spreadshe
 - RFC 4180: a header row with the `items` column names above, then one row per item, CRLF line ends.
 - Every value is quoted, and a quote inside a value is doubled, so commas, quotes, and line breaks stay inside their field.
 - `null` is an empty unquoted field; an empty text is `""`.
-- `details` and `sub_ratings` are JSON text. Timestamps, dates, and numbers are written as in the JSON file.
+- `details`, `sub_ratings`, `tags`, and `companions` are JSON text. Timestamps, dates, and numbers are written as in the JSON file.
 - Values are not changed to stop a spreadsheet from reading a leading `=`, `+`, `-`, or `@` as a formula: the file holds only my own records, and changing them would break the round trip.
