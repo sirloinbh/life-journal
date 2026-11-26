@@ -70,3 +70,7 @@ Self-review of head `b0049a6` (std-code-review section 8). Decision: changes nee
 ### `npm run check` after round 1 (2026-11-26)
 
 - Pass. Format, lint, contract 3 passed, typecheck, backend 169 passed and 32 DB tests skipped (frontend-only change, run without `TEST_DATABASE_URL`; the backend is unchanged since the DB run above), frontend 324 passed and 3 skipped, skills 4 passed, build.
+
+## Review round 2 — 2026-11-26
+
+Self-review of head `ac4d00f` and the full final diff. Decision: approve, no blocking comments.
