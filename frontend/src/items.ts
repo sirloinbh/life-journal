@@ -1,6 +1,8 @@
 import {
   CATEGORIES,
+  LOG_CATEGORIES,
   MAX_ITEM_NAME_LENGTH,
+  MAX_LOG_NOTE_LENGTH,
   MAX_QUOTE_LENGTH,
   MAX_QUOTE_NOTE_LENGTH,
   MAX_REVIEW_LENGTH,
@@ -11,6 +13,7 @@ import {
 // Category rules come from shared/contract.ts, which the server also uses. It checks every value again.
 export {
   MAX_ITEM_NAME_LENGTH,
+  MAX_LOG_NOTE_LENGTH,
   MAX_QUOTE_LENGTH,
   MAX_QUOTE_NOTE_LENGTH,
   MAX_REVIEW_LENGTH,
@@ -205,4 +208,19 @@ export function ratingSummary(item: Item, category: Category) {
   const average = scored.reduce((sum, { value }) => sum + value, 0) / scored.length;
   const parts = scored.map(({ label, value }) => `${label} ${value}`);
   return `${parts.join(' · ')} (sub-rating average ${average.toFixed(1)}, for reference)`;
+}
+
+type LogCategory = (typeof LOG_CATEGORIES)[number];
+
+// The word for one log of each category that takes logs (#214).
+const LOG_WORDS: Record<LogCategory, { one: string; many: string }> = {
+  drink: { one: 'tasting', many: 'Tastings' },
+  travel: { one: 'visit', many: 'Visits' },
+};
+
+/** How the repeated tastings and visits of an item's category are named, or null when it takes none (#214). */
+export function logWords(category: string) {
+  return (LOG_CATEGORIES as readonly string[]).includes(category)
+    ? LOG_WORDS[category as LogCategory]
+    : null;
 }

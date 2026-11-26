@@ -7,13 +7,10 @@ import { z } from 'zod/v4';
 import { MAX_QUOTE_LENGTH, MAX_QUOTE_NOTE_LENGTH, MAX_QUOTE_PAGE } from './contract.js';
 import { withTransaction } from './standard/db.js';
 import { HttpError, parseId } from './standard/http.js';
-import { isStorable, strictObject } from './validation.js';
+import { isStorable, lines, strictObject } from './validation.js';
 
 const QUOTE_COLUMNS = `id, item_id AS "itemId", text, page, note,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
-
-// Line ends are stored as \n, as in the review.
-const lines = (value: string) => value.replace(/\r\n?|[\u0085\u2028\u2029]/g, '\n').trim();
 
 const quoteText = z
   .string({
