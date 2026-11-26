@@ -6,19 +6,48 @@ import { testPool, withApi } from './helpers.js';
 
 const url = process.env.TEST_DATABASE_URL;
 const TODAY = '2026-10-31';
+const SCHEMA = 'test_item_quotes';
+
+const migration = (file: string) =>
+  readFile(new URL(`../../database/migrations/${file}`, import.meta.url), 'utf8');
+
+// The items and quotes tables in their own schema (as in calendar.integration.test.ts), so other test files that
+// empty the shared items table while these run cannot delete these items or count them. Every connection searches
+// that schema first.
+async function scratchPool(t: { after: (fn: () => Promise<void>) => void }) {
+  const setup = testPool({ max: 1 });
+  await setup.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE; CREATE SCHEMA ${SCHEMA}`);
+  await setup.query(`SET search_path TO ${SCHEMA}`);
+  for (const file of [
+    '002_items.sql',
+    '003_item_ratings.sql',
+    '004_item_review.sql',
+    '005_item_link.sql',
+    '007_coffee_category.sql',
+    '009_items_check_names.sql',
+    '010_item_tags_companions.sql',
+    '011_item_quotes.sql',
+  ]) {
+    await setup.query(await migration(file));
+  }
+  await setup.end();
+  const pool = testPool({ options: `-c search_path=${SCHEMA}` });
+  t.after(async () => {
+    try {
+      await pool.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
+    } finally {
+      await pool.end();
+    }
+  });
+  return pool;
+}
 
 // Requires a dedicated test DB with database/migrations applied. Skipped (not passed) without it.
 test('the quotes migration can be applied again', { skip: !url }, async (t) => {
-  const pool = testPool();
-  t.after(() => pool.end());
-  const sql = await readFile(
-    new URL('../../database/migrations/011_item_quotes.sql', import.meta.url),
-    'utf8',
-  );
-  await pool.query(sql);
-  await pool.query(sql);
+  const pool = await scratchPool(t);
+  await pool.query(await migration('011_item_quotes.sql'));
   const { rowCount } = await pool.query(
-    "SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'item_quotes'",
+    `SELECT 1 FROM pg_tables WHERE schemaname = '${SCHEMA}' AND tablename = 'item_quotes'`,
   );
   assert.equal(rowCount, 1);
 });
@@ -27,8 +56,7 @@ test(
   'quotes of a book are added, listed in page order, edited, and deleted',
   { skip: !url },
   async (t) => {
-    const pool = testPool();
-    t.after(() => pool.end());
+    const pool = await scratchPool(t);
     await withApi(
       pool,
       async (call) => {
@@ -96,8 +124,7 @@ test(
   'only reading items take quotes, and a quoted item stays in Reading',
   { skip: !url },
   async (t) => {
-    const pool = testPool();
-    t.after(() => pool.end());
+    const pool = await scratchPool(t);
     await withApi(
       pool,
       async (call) => {
@@ -146,8 +173,7 @@ test(
 );
 
 test('quotes go with their item, and the table refuses bad rows', { skip: !url }, async (t) => {
-  const pool = testPool();
-  t.after(() => pool.end());
+  const pool = await scratchPool(t);
   await withApi(pool, async (call) => {
     const book = await call('/api/items', {
       method: 'POST',
