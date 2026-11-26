@@ -4,6 +4,7 @@ import type { Pool } from 'pg';
 
 import { tools } from './ai-tools.js';
 import { createCalendarRouter } from './calendar.js';
+import { createExportRouter } from './export.js';
 import { createItemsRouter } from './items.js';
 import { errorHandler, notFound, requestLog, serviceDate } from './standard/http.js';
 import { apiRateLimit } from './standard/rate-limit.js';
@@ -36,6 +37,7 @@ export function createApp(
   });
   app.use('/api/items', createItemsRouter(pool, today));
   app.use('/api/terms', createTermsRouter(pool));
+  app.use('/api/export', createExportRouter(pool, today));
   app.use('/api/calendar', createCalendarRouter(pool, today));
   app.use('/api/stats', createStatsRouter(pool, today));
   // AI tools for shared-ai on /internal/tools: outside /api, so nginx never forwards them and the signed

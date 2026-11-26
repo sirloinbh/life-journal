@@ -88,6 +88,16 @@ export const operations: Record<string, Operation> = {
     summary: 'Mark a term as not learned',
     status: [204, 401, 404, 500, 503],
   },
+  'GET /api/export': {
+    summary:
+      'Download every record as one JSON file (docs/export-format.md): { format, version, exportedAt, tables: { items, item_quotes, item_logs, learned_terms, audit_log } }',
+    status: [200, 401, 500, 503],
+  },
+  'GET /api/export/items.csv': {
+    summary:
+      'Download the items as CSV (UTF-8 with BOM; details, sub_ratings, tags, and companions as JSON text; null is an empty unquoted field)',
+    status: [200, 401, 500, 503],
+  },
   'GET /api/calendar': {
     summary:
       'List the items with a planned or completed date in a month (month YYYY-MM, default this month in Asia/Seoul); answers { month, items }',

@@ -11,6 +11,7 @@ import {
 import { type ReactNode, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
+import { DataBackup } from './backup';
 import { BucketList } from './bucket-list';
 import { Calendar } from './calendar';
 import { AppShell, type NavItem } from './components/layout/app-shell';
@@ -196,7 +197,9 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
                     title="Settings"
                     description="App environment and data management"
                     health={health}
-                  />
+                  >
+                    <DataBackup />
+                  </Page>
                 }
               />
               <Route path="*" element={<Navigate to={pages.overview} replace />} />
