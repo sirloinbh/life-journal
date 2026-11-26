@@ -10,15 +10,16 @@ const EXPORT_FORMAT = 'life-journal-export';
 const EXPORT_VERSION = 1;
 
 // Timestamps as UTC text with microseconds: a JS Date keeps only milliseconds, so a restore could not
-// write back the same value.
+// write back the same value. The name is quoted because audit_log's column is called `at`.
 const utc = (column: string) =>
-  `to_char(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS ${column}`;
+  `to_char("${column}" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "${column}"`;
 
 /**
  * Every data table in the export, in restore order (a table after the tables it refers to), with its
  * columns in file order. A new data table is added here, to docs/export-format.md, and to restore.
  * DATE columns come back as YYYY-MM-DD and BIGINT as numbers (pool.ts); rating (items and item_logs) is
- * numeric(2,1), sent as a number; text[] columns (tags, companions) are JSON arrays of strings.
+ * numeric(2,1), sent as a number; text[] columns (tags, companions) are JSON arrays of strings; jsonb
+ * columns (details, sub_ratings, audit_log before/after) are JSON values.
  */
 export const EXPORT_TABLES = {
   items: {
@@ -67,6 +68,27 @@ export const EXPORT_TABLES = {
   learned_terms: {
     columns: ['term_id', 'learned_at'],
     sql: `SELECT term_id, ${utc('learned_at')} FROM learned_terms ORDER BY term_id`,
+  },
+  // The change history (owner decision on #208, option B); before and after are JSON snapshots.
+  audit_log: {
+    columns: [
+      'id',
+      'at',
+      'actor_type',
+      'actor_id',
+      'client',
+      'tool',
+      'action',
+      'entity',
+      'entity_id',
+      'result',
+      'before',
+      'after',
+      'request_id',
+    ],
+    sql: `SELECT id, ${utc('at')}, actor_type, actor_id, client, tool, action, entity, entity_id, result,
+            "before", "after", request_id
+          FROM audit_log ORDER BY id`,
   },
 } as const;
 

@@ -883,7 +883,7 @@
     },
     "/api/export": {
       "get": {
-        "summary": "Download every record as one JSON file (docs/export-format.md): { format, version, exportedAt, tables: { items, item_quotes, item_logs, learned_terms } }",
+        "summary": "Download every record as one JSON file (docs/export-format.md): { format, version, exportedAt, tables: { items, item_quotes, item_logs, learned_terms, audit_log } }",
         "responses": {
           "200": {
             "description": "Success"

@@ -84,6 +84,22 @@ const quote = {
   updated_at: '2026-11-26T00:00:01.000001Z',
 };
 
+const audit = {
+  id: 9,
+  at: '2026-11-26T00:00:03.000003Z',
+  actor_type: 'ai-tool',
+  actor_id: null,
+  client: 'shared-ai',
+  tool: 'life_journal__list_items',
+  action: 'read',
+  entity: 'items',
+  entity_id: null,
+  result: 'ok',
+  before: null,
+  after: { count: 1 },
+  request_id: 'req-1',
+};
+
 const log = {
   id: 5,
   item_id: 7,
@@ -101,6 +117,7 @@ test('GET /api/export answers a dated JSON download of every table from one snap
     item_quotes: [quote],
     item_logs: [log],
     learned_terms: [{ term_id: 'wine-tannin', learned_at: '2026-11-20T01:02:03.000004Z' }],
+    audit_log: [audit],
   });
   await withApi(createApp(pool, { today: () => '2026-11-26' }), async (call) => {
     const { status, data, headers } = await call('/api/export');
@@ -119,6 +136,7 @@ test('GET /api/export answers a dated JSON download of every table from one snap
       item_quotes: [quote],
       item_logs: [log],
       learned_terms: [{ term_id: 'wine-tannin', learned_at: '2026-11-20T01:02:03.000004Z' }],
+      audit_log: [audit],
     });
   });
   assert.deepEqual(asked, [
@@ -127,13 +145,20 @@ test('GET /api/export answers a dated JSON download of every table from one snap
     'read item_quotes',
     'read item_logs',
     'read learned_terms',
+    'read audit_log',
     'COMMIT',
     'release',
   ]);
 });
 
 test('GET /api/export/items.csv answers a dated CSV download of the items', async () => {
-  const { pool } = fakePool({ items: [item], item_quotes: [], item_logs: [], learned_terms: [] });
+  const { pool } = fakePool({
+    items: [item],
+    item_quotes: [],
+    item_logs: [],
+    learned_terms: [],
+    audit_log: [],
+  });
   await withApi(createApp(pool, { today: () => '2026-11-26' }), async (call) => {
     const { status, headers, bytes } = await call('/api/export/items.csv');
     assert.equal(status, 200);

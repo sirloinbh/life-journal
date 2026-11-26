@@ -17,7 +17,8 @@ File name: `life-journal-YYYY-MM-DD.json` (the service date, Asia/Seoul).
     "items": [{ "id": 1, "category": "reading", "...": "..." }],
     "item_quotes": [{ "id": 1, "item_id": 1, "...": "..." }],
     "item_logs": [{ "id": 1, "item_id": 1, "...": "..." }],
-    "learned_terms": [{ "term_id": "wine-tannin", "learned_at": "2026-11-20T00:00:00.000004Z" }]
+    "learned_terms": [{ "term_id": "wine-tannin", "learned_at": "2026-11-20T00:00:00.000004Z" }],
+    "audit_log": [{ "id": 1, "at": "2026-11-25T14:59:59.000009Z", "...": "..." }]
   }
 }
 ```
@@ -31,7 +32,7 @@ File name: `life-journal-YYYY-MM-DD.json` (the service date, Asia/Seoul).
 
 All tables are read in one `REPEATABLE READ` snapshot, so the tables of a file agree with each other.
 
-The file holds personal data (reviews, quotes, log notes, and the names in `companions`), so keep it private: it is for my own backup, not for sharing.
+The file holds personal data (reviews, quotes, log notes, the names in `companions`, and the before and after snapshots in `audit_log`), so keep it private: it is for my own backup, not for sharing.
 
 ### Value rules
 
@@ -39,7 +40,7 @@ The file holds personal data (reviews, quotes, log notes, and the names in `comp
 - `timestamptz` columns are UTC text with microseconds: `2026-11-20T01:11:12.123456Z`. A JavaScript `Date` keeps only milliseconds, so this keeps the exact value for restore.
 - `date` columns are `YYYY-MM-DD`.
 - `bigint` and `integer` columns are JSON numbers. `numeric` columns (such as `rating` of `items` and `item_logs`) are JSON numbers.
-- `jsonb` columns are JSON values as stored (objects for `details` and `sub_ratings`).
+- `jsonb` columns are JSON values as stored (objects for `details` and `sub_ratings`; any JSON value or `null` for `before` and `after` of `audit_log`).
 - `text[]` columns (`tags`, `companions`) are JSON arrays of strings; an empty list is `[]`.
 - Rows are sorted by primary key.
 
@@ -53,16 +54,17 @@ The file holds personal data (reviews, quotes, log notes, and the names in `comp
 
 `learned_terms` (ordered by `term_id`): `term_id`, `learned_at`. A `term_id` refers to a term in `backend/src/terms-data.ts`; ids are never renamed (`backend/test/term-ids.txt`).
 
+`audit_log` (ordered by `id`): `id`, `at`, `actor_type`, `actor_id`, `client`, `tool`, `action`, `entity`, `entity_id`, `result`, `before`, `after`, `request_id`. The change history of AI tool calls and routes; it is in the export so a restore keeps it (owner decision on #208, option B, 2026-11-26). See `database/migrations/008_audit_log.sql`. The nightly backup deletes rows older than a year, so the file holds only what is left.
+
 ### Not in the export
 
-- `audit_log`: an operations log, not a record (owner decision on #208).
 - `app_settings`: no code reads or writes it yet. It joins the export when a setting is stored there.
 - `schema_migrations`: the migration runner's own table.
 - Photos (#29): not included until that issue decides where they are stored.
 
 ## Adding a column
 
-A new column of an exported table is added to its `columns` list and its `SELECT` in `EXPORT_TABLES` in the same PR, and to restore. `backend/test/export.integration.test.ts` compares the exported columns of `items`, `item_quotes`, and `item_logs` with each table's columns, so a forgotten column fails the test.
+A new column of an exported table is added to its `columns` list and its `SELECT` in `EXPORT_TABLES` in the same PR, and to restore. `backend/test/export.integration.test.ts` compares the exported columns of `items`, `item_quotes`, `item_logs`, and `audit_log` with each table's columns, so a forgotten column fails the test.
 
 ## Adding a table
 
