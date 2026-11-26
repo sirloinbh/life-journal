@@ -74,3 +74,7 @@ Self-review of head `b0049a6` (std-code-review section 8). Decision: changes nee
 ## Review round 2 — 2026-11-26
 
 Self-review of head `ac4d00f` and the full final diff. Decision: approve, no blocking comments.
+
+## CI fix — 2026-11-26
+
+CI `verify` failed in `npm run knip` (not part of `npm run check`): `MAX_ITEM_NAMES` was re-exported from `frontend/src/items.ts` but nothing on the frontend uses it. The re-export is removed (the server still enforces the limit). `npm run typecheck`, `npm run lint`, and `npm run knip` (no unused export left) pass locally.
