@@ -5,6 +5,7 @@ import { calendarQuery } from './calendar.js';
 import { logFields, logPatch } from './item-logs.js';
 import { quoteFields, quotePatch } from './item-quotes.js';
 import { itemFields, itemPatch, listQuery } from './items.js';
+import { entryDate, entryInput, journalListQuery } from './journal.js';
 import { exportFile } from './restore.js';
 import { buildOpenApi, type Operation } from './standard/openapi.js';
 import { statsQuery } from './stats.js';
@@ -89,6 +90,29 @@ export const operations: Record<string, Operation> = {
     summary: 'Mark a term as not learned',
     status: [204, 401, 404, 500, 503],
   },
+  'GET /api/journal': {
+    summary:
+      'List journal entries, newest date first (limit 1-100, default 20; offset); answers { entries, nextOffset, total }',
+    query: journalListQuery,
+    status: [200, 400, 401, 500, 503],
+  },
+  'GET /api/journal/:date': {
+    summary: 'Get the journal entry of a date',
+    params: { date: entryDate },
+    status: [200, 400, 401, 404, 500, 503],
+  },
+  'PUT /api/journal/:date': {
+    summary:
+      'Write the journal entry of a date (optional title up to 200 characters, plain text up to 10,000 characters; not after today in Asia/Seoul); 201 when new, 200 when it replaced the entry',
+    params: { date: entryDate },
+    body: ['JournalEntryInput', entryInput],
+    status: [200, 201, 400, 401, 413, 500, 503],
+  },
+  'DELETE /api/journal/:date': {
+    summary: 'Delete the journal entry of a date',
+    params: { date: entryDate },
+    status: [204, 400, 401, 404, 500, 503],
+  },
   'GET /api/export': {
     summary:
       'Download every record as one JSON file (docs/export-format.md): { format, version, exportedAt, tables: { items, item_quotes, item_logs, learned_terms, audit_log } }',
@@ -101,7 +125,7 @@ export const operations: Record<string, Operation> = {
   },
   'POST /api/restore': {
     summary:
-      'Replace every record with a JSON export (docs/export-format.md, up to 20 MB). The whole file is checked first and written in one transaction, so a refused file changes nothing; answers { restored: { items, item_quotes, item_logs, learned_terms } }',
+      'Replace every record with a JSON export (docs/export-format.md, up to 20 MB). The whole file is checked first and written in one transaction, so a refused file changes nothing; answers { restored: { items, item_quotes, item_logs, learned_terms, audit_log } }',
     body: ['ExportFile', exportFile],
     status: [200, 400, 401, 413, 500, 503],
   },

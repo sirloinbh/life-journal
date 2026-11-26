@@ -6,6 +6,7 @@ import { tools } from './ai-tools.js';
 import { createCalendarRouter } from './calendar.js';
 import { createExportRouter } from './export.js';
 import { createItemsRouter } from './items.js';
+import { createJournalRouter } from './journal.js';
 import { createRestoreRouter, RESTORE_PATH } from './restore.js';
 import { errorHandler, notFound, requestLog, serviceDate } from './standard/http.js';
 import { apiRateLimit } from './standard/rate-limit.js';
@@ -45,6 +46,7 @@ export function createApp(
   app.use(RESTORE_PATH, createRestoreRouter(pool));
   app.use('/api/calendar', createCalendarRouter(pool, today));
   app.use('/api/stats', createStatsRouter(pool, today));
+  app.use('/api/journal', createJournalRouter(pool, today));
   // AI tools for shared-ai on /internal/tools: outside /api, so nginx never forwards them and the signed
   // call token, not the session, is the check. The token must name its tool and carry a jti (#822).
   registerToolRoutes(app, {
