@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 
-import { MAX_RESTORE_BYTES, summarizeExport } from './restore-file';
+import { describeCounts, MAX_RESTORE_BYTES, summarizeExport } from './restore-file';
 import { json, openAt } from './test/app';
 import { dialogClosed, openDialog } from './test/dialog';
 import { findLive, queryLive } from './test/live';
@@ -17,7 +17,8 @@ const exportBody = {
 };
 
 function fakeApi(
-  answer: () => Response = () => json({ restored: { items: 2, learned_terms: 1 } }),
+  answer: () => Response = () =>
+    json({ restored: { items: 2, item_quotes: 0, item_logs: 0, learned_terms: 1 } }),
 ) {
   const sent: { path: string; method: string; body: unknown }[] = [];
   vi.stubGlobal(
@@ -131,8 +132,15 @@ test('summarizeExport reads the counts and refuses files it cannot restore', () 
   expect(summarizeExport(JSON.stringify(exportBody))).toMatchObject({
     exportedAt: '2026-11-26 09:05',
     items: 2,
+    quotes: 0,
+    logs: 0,
     learnedTerms: 1,
   });
+  const withChildren = {
+    ...exportBody,
+    tables: { ...exportBody.tables, item_quotes: [{ id: 1 }], item_logs: [{ id: 1 }, { id: 2 }] },
+  };
+  expect(summarizeExport(JSON.stringify(withChildren))).toMatchObject({ quotes: 1, logs: 2 });
   expect(summarizeExport(JSON.stringify({ ...exportBody, exportedAt: 7 })).exportedAt).toBe(
     'an unknown time',
   );
@@ -141,4 +149,16 @@ test('summarizeExport reads the counts and refuses files it cannot restore', () 
   );
   expect(() => summarizeExport('[]')).toThrow('not a life-journal export');
   expect(MAX_RESTORE_BYTES).toBe(20 * 1024 * 1024);
+});
+
+test('describeCounts names quotes and tastings or visits only when the file has some', () => {
+  expect(describeCounts({ items: 2, quotes: 0, logs: 0, learnedTerms: 1 })).toBe(
+    '2 items and 1 learned term',
+  );
+  expect(describeCounts({ items: 1, quotes: 3, logs: 0, learnedTerms: 0 })).toBe(
+    '1 item, 3 quotes, and 0 learned terms',
+  );
+  expect(describeCounts({ items: 5, quotes: 1, logs: 2, learnedTerms: 4 })).toBe(
+    '5 items, 1 quote, 2 tastings or visits, and 4 learned terms',
+  );
 });

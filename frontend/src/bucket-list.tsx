@@ -29,8 +29,10 @@ import {
   SelectValue,
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
+import { ItemLogs } from './item-logs';
 import { ItemNamesField } from './item-names-field';
 import { allItemsKey, fetchAllItems, tablePagesKey } from './item-pages';
+import { ItemQuotes } from './item-quotes';
 import {
   categories,
   type Category,
@@ -39,15 +41,14 @@ import {
   itemCount,
   itemFields,
   itemSummary,
+  logWords,
   MAX_REVIEW_LENGTH,
   MAX_REVIEW_LINES,
   measureReview,
-  NO_SCORE,
   ratingFields,
   ratingSummary,
   reviewPreview,
   reviewProblem,
-  SCORES,
   serviceToday,
   usedNames,
 } from './items';
@@ -55,6 +56,7 @@ import { RequestError } from './lib/api';
 import { useApiMutation } from './lib/query';
 import { useNotice } from './lib/use-notice';
 import { LoadFailed } from './load-failed';
+import { ScoreField } from './score-field';
 import { useSettledError } from './settled-error';
 
 type SaveItem = (id: number | null, fields: object, done: string) => Promise<void>;
@@ -284,37 +286,6 @@ function CompleteForm({ item, pending, save }: { item: Item; pending: boolean; s
   );
 }
 
-function ScoreField({
-  id,
-  label,
-  name,
-  value,
-}: {
-  id: string;
-  label: string;
-  name: string;
-  value: number | null | undefined;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Select name={name} defaultValue={value == null ? NO_SCORE : String(value)}>
-        <SelectTrigger id={id} className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={NO_SCORE}>None</SelectItem>
-          {SCORES.map((score) => (
-            <SelectItem key={score} value={String(score)}>
-              {score}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
 function RatingForm({
   category,
   item,
@@ -415,12 +386,16 @@ function ItemCard({
   onRate,
   onReview,
   onComplete,
+  onQuotes,
+  onLogs,
   onReopen,
   onDelete,
 }: {
   item: Item;
   category: Category;
   onEdit: (event: MouseEvent<HTMLButtonElement>) => void;
+  onQuotes: (event: MouseEvent<HTMLButtonElement>) => void;
+  onLogs: (event: MouseEvent<HTMLButtonElement>) => void;
   onRate: (event: MouseEvent<HTMLButtonElement>) => void;
   onReview: (event: MouseEvent<HTMLButtonElement>) => void;
   onComplete: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -432,6 +407,7 @@ function ItemCard({
   const ratings = ratingSummary(item, category);
   const preview = item.review ? reviewPreview(item.review) : null;
   const names = item.tags.length > 0 || item.companions.length > 0;
+  const logs = logWords(item.category);
   return (
     <Card>
       <CardHeader>
@@ -514,6 +490,28 @@ function ItemCard({
             Mark as done
           </Button>
         )}
+        {/* #217: quotes and highlights of books. */}
+        {item.category === 'reading' ? (
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label={`Quotes of ${item.title}`}
+            onClick={onQuotes}
+          >
+            Quotes
+          </Button>
+        ) : null}
+        {/* #214: repeated tastings and visits. */}
+        {logs ? (
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label={`${logs.many} of ${item.title}`}
+            onClick={onLogs}
+          >
+            {logs.many}
+          </Button>
+        ) : null}
         <Button size="sm" variant="outline" aria-label={`Edit ${item.title}`} onClick={onEdit}>
           Edit
         </Button>
@@ -537,7 +535,9 @@ type FormModal =
   | { kind: 'edit'; item: Item }
   | { kind: 'complete'; item: Item }
   | { kind: 'rate'; item: Item }
-  | { kind: 'review'; item: Item };
+  | { kind: 'review'; item: Item }
+  | { kind: 'quotes'; item: Item }
+  | { kind: 'logs'; item: Item };
 
 const FORM_TITLES = {
   new: 'Add item',
@@ -545,6 +545,8 @@ const FORM_TITLES = {
   complete: 'Mark as done',
   rate: 'Rating',
   review: 'Review',
+  quotes: 'Quotes',
+  logs: 'Tastings and visits',
 };
 
 /**
@@ -672,6 +674,8 @@ function CategoryItems({
                 onRate={(event) => openForm({ kind: 'rate', item }, event)}
                 onReview={(event) => openForm({ kind: 'review', item }, event)}
                 onComplete={(event) => openForm({ kind: 'complete', item }, event)}
+                onQuotes={(event) => openForm({ kind: 'quotes', item }, event)}
+                onLogs={(event) => openForm({ kind: 'logs', item }, event)}
                 onReopen={() =>
                   changeFromDialog(async () => {
                     keepSaved(
@@ -713,12 +717,19 @@ function CategoryItems({
           }}
         >
           <DialogHeader>
-            <DialogTitle>{FORM_TITLES[modal.kind]}</DialogTitle>
+            <DialogTitle>
+              {(modal.kind === 'logs' ? logWords(modal.item.category)?.many : null) ??
+                FORM_TITLES[modal.kind]}
+            </DialogTitle>
             <DialogDescription className="wrap-anywhere">
               {modal.kind === 'new' ? category.label : modal.item.title}
             </DialogDescription>
           </DialogHeader>
-          {modal.kind === 'complete' ? (
+          {modal.kind === 'quotes' ? (
+            <ItemQuotes key={modal.item.id} item={modal.item} />
+          ) : modal.kind === 'logs' ? (
+            <ItemLogs key={modal.item.id} item={modal.item} />
+          ) : modal.kind === 'complete' ? (
             <CompleteForm item={modal.item} pending={pending} save={save} />
           ) : modal.kind === 'review' ? (
             <ReviewForm key={modal.item.id} item={modal.item} pending={pending} save={save} />

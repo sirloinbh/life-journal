@@ -16,18 +16,23 @@ test(
     const pool = testPool();
     t.after(() => pool.end());
     const client = await pool.connect();
-    const sequence = "pg_get_serial_sequence('items', 'id')";
-    let started = 0;
+    const tables = ['items', 'item_quotes', 'item_logs'] as const;
+    const sequence = (table: string) => `pg_get_serial_sequence('${table}', 'id')`;
+    const started = new Map<string, number>();
     try {
-      const { rows: sequenceRows } = await client.query<{ value: number }>(
-        `SELECT COALESCE(pg_sequence_last_value(${sequence}::regclass), 0) AS value`,
-      );
-      started = sequenceRows[0].value;
+      for (const table of tables) {
+        const { rows } = await client.query<{ value: number }>(
+          `SELECT COALESCE(pg_sequence_last_value(${sequence(table)}::regclass), 0) AS value`,
+        );
+        started.set(table, rows[0].value);
+      }
       await client.query('BEGIN');
       // Other test files write these tables at the same time; the lock makes them wait until the
       // rollback, so every statement here sees the same rows. Reads still go through.
-      await client.query('LOCK TABLE items, learned_terms IN EXCLUSIVE MODE');
       await client.query(
+        'LOCK TABLE items, item_quotes, item_logs, learned_terms IN EXCLUSIVE MODE',
+      );
+      const { rows: seeded } = await client.query<{ id: number }>(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
            details, rating, sub_ratings, review, link, tags, companions, created_at, updated_at)
          VALUES
@@ -35,7 +40,21 @@ test(
             '{"author": "한강"}', NULL, '{}', NULL, NULL, '{}', '{}', '2026-11-20 10:11:12.123456+09', now()),
            ('stage', 'musical', 'Done, "quoted"', 'done', 150000, NULL, '2026-11-02',
             '{"venue": "Seoul"}', 4.5, '{"story": 4}', E'Line one\\nLine two',
-            'https://example.com/', ARRAY['birthday', 'a, "b"'], ARRAY['민지'], '2026-11-02 21:00:00+09', '2026-11-03 08:30:00.5+09')`,
+            'https://example.com/', ARRAY['birthday', 'a, "b"'], ARRAY['민지'], '2026-11-02 21:00:00+09', '2026-11-03 08:30:00.5+09'),
+           ('drink', 'wine', '샤또 마고', 'done', NULL, NULL, '2026-11-01', '{}', 4, '{}', NULL, NULL,
+            '{}', '{}', '2026-11-01 20:00:00+09', '2026-11-01 20:00:00+09')
+         RETURNING id`,
+      );
+      await client.query(
+        `INSERT INTO item_quotes (item_id, text, page, note, created_at, updated_at)
+         VALUES ($1, E'First line, "quoted"
+second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
+        [seeded[0].id],
+      );
+      await client.query(
+        `INSERT INTO item_logs (item_id, logged_on, rating, note, cost_krw, created_at, updated_at)
+         VALUES ($1, '2026-11-10', 3.5, '두 번째 잔', 30000, '2026-11-10 22:00:00+09', now())`,
+        [seeded[2].id],
       );
       await client.query(
         `INSERT INTO learned_terms (term_id, learned_at) VALUES ('wine-tannin', '2026-11-20 09:00:00.000004+09')
@@ -46,7 +65,9 @@ test(
       const now = new Date('2026-11-26T00:00:00Z');
       const before = await readExport(client, now);
       const file = exportFile.parse(JSON.parse(JSON.stringify(before)));
-      assert.ok(before.tables.items.length >= 2);
+      assert.ok(before.tables.items.length >= 3);
+      assert.ok(before.tables.item_quotes.length >= 1);
+      assert.ok(before.tables.item_logs.length >= 1);
 
       // An empty database, as after `docker compose down -v` and the migrations.
       await client.query('DELETE FROM learned_terms');
@@ -54,6 +75,8 @@ test(
       const restored = await replaceRecords(client, file);
       assert.deepEqual(restored, {
         items: before.tables.items.length,
+        item_quotes: before.tables.item_quotes.length,
+        item_logs: before.tables.item_logs.length,
         learned_terms: before.tables.learned_terms.length,
       });
       assert.deepEqual(await readExport(client, now), before);
@@ -73,21 +96,33 @@ test(
       await client.query('ROLLBACK TO SAVEPOINT broken');
       assert.deepEqual(await readExport(client, now), before);
 
-      // The sequence continues after the largest restored id.
-      const largest = Math.max(...file.tables.items.map(({ id }) => id));
-      const { rows } = await client.query<{ id: number }>(
+      // Each sequence continues after the largest restored id.
+      const largest = (rows: readonly { id: number }[]) => Math.max(...rows.map(({ id }) => id));
+      const { rows: item } = await client.query<{ id: number }>(
         "INSERT INTO items (category, title) VALUES ('reading', 'After the restore') RETURNING id",
       );
-      assert.equal(rows[0].id, largest + 1);
+      assert.equal(item[0].id, largest(file.tables.items) + 1);
+      const { rows: quote } = await client.query<{ id: number }>(
+        "INSERT INTO item_quotes (item_id, text) VALUES ($1, 'After the restore') RETURNING id",
+        [item[0].id],
+      );
+      assert.equal(quote[0].id, largest(file.tables.item_quotes) + 1);
+      const { rows: log } = await client.query<{ id: number }>(
+        "INSERT INTO item_logs (item_id, logged_on) VALUES ($1, '2026-11-26') RETURNING id",
+        [item[0].id],
+      );
+      assert.equal(log[0].id, largest(file.tables.item_logs) + 1);
     } finally {
       // Released here, not in t.after: pool.end() waits for every client, so the run would never end.
       try {
         await client.query('ROLLBACK');
-        // The restore moved the sequence; put it back, never below where it was or below a row.
-        await client.query(
-          `SELECT setval(${sequence}, GREATEST((SELECT max(id) FROM items), $1::bigint, 1))`,
-          [started],
-        );
+        // The restore moved the sequences; put them back, never below where they were or below a row.
+        for (const table of tables) {
+          await client.query(
+            `SELECT setval(${sequence(table)}, GREATEST((SELECT max(id) FROM ${table}), $1::bigint, 1))`,
+            [started.get(table) ?? 0],
+          );
+        }
       } finally {
         client.release();
       }

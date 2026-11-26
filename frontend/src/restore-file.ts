@@ -8,6 +8,9 @@ export type ExportSummary = {
   /** When the file was made, as written in it (Asia/Seoul), cut to minutes for the screen. */
   exportedAt: string;
   items: number;
+  /** Book quotes and tastings or visits; files from before #217 and #214 have none. */
+  quotes: number;
+  logs: number;
   learnedTerms: number;
   /** The parsed file, sent as it is. */
   body: unknown;
@@ -40,7 +43,29 @@ export function summarizeExport(text: string): ExportSummary {
       ? exportedAt.slice(0, 16).replace('T', ' ')
       : 'an unknown time',
     items: tables.items.length,
+    quotes: Array.isArray(tables.item_quotes) ? tables.item_quotes.length : 0,
+    logs: Array.isArray(tables.item_logs) ? tables.item_logs.length : 0,
     learnedTerms: tables.learned_terms.length,
     body,
   };
+}
+
+const count = (value: number, one: string, many: string) => `${value} ${value === 1 ? one : many}`;
+
+/** "2 items, 1 quote, and 1 learned term": quotes and tastings or visits only when there are some. */
+export function describeCounts({
+  items,
+  quotes,
+  logs,
+  learnedTerms,
+}: Pick<ExportSummary, 'items' | 'quotes' | 'logs' | 'learnedTerms'>) {
+  const parts = [
+    count(items, 'item', 'items'),
+    quotes > 0 && count(quotes, 'quote', 'quotes'),
+    logs > 0 && count(logs, 'tasting or visit', 'tastings or visits'),
+    count(learnedTerms, 'learned term', 'learned terms'),
+  ].filter((part): part is string => typeof part === 'string');
+  return parts.length === 2
+    ? parts.join(' and ')
+    : `${parts.slice(0, -1).join(', ')}, and ${parts.at(-1)}`;
 }

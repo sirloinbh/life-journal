@@ -27,12 +27,37 @@ const item = (id: number, fields: Record<string, unknown> = {}) => ({
   ...fields,
 });
 
+const quote = (id: number, itemId: number, fields: Record<string, unknown> = {}) => ({
+  id,
+  item_id: itemId,
+  text: `Line ${id}`,
+  page: 10,
+  note: null,
+  created_at: '2026-11-21T01:00:00.000001Z',
+  updated_at: '2026-11-21T01:00:00.000001Z',
+  ...fields,
+});
+
+const log = (id: number, itemId: number, fields: Record<string, unknown> = {}) => ({
+  id,
+  item_id: itemId,
+  logged_on: '2026-11-22',
+  rating: 4.5,
+  note: null,
+  cost_krw: 9000,
+  created_at: '2026-11-22T01:00:00Z',
+  updated_at: '2026-11-22T01:00:00Z',
+  ...fields,
+});
+
 const exportFile = (tables: Record<string, unknown[]> = {}) => ({
   format: 'life-journal-export',
   version: 1,
   exportedAt: '2026-11-26T09:00:00.000+09:00',
   tables: {
-    items: [item(1), item(2)],
+    items: [item(1), item(2, { category: 'drink' })],
+    item_quotes: [quote(1, 1)],
+    item_logs: [log(1, 2), log(2, 2)],
     learned_terms: [{ term_id: 'wine-tannin', learned_at: '2026-11-20T00:00:00.000004Z' }],
     ...tables,
   },
@@ -63,19 +88,43 @@ test('a valid file replaces every record in one transaction and answers the coun
   await withApi(createApp(pool), async (call) => {
     const { status, data } = await call('/api/restore', { method: 'POST', body: exportFile() });
     assert.equal(status, 200);
-    assert.deepEqual(data, { restored: { items: 2, learned_terms: 1 } });
+    assert.deepEqual(data, {
+      restored: { items: 2, item_quotes: 1, item_logs: 2, learned_terms: 1 },
+    });
   });
   assert.deepEqual(asked, [
     'BEGIN',
     'LOCK TABLE items,',
+    'DELETE FROM item_logs',
+    'DELETE FROM item_quotes',
     'DELETE FROM learned_terms',
     'DELETE FROM items',
     'INSERT INTO items',
+    'INSERT INTO item_quotes',
+    'INSERT INTO item_logs',
     'INSERT INTO learned_terms',
     "SELECT setval(pg_get_serial_sequence('items', 'id'),",
+    "SELECT setval(pg_get_serial_sequence('item_quotes', 'id'),",
+    "SELECT setval(pg_get_serial_sequence('item_logs', 'id'),",
     'COMMIT',
     'release',
   ]);
+});
+
+test('a version-1 file from before quotes and logs restores with none of them', async () => {
+  const { pool } = fakePool();
+  const older = exportFile();
+  const { item_quotes: _quotes, item_logs: _logs, ...tables } = older.tables;
+  await withApi(createApp(pool), async (call) => {
+    const { status, data } = await call('/api/restore', {
+      method: 'POST',
+      body: { ...older, tables },
+    });
+    assert.equal(status, 200);
+    assert.deepEqual(data, {
+      restored: { items: 2, item_quotes: 0, item_logs: 0, learned_terms: 1 },
+    });
+  });
 });
 
 const refused: [string, unknown, RegExp, string][] = [
@@ -134,6 +183,42 @@ const refused: [string, unknown, RegExp, string][] = [
     /Duplicate key a/,
     'tables.learned_terms.1',
   ],
+  [
+    'an empty quote',
+    exportFile({ item_quotes: [quote(1, 1, { text: ' ' })] }),
+    /tables\.item_quotes\.0\.text: Quote must not be empty/,
+    'tables.item_quotes.0.text',
+  ],
+  [
+    'the same quote id twice',
+    exportFile({ item_quotes: [quote(3, 1), quote(3, 1)] }),
+    /tables\.item_quotes\.1: Duplicate key 3/,
+    'tables.item_quotes.1',
+  ],
+  [
+    'a quote of an item that is not a book',
+    exportFile({ item_quotes: [quote(1, 2)] }),
+    /tables\.item_quotes\.0\.item_id: Quotes only on reading items, not drink/,
+    'tables.item_quotes.0.item_id',
+  ],
+  [
+    'a log of an item missing from the file',
+    exportFile({ item_logs: [log(1, 99)] }),
+    /tables\.item_logs\.0\.item_id: Item 99 is not in the file/,
+    'tables.item_logs.0.item_id',
+  ],
+  [
+    'a log of a category without logs',
+    exportFile({ item_logs: [log(1, 1)] }),
+    /Logs only on drink, travel items, not reading/,
+    'tables.item_logs.0.item_id',
+  ],
+  [
+    'a log without its date',
+    exportFile({ item_logs: [log(1, 2, { logged_on: null })] }),
+    /tables\.item_logs\.0\.logged_on/,
+    'tables.item_logs.0.logged_on',
+  ],
 ];
 
 for (const [name, body, message, path] of refused) {
@@ -169,13 +254,15 @@ test('a restore file larger than 256 kB is read, while other routes keep their l
   const many = Array.from({ length: 1500 }, (_, index) =>
     item(index + 1, { review: null, details: { note: 'x'.repeat(200) } }),
   );
-  const body = exportFile({ items: many });
+  const body = exportFile({ items: many, item_logs: [] });
   assert.ok(JSON.stringify(body).length > 256 * 1024);
   const { pool } = fakePool();
   await withApi(createApp(pool), async (call) => {
     const restore = await call('/api/restore', { method: 'POST', body });
     assert.equal(restore.status, 200);
-    assert.deepEqual(restore.data, { restored: { items: 1500, learned_terms: 1 } });
+    assert.deepEqual(restore.data, {
+      restored: { items: 1500, item_quotes: 1, item_logs: 0, learned_terms: 1 },
+    });
     const other = await call('/api/items', {
       method: 'POST',
       body: { title: 'x'.repeat(300 * 1024) },

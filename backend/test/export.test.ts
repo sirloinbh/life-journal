@@ -74,9 +74,32 @@ const item = {
   updated_at: '2026-11-26T00:00:00.123456Z',
 };
 
+const quote = {
+  id: 3,
+  item_id: 7,
+  text: '"A line", with a comma',
+  page: 12,
+  note: null,
+  created_at: '2026-11-26T00:00:01.000001Z',
+  updated_at: '2026-11-26T00:00:01.000001Z',
+};
+
+const log = {
+  id: 5,
+  item_id: 7,
+  logged_on: '2026-11-20',
+  rating: 3.5,
+  note: 'Second visit',
+  cost_krw: 12000,
+  created_at: '2026-11-26T00:00:02.000002Z',
+  updated_at: '2026-11-26T00:00:02.000002Z',
+};
+
 test('GET /api/export answers a dated JSON download of every table from one snapshot', async () => {
   const { pool, asked } = fakePool({
     items: [item],
+    item_quotes: [quote],
+    item_logs: [log],
     learned_terms: [{ term_id: 'wine-tannin', learned_at: '2026-11-20T01:02:03.000004Z' }],
   });
   await withApi(createApp(pool, { today: () => '2026-11-26' }), async (call) => {
@@ -93,12 +116,16 @@ test('GET /api/export answers a dated JSON download of every table from one snap
     assert.match(String(data.exportedAt), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}\+09:00$/);
     assert.deepEqual(data.tables, {
       items: [item],
+      item_quotes: [quote],
+      item_logs: [log],
       learned_terms: [{ term_id: 'wine-tannin', learned_at: '2026-11-20T01:02:03.000004Z' }],
     });
   });
   assert.deepEqual(asked, [
     'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',
     'read items',
+    'read item_quotes',
+    'read item_logs',
     'read learned_terms',
     'COMMIT',
     'release',
@@ -106,7 +133,7 @@ test('GET /api/export answers a dated JSON download of every table from one snap
 });
 
 test('GET /api/export/items.csv answers a dated CSV download of the items', async () => {
-  const { pool } = fakePool({ items: [item], learned_terms: [] });
+  const { pool } = fakePool({ items: [item], item_quotes: [], item_logs: [], learned_terms: [] });
   await withApi(createApp(pool, { today: () => '2026-11-26' }), async (call) => {
     const { status, headers, bytes } = await call('/api/export/items.csv');
     assert.equal(status, 200);

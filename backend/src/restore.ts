@@ -5,7 +5,7 @@ import express, { Router } from 'express';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod/v4';
 
-import { CATEGORY_KEYS } from './contract.js';
+import { CATEGORY_KEYS, LOG_CATEGORIES } from './contract.js';
 import { EXPORT_FORMAT, EXPORT_VERSION } from './export.js';
 import { withTransaction } from './standard/db.js';
 import { HttpError, sendError } from './standard/http.js';
@@ -50,6 +50,31 @@ const itemRow = z.strictObject({
   updated_at: timestamp,
 });
 
+const id = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
+const optionalText = z.string().nullable();
+
+// The database checks the lengths, the page range, and the rating steps (011, 013).
+const quoteRow = z.strictObject({
+  id,
+  item_id: id,
+  text: z.string().refine((text) => text.trim() !== '', 'Quote must not be empty'),
+  page: z.number().int().nullable(),
+  note: optionalText,
+  created_at: timestamp,
+  updated_at: timestamp,
+});
+
+const logRow = z.strictObject({
+  id,
+  item_id: id,
+  logged_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date such as 2026-11-26'),
+  rating: z.number().nullable(),
+  note: optionalText,
+  cost_krw: z.number().int().min(0).max(2_147_483_647).nullable(),
+  created_at: timestamp,
+  updated_at: timestamp,
+});
+
 const learnedTermRow = z.strictObject({
   term_id: z.string().min(1).max(200),
   learned_at: timestamp,
@@ -75,6 +100,29 @@ function unique<T>(
   });
 }
 
+// A quote or log must belong to an item of the file, of a category that takes it (the API's rule:
+// quotes on reading items, #217; logs on LOG_CATEGORIES, #214).
+function belongs(
+  rows: readonly { item_id: number }[],
+  categories: ReadonlyMap<number, string>,
+  allowed: readonly string[],
+  ctx: z.RefinementCtx,
+  table: string,
+  what: string,
+) {
+  rows.forEach((row, index) => {
+    const category = categories.get(row.item_id);
+    const message =
+      category === undefined
+        ? `Item ${row.item_id} is not in the file`
+        : allowed.includes(category)
+          ? null
+          : `${what} only on ${allowed.join(', ')} items, not ${category}`;
+    if (message)
+      ctx.addIssue({ code: 'custom', path: ['tables', table, index, 'item_id'], message });
+  });
+}
+
 // Unknown fields and tables are refused rather than dropped, so a file from a newer app version is
 // never restored with data silently missing.
 export const exportFile = z
@@ -86,12 +134,21 @@ export const exportFile = z
     exportedAt: z.string(),
     tables: z.strictObject({
       items: z.array(itemRow),
+      // Added after the first version-1 files (#217, #214): a file without them has none.
+      item_quotes: z.array(quoteRow).default([]),
+      item_logs: z.array(logRow).default([]),
       learned_terms: z.array(learnedTermRow),
     }),
   })
   .superRefine((file, ctx) => {
-    unique(file.tables.items, (row) => row.id, ctx, 'items');
-    unique(file.tables.learned_terms, (row) => row.term_id, ctx, 'learned_terms');
+    const { items, item_quotes, item_logs, learned_terms } = file.tables;
+    unique(items, (row) => row.id, ctx, 'items');
+    unique(item_quotes, (row) => row.id, ctx, 'item_quotes');
+    unique(item_logs, (row) => row.id, ctx, 'item_logs');
+    unique(learned_terms, (row) => row.term_id, ctx, 'learned_terms');
+    const categories = new Map(items.map((row) => [row.id, row.category]));
+    belongs(item_quotes, categories, ['reading'], ctx, 'item_quotes', 'Quotes');
+    belongs(item_logs, categories, LOG_CATEGORIES, ctx, 'item_logs', 'Logs');
   });
 
 type ExportInput = z.infer<typeof exportFile>;
@@ -109,10 +166,18 @@ function describe(error: z.ZodError) {
 const ITEM_COLUMNS = `id, category, subtype, title, status, cost_krw, planned_date, completed_date,
   details, rating, sub_ratings, review, link, tags, companions, created_at, updated_at`;
 
+const QUOTE_COLUMNS = 'id, item_id, text, page, note, created_at, updated_at';
+const LOG_COLUMNS = 'id, item_id, logged_on, rating, note, cost_krw, created_at, updated_at';
+
 /** Replaces every record with the file's rows. Runs inside the caller's transaction. */
 export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: ExportInput) {
-  // Nothing else may write while the tables are replaced.
-  await client.query('LOCK TABLE items, learned_terms IN EXCLUSIVE MODE');
+  const { items, item_quotes, item_logs, learned_terms } = file.tables;
+  // Nothing else may write while the tables are replaced. items first, as a cascading DELETE FROM
+  // items takes its locks, so the two cannot deadlock.
+  await client.query('LOCK TABLE items, item_quotes, item_logs, learned_terms IN EXCLUSIVE MODE');
+  // Children before their parents.
+  await client.query('DELETE FROM item_logs');
+  await client.query('DELETE FROM item_quotes');
   await client.query('DELETE FROM learned_terms');
   await client.query('DELETE FROM items');
   // One statement per table: jsonb_to_recordset turns the rows into a table, so the file is sent once.
@@ -123,19 +188,40 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
        planned_date date, completed_date date, details jsonb, rating numeric, sub_ratings jsonb,
        review text, link text, tags text[], companions text[], created_at timestamptz,
        updated_at timestamptz)`,
-    [JSON.stringify(file.tables.items)],
+    [JSON.stringify(items)],
+  );
+  await client.query(
+    `INSERT INTO item_quotes (${QUOTE_COLUMNS}) OVERRIDING SYSTEM VALUE
+     SELECT ${QUOTE_COLUMNS} FROM jsonb_to_recordset($1::jsonb) AS r(
+       id bigint, item_id bigint, text text, page integer, note text, created_at timestamptz,
+       updated_at timestamptz)`,
+    [JSON.stringify(item_quotes)],
+  );
+  await client.query(
+    `INSERT INTO item_logs (${LOG_COLUMNS}) OVERRIDING SYSTEM VALUE
+     SELECT ${LOG_COLUMNS} FROM jsonb_to_recordset($1::jsonb) AS r(
+       id bigint, item_id bigint, logged_on date, rating numeric, note text, cost_krw integer,
+       created_at timestamptz, updated_at timestamptz)`,
+    [JSON.stringify(item_logs)],
   );
   await client.query(
     `INSERT INTO learned_terms (term_id, learned_at)
      SELECT term_id, learned_at FROM jsonb_to_recordset($1::jsonb) AS r(term_id text, learned_at timestamptz)`,
-    [JSON.stringify(file.tables.learned_terms)],
+    [JSON.stringify(learned_terms)],
   );
-  // The ids came from the file, so the next new item continues after the largest one.
-  await client.query(
-    `SELECT setval(pg_get_serial_sequence('items', 'id'),
-       COALESCE((SELECT max(id) FROM items), 1), (SELECT count(*) > 0 FROM items))`,
-  );
-  return { items: file.tables.items.length, learned_terms: file.tables.learned_terms.length };
+  // The ids came from the file, so the next new row of each table continues after the largest one.
+  for (const table of ['items', 'item_quotes', 'item_logs']) {
+    await client.query(
+      `SELECT setval(pg_get_serial_sequence('${table}', 'id'),
+         COALESCE((SELECT max(id) FROM ${table}), 1), (SELECT count(*) > 0 FROM ${table}))`,
+    );
+  }
+  return {
+    items: items.length,
+    item_quotes: item_quotes.length,
+    item_logs: item_logs.length,
+    learned_terms: learned_terms.length,
+  };
 }
 
 // A row the database refuses (a CHECK, a bad value) is the file's fault: a 400 that names the rule.

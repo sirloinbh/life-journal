@@ -9,11 +9,16 @@ import { Label } from './components/ui/label';
 import { Notice } from './components/ui/notice';
 import { requestJson } from './lib/api';
 import { errorText, useNotice } from './lib/use-notice';
-import { type ExportSummary, MAX_RESTORE_BYTES, summarizeExport } from './restore-file';
+import {
+  describeCounts,
+  type ExportSummary,
+  MAX_RESTORE_BYTES,
+  summarizeExport,
+} from './restore-file';
 
-type Restored = { restored: { items: number; learned_terms: number } };
-
-const count = (value: number, one: string, many: string) => `${value} ${value === 1 ? one : many}`;
+type Restored = {
+  restored: { items: number; item_quotes: number; item_logs: number; learned_terms: number };
+};
 
 // Settings › Restore records (#209). Owner decision: a restore replaces every record (no merge), after
 // a confirmation that shows the counts in the file.
@@ -45,9 +50,13 @@ export function RestoreRecords() {
         body: chosen.summary.body,
         timeoutMs: 120_000,
       });
-      status(
-        `Restored ${count(restored.items, 'item', 'items')} and ${count(restored.learned_terms, 'learned term', 'learned terms')} from ${chosen.name}.`,
-      );
+      const counts = describeCounts({
+        items: restored.items,
+        quotes: restored.item_quotes,
+        logs: restored.item_logs,
+        learnedTerms: restored.learned_terms,
+      });
+      status(`Restored ${counts} from ${chosen.name}.`);
       setChosen(null);
       if (input.current) input.current.value = '';
       // Every list on every page now shows the restored records.
@@ -58,9 +67,7 @@ export function RestoreRecords() {
   };
 
   const summary = chosen?.summary;
-  const contents =
-    summary &&
-    `${count(summary.items, 'item', 'items')} and ${count(summary.learnedTerms, 'learned term', 'learned terms')}`;
+  const contents = summary && describeCounts(summary);
   return (
     <Card>
       <CardHeader>
