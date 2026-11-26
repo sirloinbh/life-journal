@@ -2,10 +2,12 @@ import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   BookOpen,
   CalendarDays,
+  CalendarRange,
   ChartColumn,
   LayoutDashboard,
   ListChecks,
   NotebookPen,
+  Rows3,
   Settings2,
   Table2,
 } from 'lucide-react';
@@ -21,6 +23,7 @@ import { Toaster } from './components/ui/sonner';
 import { type Health, healthText } from './health';
 import { ItemsTable } from './items-table';
 import { Journal } from './journal';
+import { TwelveWeeks, Week } from './journal-weeks';
 import { createQueryClient } from './lib/query';
 import { AccountActions, SignInGate } from './sign-in';
 import { Stats } from './stats';
@@ -28,7 +31,10 @@ import { TermsStudy } from './terms-study';
 
 // Every page URL lives here (central docs/directory-rules.md).
 const pages = {
-  overview: '/',
+  start: '/',
+  overview: '/dashboard',
+  week: '/week',
+  weeks: '/weeks',
   bucketList: '/bucket-list',
   table: '/table',
   calendar: '/calendar',
@@ -38,15 +44,18 @@ const pages = {
   settings: '/settings',
 } as const;
 
-// Main menu (LNB) items, in display order.
+// Main menu (LNB) items, in display order (central rule, #1128): the day log, Week, 12 weeks, the other
+// pages, Dashboard, Settings. The day log is the start page: `/` opens it, and it lives at /journal/<date>.
 const nav: NavItem[] = [
-  { to: pages.overview, label: 'Dashboard', icon: LayoutDashboard },
+  { to: pages.journal, label: 'Day log', icon: NotebookPen },
+  { to: pages.week, label: 'Week', icon: Rows3 },
+  { to: pages.weeks, label: '12 weeks', icon: CalendarRange },
   { to: pages.bucketList, label: 'Bucket list', icon: ListChecks },
   { to: pages.table, label: 'Table view', icon: Table2 },
   { to: pages.calendar, label: 'Calendar', icon: CalendarDays },
-  { to: pages.journal, label: 'Journal', icon: NotebookPen },
   { to: pages.stats, label: 'Statistics', icon: ChartColumn },
   { to: pages.terms, label: 'Study terms', icon: BookOpen },
+  { to: pages.overview, label: 'Dashboard', icon: LayoutDashboard },
   { to: pages.settings, label: 'Settings', icon: Settings2 },
 ];
 
@@ -124,6 +133,7 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
         <SignInGate>
           <AppShell appName="Reviews & Diary" nav={nav} actions={<AccountActions />}>
             <Routes>
+              <Route path={pages.start} element={<Navigate to={pages.journal} replace />} />
               <Route
                 path={pages.overview}
                 element={
@@ -174,11 +184,39 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
                 path={`${pages.journal}/:date?`}
                 element={
                   <Page
-                    title="Journal"
+                    title="Day log"
                     description="Write one entry a day and read the days before"
                     health={health}
                   >
                     <Journal path={pages.journal} bucketListPath={pages.bucketList} />
+                  </Page>
+                }
+              />
+              <Route
+                path={`${pages.week}/:date?`}
+                element={
+                  <Page
+                    title="Week"
+                    description="See each day of a week: the entry you wrote and what you completed"
+                    health={health}
+                  >
+                    <Week
+                      path={pages.week}
+                      dayPath={pages.journal}
+                      bucketListPath={pages.bucketList}
+                    />
+                  </Page>
+                }
+              />
+              <Route
+                path={`${pages.weeks}/:date?`}
+                element={
+                  <Page
+                    title="12 weeks"
+                    description="See how many days you wrote in each of the last 12 weeks"
+                    health={health}
+                  >
+                    <TwelveWeeks path={pages.weeks} weekPath={pages.week} />
                   </Page>
                 }
               />
@@ -218,7 +256,7 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
                   </Page>
                 }
               />
-              <Route path="*" element={<Navigate to={pages.overview} replace />} />
+              <Route path="*" element={<Navigate to={pages.start} replace />} />
             </Routes>
           </AppShell>
           <Toaster />

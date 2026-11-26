@@ -2078,7 +2078,7 @@
     },
     "/api/journal": {
       "get": {
-        "summary": "List journal entries, newest date first (limit 1-100, default 20; offset); answers { entries, nextOffset, total }",
+        "summary": "List journal entries, newest date first (limit 1-100, default 20; offset; optional from and to dates, both included); answers { entries, nextOffset, total }",
         "parameters": [
           {
             "name": "limit",
@@ -2090,6 +2090,22 @@
           },
           {
             "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
             "in": "query",
             "required": false,
             "schema": {

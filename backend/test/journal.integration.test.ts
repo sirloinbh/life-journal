@@ -96,6 +96,15 @@ test(
         );
         assert.equal(lastPage.data.nextOffset, null);
 
+        // #235: a date range keeps both ends; a bad date is a 400.
+        const ranged = await call('/api/journal?from=2026-01-01&to=2026-11-24');
+        assert.deepEqual(
+          (ranged.data.entries as Entry[]).map(({ date }) => date),
+          ['2026-11-24', '2026-01-01'],
+        );
+        assert.equal(ranged.data.total, 2);
+        assert.equal((await call('/api/journal?from=2026-02-30')).status, 400);
+
         assert.equal((await call(`/api/journal/${TODAY}`, { method: 'DELETE' })).status, 204);
         const again = await call(`/api/journal/${TODAY}`, { method: 'DELETE' });
         assert.equal(again.status, 404);
