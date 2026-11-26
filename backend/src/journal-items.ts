@@ -1,5 +1,5 @@
-// Items linked to a journal entry (#211): /api/journal/:date/items. Link rule (owner decision pending on #211, the
-// issue's recommendation is applied): only items completed on the entry's date can be linked, and migration 013
+// Items linked to a journal entry (#211): /api/journal/:date/items. Link rule (owner decision on #211, option A):
+// only items completed on the entry's date can be linked, and migration 014
 // removes a link when its item's completed date moves to another day or the item is marked as not done.
 import type { Router } from 'express';
 import type { Pool, PoolClient } from 'pg';

@@ -1,5 +1,5 @@
 -- Items linked to a journal entry (#211), such as "the play I saw tonight". Deleting the entry or the item removes
--- the link. Only items completed on the entry's date can be linked (owner decision pending, see #211): the API
+-- the link. Only items completed on the entry's date can be linked (owner decision on #211, option A): the API
 -- checks that when linking, and the trigger below removes a link when its item's completed date moves to another
 -- day or the item is marked as not done.
 -- Safe to run again: the table and index are created only when missing, the function is replaced, and the trigger

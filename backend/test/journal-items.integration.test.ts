@@ -23,8 +23,8 @@ async function scratchPool(t: { after: (fn: () => Promise<void>) => void }) {
     '002_items.sql',
     '003_item_ratings.sql',
     '012_journal_entries.sql',
-    '013_journal_entry_items.sql',
-    '013_journal_entry_items.sql',
+    '014_journal_entry_items.sql',
+    '014_journal_entry_items.sql',
   ]) {
     await setup.query(await migration(file));
   }

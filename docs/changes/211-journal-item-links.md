@@ -2,7 +2,7 @@
 
 - Issue: [#211](https://github.com/sirloinbh/life-journal/issues/211)
 - Branch: `feat/211-journal-item-links` (built on `feat/210-daily-journal`, PR #228, which is not merged yet)
-- Link rule: **the owner's decision is still pending** and will be relayed by the coordinator ([comment](https://github.com/sirloinbh/life-journal/issues/211#issuecomment-7178068008)). The issue's recommendation (option A) is implemented so the PR can be reviewed: only items completed on the entry's date can be linked. The PR is not merged until the decision arrives.
+- Link rule: the owner chose **option A** on 2026-11-26 ([comment](https://github.com/sirloinbh/life-journal/issues/211#issuecomment-7188786754)): only items completed on the entry's date can be linked, as implemented.
 
 ## Purpose
 
@@ -10,7 +10,7 @@ A journal entry often talks about a play, a book, or a trip that is already an i
 
 ## Changes
 
-- `database/migrations/013_journal_entry_items.sql` (new): `journal_entry_items` with the entry, the item, and the time of the link, one row per pair (`journal_entry_items_pkey`), and an index on the item. Deleting the entry or the item removes the link (`ON DELETE CASCADE`). A trigger on `items` removes a link when the item's completed date changes to another day or is cleared (the item is marked as not done), so a link always matches the rule without touching `items.ts`. Safe to run again.
+- `database/migrations/014_journal_entry_items.sql` (new): `journal_entry_items` with the entry, the item, and the time of the link, one row per pair (`journal_entry_items_pkey`), and an index on the item. Deleting the entry or the item removes the link (`ON DELETE CASCADE`). A trigger on `items` removes a link when the item's completed date changes to another day or is cleared (the item is marked as not done), so a link always matches the rule without touching `items.ts`. Safe to run again.
 - `backend/src/journal-items.ts` (new), added to the journal router:
   - `GET /api/journal/:date/items`: `{ linked, suggestions }`. `linked` holds the items linked to the date's entry, oldest link first. `suggestions` holds the items completed that date that are not linked yet; they are listed even when the day has no entry.
   - `PUT /api/journal/:date/items/:itemId`: links the item. 201 when new, 200 when it was already linked. 404 "Journal entry not found" or "Item not found". 400 "Only items completed on the day of the entry can be linked" for an item of another day or a wishlist item. The entry and the item are locked in one transaction, so the item's date cannot change between the check and the link.
@@ -28,7 +28,7 @@ A journal entry often talks about a play, a book, or a trip that is already an i
 ## Tests
 
 - `backend/test/journal.test.ts`: a bad date on the item list and on a link, and a bad item ID to link or unlink, are refused with 400 before any query.
-- `backend/test/journal-items.integration.test.ts` (new, needs `TEST_DATABASE_URL`, own schema `test_journal_items`, migration 013 applied twice):
+- `backend/test/journal-items.integration.test.ts` (new, needs `TEST_DATABASE_URL`, own schema `test_journal_items`, migration 014 applied twice):
   - the day's items are suggested without an entry, and linking then answers 404;
   - after the entry is saved, a link is 201, a second one 200, and the item moves from the suggestions to the linked list;
   - another day's item and a wishlist item are refused with 400, and a missing item with 404;
@@ -65,3 +65,10 @@ A journal entry often talks about a play, a book, or a trip that is already an i
   - A bad date or ID is refused before any query.
   - Deleting the entry reloads the section.
 - `vitest run src/journal.test.tsx`: 9 passed. `npm run check` and `npm run knip` with `TEST_DATABASE_URL` after the fix: pass (backend 264/0 skipped, frontend 369 passed + 3 skipped).
+
+## Owner decision and merge with #228
+
+- The owner chose option A on 2026-11-26: the link rule stays as built. The comments in `backend/src/journal-items.ts` and the migration now say so.
+- `database/migrations/013_journal_entry_items.sql` is renamed to `014_journal_entry_items.sql`: `main` already has `013_item_logs.sql` (#214). The integration test applies `014` twice.
+- `origin/feat/210-daily-journal` (#228 with the optional title, owner decision B, and `origin/main`) is merged in. Conflicts: the header comments of `backend/src/journal.ts` and `frontend/src/journal.tsx` (both decisions kept), the `DELETE /api/items/:id` summary in `backend/src/openapi.ts` ("with its quotes, logs, and journal links"), and the `Entry` type in `frontend/src/journal.test.tsx` (with `title`). `docs/openapi.json` regenerated.
+- `npm run check` (2026-11-26, without `TEST_DATABASE_URL`: the local DB credentials were not available to the agent): pass. Backend 293 tests, 246 pass, 0 fail, 47 skipped (the DB tests); frontend 377 passed, 3 skipped; skills 4 pass; build passes. The DB tests run in CI against its own Postgres.

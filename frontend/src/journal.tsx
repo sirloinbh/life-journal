@@ -17,11 +17,18 @@ import { useNotice } from './lib/use-notice';
 import { LoadFailed } from './load-failed';
 import { useSettledError } from './settled-error';
 
-// #210: one journal entry per day. The server applies the entry rules of #210 (owner decision pending; the issue's
-// recommendation is applied): plain text with line breaks, up to 10,000 characters, no title, no dates after today.
-// #211: the items completed that day can be linked to the entry (link rule pending on #211, same approach).
+// #210: one journal entry per day. The server applies the entry rules recorded on #210 (option B): an
+// optional title up to 200 characters, plain text with line breaks up to 10,000 characters, no dates
+// after today. #211: the items completed that day can be linked to the entry (owner decision on #211,
+// option A).
 
-type Entry = { date: string; body: string; createdAt: string; updatedAt: string };
+type Entry = {
+  date: string;
+  title: string | null;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+};
 type EntryPage = { entries: Entry[]; nextOffset: number | null; total: number };
 type DayItem = {
   id: number;
@@ -34,6 +41,7 @@ type DayItem = {
 type DayItems = { linked: DayItem[]; suggestions: DayItem[] };
 
 const MAX_LENGTH = 10_000;
+const MAX_TITLE_LENGTH = 200;
 const PAGE_SIZE = 20;
 
 // Every key starts with /api/journal: the entry of a date, its items, and the pages of the list.
@@ -129,8 +137,10 @@ function DayNav({ date, today, path }: { date: string; today: string; path: stri
 function Editor({ date, entry }: { date: string; entry: Entry | null }) {
   const client = useQueryClient();
   const id = useId();
+  const titleId = useId();
   // After a delete the Delete button is gone, so the dialog returns the focus to the text field.
   const field = useRef<HTMLTextAreaElement>(null);
+  const [title, setTitle] = useState(entry?.title ?? '');
   const [text, setText] = useState(entry?.body ?? '');
   const { notice, status, error, clear } = useNotice();
   const keep = async (saved: Entry | null) => {
@@ -141,24 +151,25 @@ function Editor({ date, entry }: { date: string; entry: Entry | null }) {
       client.invalidateQueries({ queryKey: itemsKey(date) }),
     ]);
   };
-  const save = useApiMutation<Entry, string>((body) => ({
+  // A blank title is sent as null: the entry then has none.
+  const save = useApiMutation<Entry, { title: string; body: string }>((input) => ({
     path: `/api/journal/${date}`,
     method: 'PUT',
-    body: { body },
+    body: { title: input.title.trim() || null, body: input.body },
   }));
   const remove = useApiMutation<void, void>(() => ({
     path: `/api/journal/${date}`,
     method: 'DELETE',
   }));
-  const saved = entry?.body ?? '';
-  const changed = text.trim() !== saved;
+  const changed = text.trim() !== (entry?.body ?? '') || title.trim() !== (entry?.title ?? '');
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (save.isPending) return;
     clear();
     try {
-      const result = await save.mutateAsync(text);
+      const result = await save.mutateAsync({ title, body: text });
+      setTitle(result.title ?? '');
       setText(result.body);
       await keep(result);
       status('Saved');
@@ -171,11 +182,13 @@ function Editor({ date, entry }: { date: string; entry: Entry | null }) {
     clear();
     try {
       await remove.mutateAsync();
+      setTitle('');
       setText('');
       await keep(null);
       status('Deleted');
     } catch (cause) {
       if (cause instanceof RequestError && cause.status === 404) {
+        setTitle('');
         setText('');
         await keep(null);
         status('Deleted');
@@ -187,6 +200,15 @@ function Editor({ date, entry }: { date: string; entry: Entry | null }) {
 
   return (
     <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={titleId}>Title (optional)</Label>
+        <Input
+          id={titleId}
+          value={title}
+          maxLength={MAX_TITLE_LENGTH}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+      </div>
       <Label htmlFor={id}>Entry for {formatDate(date)}</Label>
       <Textarea
         id={id}
@@ -415,6 +437,9 @@ function PastEntries({ date, path }: { date: string; path: string }) {
                   className="flex flex-col rounded-md border px-3 py-2 hover:bg-accent aria-[current=page]:border-primary"
                 >
                   <span className="text-body-sm font-medium">{formatDate(entry.date)}</span>
+                  {entry.title ? (
+                    <span className="text-body-sm wrap-anywhere">{entry.title}</span>
+                  ) : null}
                   <span className="text-caption wrap-anywhere text-muted-foreground">
                     {excerpt(entry.body)}
                   </span>

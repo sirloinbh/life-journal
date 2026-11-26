@@ -6,16 +6,17 @@ import { addJournalItemRoutes } from './journal-items.js';
 import { HttpError } from './standard/http.js';
 import { isStorable } from './validation.js';
 
-// #210: one journal entry per date. Entry rules (owner decision pending on #210; the issue's recommendation is
-// applied): plain text with line breaks, up to 10,000 characters, no title, no dates after today. The items linked to
-// an entry (#211) are in journal-items.ts.
+// #210: one journal entry per date. Entry rules (owner decision on #210, option B): an optional
+// title up to 200 characters, plain text with line breaks up to 10,000 characters, no dates after today.
+// The items linked to an entry (#211) are in journal-items.ts.
 
+const MAX_TITLE_LENGTH = 200;
 const MAX_ENTRY_LENGTH = 10_000;
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 const MAX_OFFSET = 1_000_000;
 
-const COLUMNS = `entry_date AS date, body, created_at AS "createdAt", updated_at AS "updatedAt"`;
+const COLUMNS = `entry_date AS date, title, body, created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 const isRealDate = (value: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value < '0001-01-01') return false;
@@ -30,8 +31,23 @@ export const entryDate = z.string({ error: dateMessage }).refine(isRealDate, dat
 const LINE_BREAKS = /\r\n?|[\u0085\u2028\u2029]/g;
 const LINE_FEED = String.fromCharCode(10);
 
+// Optional: a missing, null, or blank title is stored as null. PUT replaces the whole entry, so
+// leaving the title out removes it.
+const entryTitle = z
+  .string({ error: 'Entry title must be text' })
+  .trim()
+  .refine(
+    (value) => value.length <= MAX_TITLE_LENGTH,
+    `Entry title must be ${MAX_TITLE_LENGTH} characters or fewer`,
+  )
+  .refine(isStorable, 'Entry title contains a character that is not allowed')
+  .nullable()
+  .optional()
+  .transform((value) => value || null);
+
 export const entryInput = z.strictObject(
   {
+    title: entryTitle,
     body: z
       .string({
         error: (issue) =>
@@ -116,16 +132,16 @@ export function createJournalRouter(pool: Pool, today: () => string) {
     res.json(rows[0]);
   });
 
-  // Saving again on the same date replaces the text of the one entry: 201 when it was new, 200 otherwise.
+  // Saving again on the same date replaces the title and text of the one entry: 201 when it was new, 200 otherwise.
   router.put('/:date', async (req, res) => {
     const date = entryDate.parse(req.params.date);
-    const { body } = entryInput.parse(req.body);
+    const { title, body } = entryInput.parse(req.body);
     if (date > today()) throw new HttpError(400, 'Entry date cannot be after today');
     const { rows } = await pool.query<{ created: boolean }>(
-      `INSERT INTO journal_entries (entry_date, body) VALUES ($1, $2)
-       ON CONFLICT (entry_date) DO UPDATE SET body = EXCLUDED.body, updated_at = now()
+      `INSERT INTO journal_entries (entry_date, title, body) VALUES ($1, $2, $3)
+       ON CONFLICT (entry_date) DO UPDATE SET title = EXCLUDED.title, body = EXCLUDED.body, updated_at = now()
        RETURNING ${COLUMNS}, (xmax = 0) AS created`,
-      [date, body],
+      [date, title, body],
     );
     const { created, ...entry } = rows[0];
     res.status(created ? 201 : 200).json(entry);
