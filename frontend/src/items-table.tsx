@@ -18,6 +18,7 @@ import { Spinner } from './components/ui/spinner';
 import { needsReset, typedCondition } from './filter-field';
 import { fetchItemPage, type ItemPage, itemPagesKey } from './item-pages';
 import { categories, formatDate, formatKrw, itemAnchor, itemCount } from './items';
+import { apiKey, useApiQuery } from './lib/query';
 import { errorText } from './lib/use-notice';
 
 const ANY = 'any';
@@ -160,6 +161,13 @@ function InputFilter({
   );
 }
 
+/** The names to pick from; a name typed into the address by hand stays on the list so the field can show it. */
+const nameOptions = (names: readonly string[] | undefined, current: string) => {
+  const all = names ?? [];
+  const known = !current || all.some((name) => name.toLowerCase() === current.toLowerCase());
+  return (known ? all : [...all, current]).map((name) => ({ value: name, label: name }));
+};
+
 export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
   const [params, setParams] = useSearchParams();
   const search = params.toString();
@@ -190,6 +198,12 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
   };
 
   const filterValue = (name: string) => params.get(name) ?? '';
+  // #237: the tag and companion filters pick from the names already used on any item.
+  const used = useApiQuery<{ tags: string[]; companions: string[] }>(
+    apiKey('/api/items', 'names'),
+    '/api/items/names',
+    { staleTime: 0 },
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -248,24 +262,24 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           onChange={(value) => setFilter('costMax', value)}
         />
         {/* #216: one whole tag or companion name, in any letter case. */}
-        <InputFilter
+        <ChoiceFilter
           id="table-tag"
           label="Tag"
-          value={filterValue('tag')}
-          resetCount={resetCount}
-          onChange={(value) => setFilter('tag', value)}
+          value={filterValue('tag') || ANY}
+          options={nameOptions(used.data?.tags, filterValue('tag'))}
+          onChange={(value) => setFilter('tag', value === ANY ? '' : value)}
         />
-        <InputFilter
+        <ChoiceFilter
           id="table-companion"
           label="Companion"
-          value={filterValue('companion')}
-          resetCount={resetCount}
-          onChange={(value) => setFilter('companion', value)}
+          value={filterValue('companion') || ANY}
+          options={nameOptions(used.data?.companions, filterValue('companion'))}
+          onChange={(value) => setFilter('companion', value === ANY ? '' : value)}
         />
       </div>
       <p className="text-caption text-muted-foreground">
         The period matches the completed date, or the planned date if there is none. Tag and
-        companion match a whole name in any letter case. Text and dates apply when you press Enter
+        companion are picked from the names already used. Text and dates apply when you press Enter
         or leave the field.
       </p>
       <div className="flex min-h-9 items-center justify-between gap-4">
