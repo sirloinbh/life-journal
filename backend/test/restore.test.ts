@@ -20,6 +20,8 @@ const item = (id: number, fields: Record<string, unknown> = {}) => ({
   sub_ratings: {},
   review: null,
   link: null,
+  tags: [],
+  companions: [],
   created_at: '2026-11-20T01:11:12.123456Z',
   updated_at: '2026-11-20T01:11:12.123456Z',
   ...fields,
@@ -108,6 +110,12 @@ const refused: [string, unknown, RegExp, string][] = [
     exportFile({ items: [item(1, { created_at: '2026-11-20 10:00:00' })] }),
     /tables\.items\.0\.created_at: Use a UTC time/,
     'tables.items.0.created_at',
+  ],
+  [
+    'tags that are not a list of names',
+    exportFile({ items: [item(1, { tags: 'birthday' })] }),
+    /tables\.items\.0\.tags/,
+    'tables.items.0.tags',
   ],
   [
     'the same id twice',

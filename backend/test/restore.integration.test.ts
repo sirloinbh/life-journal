@@ -24,15 +24,18 @@ test(
       );
       started = sequenceRows[0].value;
       await client.query('BEGIN');
+      // Other test files write these tables at the same time; the lock makes them wait until the
+      // rollback, so every statement here sees the same rows. Reads still go through.
+      await client.query('LOCK TABLE items, learned_terms IN EXCLUSIVE MODE');
       await client.query(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
-           details, rating, sub_ratings, review, link, created_at, updated_at)
+           details, rating, sub_ratings, review, link, tags, companions, created_at, updated_at)
          VALUES
            ('reading', NULL, ' Spaces kept ', 'wishlist', NULL, '2026-12-24', NULL,
-            '{"author": "한강"}', NULL, '{}', NULL, NULL, '2026-11-20 10:11:12.123456+09', now()),
+            '{"author": "한강"}', NULL, '{}', NULL, NULL, '{}', '{}', '2026-11-20 10:11:12.123456+09', now()),
            ('stage', 'musical', 'Done, "quoted"', 'done', 150000, NULL, '2026-11-02',
             '{"venue": "Seoul"}', 4.5, '{"story": 4}', E'Line one\\nLine two',
-            'https://example.com/', '2026-11-02 21:00:00+09', '2026-11-03 08:30:00.5+09')`,
+            'https://example.com/', ARRAY['birthday', 'a, "b"'], ARRAY['민지'], '2026-11-02 21:00:00+09', '2026-11-03 08:30:00.5+09')`,
       );
       await client.query(
         `INSERT INTO learned_terms (term_id, learned_at) VALUES ('wine-tannin', '2026-11-20 09:00:00.000004+09')

@@ -37,3 +37,9 @@ What the export contains (asked the coordinator, which stopped without answering
 ## Review round 1
 
 - No blocking findings. Notes left as is: a 401 from a download shows the message but does not go through the sign-in gate (`fetch`, not `requestJson`); the export is built in memory, which is fine at this size.
+
+## Merge with main: tags and companions
+
+- CI `verify` failed after another lane merged `010_item_tags_companions.sql` (#215) into main: the integration test found `items.tags` and `items.companions` missing from the export, which is what that check is for. Since #208 was not merged yet, that lane could not add them, so they are added here: both `text[]` columns are in `EXPORT_TABLES` (JSON arrays in the file, JSON text in the CSV), in `docs/export-format.md` (with a note that the file holds personal data such as companion names), and in the unit and integration tests (a seeded row with a tag holding quotes and a comma, and a Korean companion name).
+- `backend/test/openapi.test.ts`: the known mounts keep both `/api/export` and main's `/api/stats`; `docs/openapi.json` regenerated.
+- `npm run check` with `TEST_DATABASE_URL` on a scratch database made from migrations 001-010 (dropped afterwards): pass. Backend 223 pass, 0 fail, 0 skipped; frontend 366 passed, 3 skipped; skills 4 pass; build passes. `npm run knip`: no unused export.

@@ -18,7 +18,7 @@ const utc = (column: string) =>
  * Every data table in the export, in restore order (a table after the tables it refers to), with its
  * columns in file order. A new data table is added here, to docs/export-format.md, and to restore.
  * DATE columns come back as YYYY-MM-DD and BIGINT as numbers (pool.ts); rating is numeric(2,1), sent
- * as a number.
+ * as a number; text[] columns (tags, companions) are JSON arrays of strings.
  */
 export const EXPORT_TABLES = {
   items: {
@@ -36,11 +36,13 @@ export const EXPORT_TABLES = {
       'sub_ratings',
       'review',
       'link',
+      'tags',
+      'companions',
       'created_at',
       'updated_at',
     ],
     sql: `SELECT id, category, subtype, title, status, cost_krw, planned_date, completed_date, details,
-            rating::float8 AS rating, sub_ratings, review, link, ${utc('created_at')}, ${utc('updated_at')}
+            rating::float8 AS rating, sub_ratings, review, link, tags, companions, ${utc('created_at')}, ${utc('updated_at')}
           FROM items ORDER BY id`,
   },
   learned_terms: {

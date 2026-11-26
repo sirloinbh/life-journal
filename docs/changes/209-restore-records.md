@@ -34,3 +34,9 @@ Restore policy (asked the coordinator, which said to build on the issue's recomm
 - The real API was not started for the browser check; the DB test covers the real restore.
 - The confirmation is the only guard against restoring by mistake; there is no automatic backup before a restore (the screen suggests downloading one).
 - The restore runs under the pool's 15 s statement timeout. A file near 20 MB was not timed; one person's records are far smaller.
+
+## Merge with #208 and main: tags and companions
+
+- #208 now exports `items.tags` and `items.companions` (added to main by #215 while this was open), so restore reads them too: both are required string arrays in the row schema (the database checks the names), and both are in the `INSERT` column lists (`text[]` from the JSON arrays). The unit tests refuse `tags` that are not a list, and the DB round trip seeds a row with a tag holding a comma and quotes and a Korean companion name.
+- `backend/test/openapi.test.ts`: the known mounts keep `/api/export`, `/api/stats`, and `/api/restore`; `docs/openapi.json` regenerated.
+- The first full check after the merge failed once in `export.integration.test.ts` (5 exported items, `count(*)` 2): under READ COMMITTED another test file's `DELETE FROM items` committed between the two statements. Both DB tests now lock `items` and `learned_terms` in EXCLUSIVE mode right after `BEGIN` (reads still pass), so other files' writes wait until the rollback.

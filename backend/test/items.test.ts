@@ -298,6 +298,38 @@ const rejected: { name: string; body: unknown; error: string }[] = [
     body: { ...book, status: 'done', completedDate: '2026-11-01' },
     error: 'Completed date cannot be after today',
   },
+  // #215: tags and companions.
+  { name: 'a blank tag', body: { ...book, tags: ['가족', '  '] }, error: 'Tag cannot be empty' },
+  {
+    name: 'an empty companion',
+    body: { ...book, companions: [''] },
+    error: 'Companion cannot be empty',
+  },
+  {
+    name: 'tags that are not a list',
+    body: { ...book, tags: '가족' },
+    error: 'Tags must be a list of names',
+  },
+  {
+    name: 'a companion that is not text',
+    body: { ...book, companions: [7] },
+    error: 'Companion must be text',
+  },
+  {
+    name: 'a tag over 50 characters',
+    body: { ...book, tags: ['가'.repeat(51)] },
+    error: 'Tag must be 50 characters or fewer',
+  },
+  {
+    name: 'a NUL character in a companion',
+    body: { ...book, companions: ['엄 마'] },
+    error: 'Companion contains a character that is not allowed',
+  },
+  {
+    name: '21 different tags',
+    body: { ...book, tags: Array.from({ length: 21 }, (_, n) => `tag ${n}`) },
+    error: 'Tags can have at most 20 names',
+  },
 ];
 
 for (const { name, body, error } of rejected) {
@@ -460,6 +492,37 @@ for (const [link, stored] of [
     assert.equal(fetched.mock.callCount(), 0);
   });
 }
+
+test('tags and companions are trimmed and merged without regard to letter case', async () => {
+  const queries: unknown[][] = [];
+  const pool = {
+    query: async (_sql: string, values: unknown[]) => {
+      queries.push(values);
+      return { rows: [{ id: 1 }] };
+    },
+  } as unknown as Pool;
+  await withApi(pool, async (call) => {
+    const { status } = await call('/api/items', {
+      method: 'POST',
+      body: {
+        ...book,
+        // 21 names, but only 20 after the duplicate is merged.
+        tags: [' Birthday ', ...Array.from({ length: 19 }, (_, n) => `tag ${n}`), 'BIRTHDAY'],
+        // A name typed in decomposed Hangul (NFD) is the same name as the composed one.
+        companions: ['엄마', '엄마'.normalize('NFD'), '친구 '],
+      },
+    });
+    assert.equal(status, 201);
+    const created = await call('/api/items', { method: 'POST', body: book });
+    assert.equal(created.status, 201);
+  });
+  assert.deepEqual(queries[0]?.[12], [
+    'Birthday',
+    ...Array.from({ length: 19 }, (_, n) => `tag ${n}`),
+  ]);
+  assert.deepEqual(queries[0]?.[13], ['엄마', '친구']);
+  assert.deepEqual([queries[1]?.[12], queries[1]?.[13]], [[], []]);
+});
 
 test('a completed date on the service date itself is accepted', async () => {
   const params: unknown[][] = [];

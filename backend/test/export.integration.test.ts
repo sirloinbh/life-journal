@@ -20,16 +20,16 @@ test(
     try {
       const { rows: inserted } = await client.query<{ id: number }>(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
-           details, rating, sub_ratings, review, link, created_at, updated_at)
+           details, rating, sub_ratings, review, link, tags, companions, created_at, updated_at)
          VALUES
            ('reading', NULL, 'Wish, with "quotes"', 'wishlist', NULL, '2026-12-24', NULL,
-            '{"author": "한강"}', NULL, '{}', NULL, NULL,
+            '{"author": "한강"}', NULL, '{}', NULL, NULL, '{}', '{}',
             '2026-11-20 10:11:12.123456+09', '2026-11-21 00:00:00.000001+09'),
            ('stage', 'musical', 'Done
  on two lines', 'done', 150000, NULL, '2026-11-02',
             '{"venue": "Seoul, Arts Center"}', 4.5, '{"story": 4, "music": 5}',
             'Line one, "quoted"
-Line two', 'https://example.com/a?b=c,d',
+Line two', 'https://example.com/a?b=c,d', ARRAY['birthday', 'with "quotes", comma'], ARRAY['민지'],
             '2026-11-02 21:00:00+09', '2026-11-03 08:30:00.5+09')
          RETURNING id`,
       );
@@ -67,6 +67,8 @@ Line two', 'https://example.com/a?b=c,d',
         sub_ratings: {},
         review: null,
         link: null,
+        tags: [],
+        companions: [],
         created_at: '2026-11-20T01:11:12.123456Z',
         updated_at: '2026-11-20T15:00:00.000001Z',
       });
@@ -84,6 +86,8 @@ Line two', 'https://example.com/a?b=c,d',
         sub_ratings: { story: 4, music: 5 },
         review: 'Line one, "quoted"\nLine two',
         link: 'https://example.com/a?b=c,d',
+        tags: ['birthday', 'with "quotes", comma'],
+        companions: ['민지'],
         created_at: '2026-11-02T12:00:00.000000Z',
         updated_at: '2026-11-02T23:30:00.500000Z',
       });
@@ -117,6 +121,8 @@ Line two', 'https://example.com/a?b=c,d',
       assert.deepEqual(JSON.parse(value('details')!), { venue: 'Seoul, Arts Center' });
       assert.deepEqual(JSON.parse(value('sub_ratings')!), { story: 4, music: 5 });
       assert.equal(value('rating'), '4.5');
+      assert.deepEqual(JSON.parse(value('tags')!), ['birthday', 'with "quotes", comma']);
+      assert.deepEqual(JSON.parse(value('companions')!), ['민지']);
       assert.equal(value('planned_date'), null);
     } finally {
       // Released here, not in t.after: pool.end() waits for every client, so the run would never end.

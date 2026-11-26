@@ -43,6 +43,9 @@ const itemRow = z.strictObject({
   sub_ratings: object,
   review: z.string().nullable(),
   link: z.string().nullable(),
+  // The database checks the names (at most 20, 1-50 characters, no repeats); #215.
+  tags: z.array(z.string()),
+  companions: z.array(z.string()),
   created_at: timestamp,
   updated_at: timestamp,
 });
@@ -104,7 +107,7 @@ function describe(error: z.ZodError) {
 }
 
 const ITEM_COLUMNS = `id, category, subtype, title, status, cost_krw, planned_date, completed_date,
-  details, rating, sub_ratings, review, link, created_at, updated_at`;
+  details, rating, sub_ratings, review, link, tags, companions, created_at, updated_at`;
 
 /** Replaces every record with the file's rows. Runs inside the caller's transaction. */
 export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: ExportInput) {
@@ -118,7 +121,8 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
      SELECT ${ITEM_COLUMNS} FROM jsonb_to_recordset($1::jsonb) AS r(
        id bigint, category text, subtype text, title text, status text, cost_krw integer,
        planned_date date, completed_date date, details jsonb, rating numeric, sub_ratings jsonb,
-       review text, link text, created_at timestamptz, updated_at timestamptz)`,
+       review text, link text, tags text[], companions text[], created_at timestamptz,
+       updated_at timestamptz)`,
     [JSON.stringify(file.tables.items)],
   );
   await client.query(

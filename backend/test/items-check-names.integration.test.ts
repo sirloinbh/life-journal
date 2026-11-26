@@ -61,7 +61,9 @@ async function scratchItems(t: { after: (fn: () => Promise<void>) => void }, sch
 test('every CHECK on items has its explicit name after db:migrate', { skip: !url }, async (t) => {
   const pool = new Pool({ connectionString: url });
   t.after(() => pool.end());
-  assert.deepEqual(await checkNames(pool), NAMES, 'Apply database/migrations with db:migrate');
+  // 010 (#215) adds the CHECKs of the tag and companion lists by name.
+  const names = [...NAMES, 'items_companions_check', 'items_tags_check'].sort();
+  assert.deepEqual(await checkNames(pool), names, 'Apply database/migrations with db:migrate');
 });
 
 test('009 renames the generated CHECK names and can run again', { skip: !url }, async (t) => {

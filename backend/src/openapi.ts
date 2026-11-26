@@ -5,6 +5,7 @@ import { calendarQuery } from './calendar.js';
 import { itemFields, itemPatch, listQuery } from './items.js';
 import { exportFile } from './restore.js';
 import { buildOpenApi, type Operation } from './standard/openapi.js';
+import { statsQuery } from './stats.js';
 
 // Every registered route must appear here exactly once (checked in test/openapi.test.ts).
 export const operations: Record<string, Operation> = {
@@ -52,7 +53,7 @@ export const operations: Record<string, Operation> = {
   },
   'GET /api/export/items.csv': {
     summary:
-      'Download the items as CSV (UTF-8 with BOM; details and sub_ratings as JSON text; null is an empty unquoted field)',
+      'Download the items as CSV (UTF-8 with BOM; details, sub_ratings, tags, and companions as JSON text; null is an empty unquoted field)',
     status: [200, 401, 500, 503],
   },
   'POST /api/restore': {
@@ -65,6 +66,12 @@ export const operations: Record<string, Operation> = {
     summary:
       'List the items with a planned or completed date in a month (month YYYY-MM, default this month in Asia/Seoul); answers { month, items }',
     query: calendarQuery,
+    status: [200, 400, 401, 500, 503],
+  },
+  'GET /api/stats': {
+    summary:
+      'Statistics of the items completed in a year (year YYYY, default this year in Asia/Seoul): count per month and category, spending, average rating per category, top 5 rated; answers { year, completed, spendingKrw, months, categories, topRated }',
+    query: statsQuery,
     status: [200, 400, 401, 500, 503],
   },
 };

@@ -68,6 +68,8 @@ const item = {
   sub_ratings: {},
   review: null,
   link: null,
+  tags: ['gift', 'a, "b"'],
+  companions: [],
   created_at: '2026-11-26T00:00:00.123456Z',
   updated_at: '2026-11-26T00:00:00.123456Z',
 };
@@ -119,6 +121,8 @@ test('GET /api/export/items.csv answers a dated CSV download of the items', asyn
     assert.equal(values[header.indexOf('title')], 'A, "B"');
     assert.equal(values[header.indexOf('details')], '{"author":"Kim"}');
     assert.equal(values[header.indexOf('sub_ratings')], '{}');
+    assert.deepEqual(JSON.parse(values[header.indexOf('tags')]!), ['gift', 'a, "b"']);
+    assert.equal(values[header.indexOf('companions')], '[]');
     assert.equal(values[header.indexOf('review')], null);
   });
 });
