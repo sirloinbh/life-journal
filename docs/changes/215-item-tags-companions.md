@@ -78,3 +78,7 @@ Self-review of head `ac4d00f` and the full final diff. Decision: approve, no blo
 ## CI fix — 2026-11-26
 
 CI `verify` failed in `npm run knip` (not part of `npm run check`): `MAX_ITEM_NAMES` was re-exported from `frontend/src/items.ts` but nothing on the frontend uses it. The re-export is removed (the server still enforces the limit). `npm run typecheck`, `npm run lint`, and `npm run knip` (no unused export left) pass locally.
+
+## Merge of `origin/main` — 2026-11-26
+
+Merged main (#213 monthly calendar) into the branch: no conflicts, `docs/openapi.json` regenerated with no change. `npm run check` with `TEST_DATABASE_URL` on `journal_test` (010 applied): pass. Backend 210 passed (DB tests included, none skipped), frontend 331 passed and 3 skipped, contract 3, skills 4, format, lint, typecheck, build.
