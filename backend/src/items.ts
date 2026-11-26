@@ -14,8 +14,10 @@ import {
   MAX_REVIEW_LINES,
   SCORES,
 } from './contract.js';
+import { addQuoteRoutes, keepQuotedItemInReading } from './item-quotes.js';
 import { withTransaction } from './standard/db.js';
 import { HttpError, parseId } from './standard/http.js';
+import { isStorable, strictObject } from './validation.js';
 
 // The database handle the list query runs on: the pool for the route and the AI tool, a client in a transaction.
 export type Db = Pick<Pool, 'query'> | PoolClient;
@@ -33,9 +35,6 @@ const COLUMNS = `${SHARED_COLUMNS}, companions`;
 // a length, such as an array, and would add a second message.
 const minLength = (min: number) => (value: string) => value.length >= min;
 const maxLength = (max: number) => (value: string) => value.length <= max;
-
-// PostgreSQL rejects NUL and lone surrogates inside jsonb, which would otherwise surface as a 500.
-const isStorable = (value: string) => !value.includes('\0') && !/\p{Cs}/u.test(value);
 
 const text = (label: string, max: number) =>
   z
@@ -58,16 +57,6 @@ const date = (label: string) => {
   const message = `${label} must be a real date in YYYY-MM-DD format`;
   return z.string({ error: message }).refine(isRealDate, message);
 };
-
-// One `error` answers both a wrong type and unknown keys, which zod 3 kept apart.
-const strictObject = <Shape extends z.ZodRawShape>(
-  fields: Shape,
-  unknownKeys: string,
-  otherwise: (input: unknown) => string,
-) =>
-  z.strictObject(fields, {
-    error: (issue) => (issue.code === 'unrecognized_keys' ? unknownKeys : otherwise(issue.input)),
-  });
 
 const details = (label: string, fields: z.ZodRawShape) =>
   strictObject(
@@ -538,6 +527,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         },
         today(),
       );
+      await keepQuotedItemInReading(client, id, category as string, item.category);
       const { rows } = await client.query(
         `UPDATE items
          SET category = $2, subtype = $3, title = $4, status = $5, cost_krw = $6,
@@ -568,6 +558,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
     });
     res.json(updated);
   });
+
+  addQuoteRoutes(router, pool);
 
   router.delete('/:id', async (req, res) => {
     const id = parseId(req.params.id, 'item');
