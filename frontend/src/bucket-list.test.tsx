@@ -769,6 +769,13 @@ test('tags and companions are added, suggested, saved, shown, and removed (#215)
 
   dialog = await openDialog('Edit 데미안');
   fireEvent.click(dialog.getByRole('button', { name: 'Remove tag with family' }));
+  expect(dialog.getByLabelText('Tags (optional)')).toHaveFocus();
+  // A name in the list is not suggested again; a removed one is.
+  fireEvent.change(dialog.getByLabelText('Tags (optional)'), { target: { value: 'BIRTH' } });
+  expect(screen.queryByRole('option', { name: 'birthday' })).toBeNull();
+  fireEvent.change(dialog.getByLabelText('Tags (optional)'), { target: { value: 'fam' } });
+  expect(await screen.findByRole('option', { name: 'with family' })).toBeInTheDocument();
+  fireEvent.change(dialog.getByLabelText('Tags (optional)'), { target: { value: '' } });
   fireEvent.click(dialog.getByRole('button', { name: 'Remove companion 아빠' }));
   fireEvent.click(dialog.getByRole('button', { name: 'Save' }));
   await dialogClosed();

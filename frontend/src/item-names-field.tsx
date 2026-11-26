@@ -1,6 +1,6 @@
 import { XIcon } from 'lucide-react';
 import type { KeyboardEvent } from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
@@ -32,6 +32,7 @@ export function ItemNamesField({
 }) {
   const [names, setNames] = useState<string[]>([...initial]);
   const [draft, setDraft] = useState('');
+  const field = useRef<HTMLInputElement>(null);
   const add = () => {
     setNames((current) => addName(current, draft));
     setDraft('');
@@ -47,7 +48,8 @@ export function ItemNamesField({
       add();
     }
   };
-  const taken = new Set(names.map((value) => value.toLowerCase()));
+  // A suggestion already in the list (in any letter case) is not offered again.
+  const offered = suggestions.filter((value) => addName(names, value).length > names.length);
 
   return (
     <div className="flex flex-col gap-2">
@@ -64,7 +66,11 @@ export function ItemNamesField({
                   size="icon"
                   className="size-7 pointer-coarse:size-9"
                   aria-label={`Remove ${noun} ${value}`}
-                  onClick={() => setNames((current) => current.filter((other) => other !== value))}
+                  onClick={() => {
+                    setNames((current) => current.filter((other) => other !== value));
+                    // The button goes away with its name, so the focus moves to the field, not the page.
+                    field.current?.focus();
+                  }}
                 >
                   <XIcon aria-hidden="true" />
                 </Button>
@@ -77,12 +83,13 @@ export function ItemNamesField({
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <Combobox
+            ref={field}
             id={id}
             name={name}
             value={draft}
             onValueChange={setDraft}
             onKeyDown={onKeyDown}
-            options={suggestions.filter((value) => !taken.has(value.toLowerCase()))}
+            options={offered}
             listLabel={`Earlier ${name}`}
             maxLength={MAX_ITEM_NAME_LENGTH}
           />

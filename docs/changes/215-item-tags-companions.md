@@ -51,3 +51,22 @@ Playwright Chromium on the Vite dev server (temporary port) with this branch's A
 - 390×844: on Travel, Add item, typed "with family" + Enter and a 49-character tag + Enter, and "엄마" + Enter in Companions. The chips wrap and the long tag is cut with an ellipsis inside the dialog. After Save the card shows both tags as badges (the long one wraps) and "With 엄마"; no horizontal page overflow.
 - 1440×900: Edit on another item, typing "fa" in Tags suggests "with family" from the other item under the field.
 - Console: only 403s for the Pretendard font files, which the dev server refuses because this worktree's `node_modules` lives outside its allowed folders (dev setup only, not app code).
+
+## Review round 1 — 2026-11-26
+
+Self-review of head `b0049a6` (std-code-review section 8). Decision: changes needed, 2 findings (non-blocking), both fixed.
+
+| Finding                                                                                                                                                          | Handling                                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `suggestion:` removing a chip removed its focused button, so the focus fell to the page                                                                          | The focus moves to the name field after a remove                                        |
+| `nit:` the form hid already added names from the suggestions with a plain `toLowerCase`, unlike `addName` (NFC too)                                              | Uses `addName` to tell whether a suggestion is already in the list                      |
+| `note:` the server merges duplicates with JS `toLowerCase`, the CHECK uses PostgreSQL `lower()`; for a rare letter they fold differently the row fails the CHECK | No change: the error handler answers 23514 as a 400 ("Input is not allowed"), not a 500 |
+
+### Verification
+
+- `bucket-list.test.tsx` (#215 test) now also checks the focus after a remove, that an added name is not suggested, and that a removed one is suggested again. `npm test -w frontend -- src/bucket-list.test.tsx`: 65 passed.
+- `npm run check`: see below.
+
+### `npm run check` after round 1 (2026-11-26)
+
+- Pass. Format, lint, contract 3 passed, typecheck, backend 169 passed and 32 DB tests skipped (frontend-only change, run without `TEST_DATABASE_URL`; the backend is unchanged since the DB run above), frontend 324 passed and 3 skipped, skills 4 passed, build.
