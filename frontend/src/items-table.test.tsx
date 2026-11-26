@@ -510,3 +510,61 @@ test('a refresh in the background keeps the count and "Load more" with the focus
   });
   expect(screen.getByRole('button', { name: 'Load more' })).toHaveFocus();
 });
+
+test('a tag filter shows only the matching rows and stays in the address with the others (#216)', async () => {
+  const asked = fakeApi((search) => {
+    const params = new URLSearchParams(search);
+    const items = [
+      row(1, { title: '교토', category: 'travel', tags: ['With family'], companions: ['엄마'] }),
+      row(2, { title: '데미안', tags: ['birthday'] }),
+      row(3, { title: '샤블리', category: 'drink', tags: ['with family'] }),
+    ];
+    const has = (names: string[], name: string | null) =>
+      name === null || names.some((value) => value.toLowerCase() === name.toLowerCase());
+    return json({
+      items: items.filter(
+        (item) =>
+          has(item.tags, params.get('tag')) &&
+          has(item.companions, params.get('companion')) &&
+          (!params.get('category') || item.category === params.get('category')),
+      ),
+    });
+  });
+  openAt('/table');
+  await screen.findByRole('link', { name: '데미안' });
+
+  const tag = screen.getByLabelText('Tag');
+  fireEvent.change(tag, { target: { value: ' with family ' } });
+  fireEvent.keyDown(tag, { key: 'Enter' });
+  await waitFor(() => expect(screen.queryByRole('link', { name: '데미안' })).toBeNull());
+  const titles = () =>
+    rows()
+      .slice(1)
+      .map((tableRow) => within(tableRow).getByRole('link').textContent);
+  expect(titles()).toEqual(['교토', '샤블리']);
+  expect(window.location.search).toBe('?tag=with+family');
+
+  await choose('Category', 'Travel');
+  await waitFor(() => expect(titles()).toEqual(['교토']));
+  expect(asked.at(-1)).toBe('tag=with+family&category=travel');
+
+  const companion = screen.getByLabelText('Companion');
+  fireEvent.change(companion, { target: { value: '아빠' } });
+  fireEvent.blur(companion);
+  expect(await screen.findByText('No items match the filters')).toBeInTheDocument();
+  expect(new URLSearchParams(window.location.search).get('companion')).toBe('아빠');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+  await screen.findByRole('link', { name: '데미안' });
+  expect(screen.getByLabelText('Tag')).toHaveValue('');
+  expect(screen.getByLabelText('Companion')).toHaveValue('');
+});
+
+test('tag and companion filters in the address are used and shown (#216)', async () => {
+  const asked = fakeApi(() => json({ items: [] }));
+  openAt('/table?tag=birthday&companion=%EC%97%84%EB%A7%88');
+  expect(await screen.findByText('No items match the filters')).toBeInTheDocument();
+  expect(asked).toEqual(['tag=birthday&companion=%EC%97%84%EB%A7%88']);
+  expect(screen.getByLabelText('Tag')).toHaveValue('birthday');
+  expect(screen.getByLabelText('Companion')).toHaveValue('엄마');
+});

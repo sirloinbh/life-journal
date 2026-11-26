@@ -308,6 +308,18 @@ const queryCost = (label: string) => {
 
 const queryDate = (label: string) => date(label).optional();
 
+// #216: one tag or companion name, matched whole and without regard to letter case. Blank means no filter.
+const queryName = (label: string) =>
+  z
+    .string({ error: `${label} filter must be a single value` })
+    .transform((value) => value.normalize('NFC').trim())
+    .refine(
+      maxLength(MAX_ITEM_NAME_LENGTH),
+      `${label} filter must be ${MAX_ITEM_NAME_LENGTH} characters or fewer`,
+    )
+    .refine(isStorable, `${label} filter contains a character that is not allowed`)
+    .optional();
+
 // #144: offset paging of the list (user decision 2026-11-23: limit 1-500, default 100).
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 500;
@@ -343,6 +355,8 @@ export const listQuery = strictObject(
     to: queryDate('End date'),
     costMin: queryCost('Minimum cost'),
     costMax: queryCost('Maximum cost'),
+    tag: queryName('Tag'),
+    companion: queryName('Companion'),
     sort: z
       .enum(
         [
@@ -390,6 +404,16 @@ function listSql(input: unknown, columns = COLUMNS) {
   if (query.to) where.push(`COALESCE(completed_date, planned_date) <= ${param(query.to)}`);
   if (query.costMin !== undefined) where.push(`cost_krw >= ${param(query.costMin)}`);
   if (query.costMax !== undefined) where.push(`cost_krw <= ${param(query.costMax)}`);
+  // Whole names in any letter case, the way the lists are kept unique (migration 010).
+  for (const [column, name] of [
+    ['tags', query.tag],
+    ['companions', query.companion],
+  ] as const) {
+    if (name) {
+      where.push(`EXISTS (SELECT 1 FROM unnest(${column}) AS name
+                  WHERE lower(name) = lower(${param(name)}))`);
+    }
+  }
   const direction = query.order === 'asc' ? 'ASC' : 'DESC';
   const filter = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
   // id breaks ties, so every row has one place in the order and offset pages neither repeat nor skip rows.
