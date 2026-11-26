@@ -46,3 +46,9 @@ Completed date, cost, rating, and category are stored on every item, but nothing
 - The branch merged `origin/main` (#213) before the screen commit: `app.ts`, `openapi.ts`, and `openapi.test.ts` kept both routes, and `docs/openapi.json` was regenerated (8 paths).
 - `npm run check` on the shared `journal_test` failed once in `items-check-names.integration.test.ts`: that DB already had another lane's unmerged `010_item_tags_companions.sql` (two extra CHECKs), and `db:migrate` refused because the file is not on this branch. Not caused by this change.
 - `npm run check` with `TEST_DATABASE_URL` on a fresh lane DB (`journal_test_lane2`, migrations 001-009 of this branch): pass. Backend 209 passed, 0 skipped; frontend 332 passed, 3 skipped (existing); contract 3; skills 4; build passed.
+
+## Review round 1
+
+- Merged `origin/main` (#215 item tags with migration 010, #218 terms quiz) with no conflicts; `docs/openapi.json` was already current.
+- `npm run check` with `TEST_DATABASE_URL` on a fresh lane DB (migrations 001-010): pass. Backend 218 passed, 0 skipped; frontend 357 passed, 3 skipped (existing); contract 3; skills 4; build passed.
+- No blocking findings. Nits left as they are: the three statistics queries run in parallel outside one snapshot (a write between them could make one answer slightly inconsistent; one user, read-only, no harm); while a new year loads after a failed one, the old error stays until the new answer arrives (the shared `useSettledError` behavior, also on the calendar).
