@@ -37,3 +37,8 @@ Playwright Chromium on the Vite dev server (temporary port) with this branch's A
 - 390×844: typing "WITH FAMILY" in Tag and pressing Enter set `?tag=WITH+FAMILY` and left only the items tagged "With family" or "with family" (the one tagged "birthday" was gone); the two new fields stack under the others, no page overflow.
 - 1440×900: adding Companion "dad" (stored as "Dad") set `?tag=WITH+FAMILY&companion=dad` and left one item, "1 item". The two fields sit in the same grid as the other filters.
 - Console: only the dev-only Pretendard font 403s.
+
+## Review
+
+- Round 1 (PR comment): approve, no blocking comments. One `note:` left as is: the table filters take typed names without suggestions, and the table does not show tags.
+- Merged `origin/main` (#217, quotes) into the branch: no conflicts. `npm run check` again with the DB tests on `journal_test` (migrated to 011): pass, backend 242 tests, frontend 49 files with 360 passed and 3 skipped, contract 3, skills 4, build.
