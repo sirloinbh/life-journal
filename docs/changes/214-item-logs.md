@@ -46,3 +46,18 @@ Recorded in [the issue comment](https://github.com/sirloinbh/life-journal/issues
   - `frontend/src/bucket-list.test.tsx` "a wine keeps tastings newest first with the rating change, and only drinks and travel offer them (#214)": adds two tastings, checks the requests, the order, the change line, and the over-time line, edits one in place (focus in and back), deletes one (focus to the add form), and reading items have no button.
   - `frontend/src/items.test.ts`: `logWords` for each category.
 - `npm test -w backend` (without the DB): 218 passed, 42 skipped. `npm test -w frontend -- src/bucket-list.test.tsx`: 67 passed. `npm run lint` and `npm run knip`: pass.
+
+### `npm run check` with the DB tests (2026-11-26)
+
+- Merged `origin/main` (#216) first: no conflicts.
+- Pass, with `TEST_DATABASE_URL` on `journal_test` (migrated to 013 for the run): format, lint, contract 3, typecheck, backend 265 tests all passed (DB tests included, none skipped), frontend 49 files with 362 passed and 3 skipped, skills 4, build.
+- Afterwards 013 was taken back out of `journal_test` (table and `schema_migrations` row), since other lanes' branches do not have it yet.
+
+### Browser (2026-11-26)
+
+Playwright Chromium on the Vite dev server (temporary port) with this branch's API on `journal_test` (temporary port, no sign-in), with a done wine rated 3 and one tasting (March 1, rating 3.5, ₩90,000, "Still closed"):
+
+- 390×844: the "Tastings" button opened the dialog; the date started at today with today as the maximum. Adding October 1 with rating 4.5 put it first with "Up 1 since March 1, 2026", and "Rating over time, oldest first: 3.5 → 4.5" appeared. The form fields stack in one column; no overflow.
+- 1440×900: the same list, with the date and rating side by side in the add form. No page or dialog overflow.
+- Console: only the dev-only Pretendard font 403s.
+- The test item was deleted afterwards (its tastings went with it).
