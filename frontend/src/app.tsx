@@ -2,6 +2,7 @@ import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   BookOpen,
   CalendarDays,
+  ChartColumn,
   LayoutDashboard,
   ListChecks,
   Settings2,
@@ -19,6 +20,7 @@ import { type Health, healthText } from './health';
 import { ItemsTable } from './items-table';
 import { createQueryClient } from './lib/query';
 import { AccountActions, SignInGate } from './sign-in';
+import { Stats } from './stats';
 import { TermsStudy } from './terms-study';
 
 // Every page URL lives here (central docs/directory-rules.md).
@@ -27,6 +29,7 @@ const pages = {
   bucketList: '/bucket-list',
   table: '/table',
   calendar: '/calendar',
+  stats: '/stats',
   terms: '/terms',
   settings: '/settings',
 } as const;
@@ -37,6 +40,7 @@ const nav: NavItem[] = [
   { to: pages.bucketList, label: 'Bucket list', icon: ListChecks },
   { to: pages.table, label: 'Table view', icon: Table2 },
   { to: pages.calendar, label: 'Calendar', icon: CalendarDays },
+  { to: pages.stats, label: 'Statistics', icon: ChartColumn },
   { to: pages.terms, label: 'Study terms', icon: BookOpen },
   { to: pages.settings, label: 'Settings', icon: Settings2 },
 ];
@@ -158,6 +162,18 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
                     health={health}
                   >
                     <Calendar path={pages.calendar} bucketListPath={pages.bucketList} />
+                  </Page>
+                }
+              />
+              <Route
+                path={`${pages.stats}/:year?`}
+                element={
+                  <Page
+                    title="Statistics"
+                    description="See what you completed in a year: by month and category, spending, ratings, and favorites"
+                    health={health}
+                  >
+                    <Stats path={pages.stats} bucketListPath={pages.bucketList} />
                   </Page>
                 }
               />
