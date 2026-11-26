@@ -61,3 +61,7 @@ Playwright Chromium on the Vite dev server (temporary port) with this branch's A
 - 1440×900: the same list, with the date and rating side by side in the add form. No page or dialog overflow.
 - Console: only the dev-only Pretendard font 403s.
 - The test item was deleted afterwards (its tastings went with it).
+
+## Review
+
+- Round 1 (PR comment): approve, no blocking comments. One `nitpick` left as is: `ItemLogs` keeps a fallback name for a category without logs, which the screen never opens. Round 2 not needed.
