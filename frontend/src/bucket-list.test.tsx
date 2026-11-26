@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeAll, beforeEach, expect, test, vi } from 'vitest';
 
 import { CATEGORIES } from '../../shared/contract';
@@ -728,6 +728,80 @@ test('a change on the bucket list shows on the table at once, within the cache t
   await dialogClosed();
   fireEvent.click(within(menu).getByRole('link', { name: 'Table view' }));
   expect(await screen.findByRole('link', { name: 'New title' })).toBeInTheDocument();
+});
+
+test('a book keeps quotes that are added, edited, deleted, and still there after a reload (#217)', async () => {
+  const api = fakeApi([
+    { category: 'reading', title: '데미안' },
+    { category: 'travel', title: '교토' },
+  ]);
+  openAt('/bucket-list/reading');
+  let dialog = await openDialog('Quotes of 데미안');
+  expect(await dialog.findByText('No quotes yet.')).toBeInTheDocument();
+  const addQuote = async (text: string, page: string, note: string) => {
+    type(dialog, 'Quote', text);
+    type(dialog, 'Page (optional)', page);
+    type(dialog, 'Note (optional)', note);
+    fireEvent.click(dialog.getByRole('button', { name: 'Add quote' }));
+    await waitFor(() => expect(dialog.getByLabelText('Quote')).toHaveValue(''));
+    // The emptied form counts from zero again.
+    expect(dialog.getByText('0/1000')).toBeInTheDocument();
+  };
+  await addQuote('새는 알에서 나오려고 투쟁한다.\n알은 세계이다.', '120', '핵심 문장');
+  await addQuote('나는 나 자신에게서 솟아 나오려는 것', '', '');
+  expect(api.requests.filter(({ method }) => method === 'POST')).toEqual([
+    {
+      method: 'POST',
+      path: '/api/items/1/quotes',
+      body: {
+        text: '새는 알에서 나오려고 투쟁한다.\n알은 세계이다.',
+        page: 120,
+        note: '핵심 문장',
+      },
+    },
+    {
+      method: 'POST',
+      path: '/api/items/1/quotes',
+      body: { text: '나는 나 자신에게서 솟아 나오려는 것', page: null, note: null },
+    },
+  ]);
+  const list = () =>
+    within(screen.getByRole('list', { name: 'Quotes of 데미안' })).getAllByRole('listitem');
+  await waitFor(() => expect(list()).toHaveLength(2));
+  expect(list()[0]).toHaveTextContent('p. 120 · 핵심 문장');
+
+  // Edit the second quote in place.
+  fireEvent.click(within(list()[1]).getByRole('button', { name: /^Edit quote/ }));
+  const edit = within(screen.getByRole('form', { name: 'Edit the quote' }));
+  fireEvent.change(edit.getByLabelText('Page (optional)'), { target: { value: '7' } });
+  fireEvent.click(edit.getByRole('button', { name: 'Save quote' }));
+  await waitFor(() => expect(list()[1]).toHaveTextContent('p. 7'));
+  expect(api.requests.at(-1)).toMatchObject({ method: 'PATCH', path: '/api/items/1/quotes/2' });
+
+  // Close the dialog, then open the app again as a reload would: the quotes come back from the server.
+  pressEscape();
+  await dialogClosed();
+  cleanup();
+  openAt('/bucket-list/reading');
+  dialog = await openDialog('Quotes of 데미안');
+  await waitFor(() => expect(list()).toHaveLength(2));
+  expect(list().map((item) => item.querySelector('blockquote')?.textContent)).toEqual([
+    '새는 알에서 나오려고 투쟁한다.\n알은 세계이다.',
+    '나는 나 자신에게서 솟아 나오려는 것',
+  ]);
+
+  fireEvent.click(within(list()[0]).getByRole('button', { name: /^Delete quote/ }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+  await waitFor(() => expect(list()).toHaveLength(1));
+  expect(api.quotes.map(({ text }) => text)).toEqual(['나는 나 자신에게서 솟아 나오려는 것']);
+
+  // Only reading items offer quotes.
+  pressEscape();
+  await dialogClosed();
+  const tabs = screen.getByRole('navigation', { name: 'Category' });
+  fireEvent.click(within(tabs).getByRole('link', { name: 'Travel' }));
+  expect(await screen.findByText('교토')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Quotes of 교토' })).toBeNull();
 });
 
 test('tags and companions are added, suggested, saved, shown, and removed (#215)', async () => {
