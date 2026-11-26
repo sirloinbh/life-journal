@@ -2,7 +2,7 @@
 
 - Issue: [#210](https://github.com/sirloinbh/life-journal/issues/210)
 - Branch: `feat/210-daily-journal`
-- Entry rules: the coordinator did not answer the decision question, so the issue's recommendation was applied and recorded on the issue ([comment](https://github.com/sirloinbh/life-journal/issues/210#issuecomment-7178067083)): plain text with line breaks, up to 10,000 characters, no title, no dates after today (Asia/Seoul).
+- Entry rules: **the owner's decision is still pending** and will be relayed by the coordinator ([comment](https://github.com/sirloinbh/life-journal/issues/210#issuecomment-7178067083)). The issue's recommendation (option A) is implemented so the PR can be reviewed: plain text with line breaks, up to 10,000 characters, no title, no dates after today (Asia/Seoul). The PR is not merged until the decision arrives.
 
 ## Purpose
 
