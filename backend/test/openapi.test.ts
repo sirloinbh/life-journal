@@ -19,7 +19,7 @@ type Layer = {
   matchers?: ((path: string) => unknown)[];
 };
 // Express 5 keeps no mount path on a router layer, so each router is matched against these known mounts.
-const mounts = ['/api/items', '/api/terms'];
+const mounts = ['/api/items', '/api/terms', '/api/stats'];
 function routesOf(stack: Layer[], prefix: string): string[] {
   return stack.flatMap((layer) => {
     if (layer.route) {

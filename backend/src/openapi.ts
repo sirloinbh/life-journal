@@ -3,6 +3,7 @@
 // when the table and the registered routes differ.
 import { itemFields, itemPatch, listQuery } from './items.js';
 import { buildOpenApi, type Operation } from './standard/openapi.js';
+import { statsQuery } from './stats.js';
 
 // Every registered route must appear here exactly once (checked in test/openapi.test.ts).
 export const operations: Record<string, Operation> = {
@@ -42,6 +43,12 @@ export const operations: Record<string, Operation> = {
   'DELETE /api/terms/:termId/learned': {
     summary: 'Mark a term as not learned',
     status: [204, 401, 404, 500, 503],
+  },
+  'GET /api/stats': {
+    summary:
+      'Statistics of the items completed in a year (year YYYY, default this year in Asia/Seoul): count per month and category, spending, average rating per category, top 5 rated; answers { year, completed, spendingKrw, months, categories, topRated }',
+    query: statsQuery,
+    status: [200, 400, 401, 500, 503],
   },
 };
 
