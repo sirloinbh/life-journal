@@ -114,7 +114,7 @@ const nameList = (label: string, plural: string) =>
       `${plural} can have at most ${MAX_ITEM_NAMES} names`,
     );
 
-const tagList = nameList('Tag', 'Tags');
+export const tagList = nameList('Tag', 'Tags');
 const companionList = nameList('Companion', 'Companions');
 
 const year = (label: string) => {
