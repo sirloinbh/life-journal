@@ -419,6 +419,20 @@ export function createItemsRouter(pool: Pool, today: () => string) {
     res.json(await listItemsPage(pool, req.query));
   });
 
+  // #237: the tags and companions already used, for the table filters to pick from. Names that differ only in
+  // letter case count as one, shown as spelled first alphabetically; the most used come first.
+  router.get('/names', async (_req, res) => {
+    const names = async (column: 'tags' | 'companions') => {
+      const { rows } = await pool.query<{ name: string }>(
+        `SELECT min(name) AS name FROM items, unnest(${column}) AS name
+         GROUP BY lower(name) ORDER BY count(*) DESC, min(name)`,
+      );
+      return rows.map(({ name }) => name);
+    };
+    const [tags, companions] = await Promise.all([names('tags'), names('companions')]);
+    res.json({ tags, companions });
+  });
+
   router.post('/', async (req, res) => {
     const item = parseItem(req.body, today());
     const { rows } = await pool.query(

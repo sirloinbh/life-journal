@@ -30,6 +30,11 @@ export const operations: Record<string, Operation> = {
     body: ['ItemInput', itemFields],
     status: [201, 400, 401, 413, 500, 503],
   },
+  'GET /api/items/names': {
+    summary:
+      'List the tags and companions already used, the most used first (names that differ only in letter case count as one); answers { tags, companions }',
+    status: [200, 401, 500, 503],
+  },
   'GET /api/items/:id': { summary: 'Get one item', status: [200, 400, 401, 404, 500, 503] },
   'PATCH /api/items/:id': {
     summary: 'Update some fields of an item; the merged item must still follow the category rules',
