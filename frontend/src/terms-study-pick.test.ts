@@ -133,6 +133,11 @@ test.each([
   expect(hideTerm(meaning, { term, original })).toBe(hidden);
 });
 
+test('the meaning hides a name repeated with one space between', () => {
+  expect(hideTerm('Nose Nose.', { term: 'Nose' })).toBe('(this term) (this term).');
+  expect(hideTerm('(Nose)', { term: 'Nose' })).toBe('((this term))');
+});
+
 test('the meaning keeps a name that is only part of a longer word', () => {
   expect(hideTerm('A nosegay of aromas.', { term: 'Nose' })).toBe('A nosegay of aromas.');
   expect(hideTerm('No name here.', { term: ' / ' })).toBe('No name here.');

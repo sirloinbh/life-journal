@@ -34,3 +34,9 @@ The terms page only listed terms and let me mark them as learned. There was no w
 - Fix: `hideTerm` in `frontend/src/terms-study-pick.ts` replaces each part of the term's name (split on `/`) and its original-language name with "(this term)", whole words only, ignoring case, longest name first. `QuizTerm` gains the optional `original`. Tests: 7 cases in `terms-study-pick.test.ts` (slash parts, every case, longer name first, original name, regex characters, accents, no match inside a longer word) and one screen test.
 - Checked against the real 300 terms with a scratch script: 18 meanings change; 3 still contain an inflected form ("tilts" for Tilt, "lyrical" for Lyric, "scene changes" for Scene Change). Those are left as they are: matching word forms would also hide ordinary words.
 - `npm run test -w frontend -- src/terms-study`: 43 passed. `npm run check`: pass (backend 161 pass, 0 fail, 31 DB tests skipped; frontend 340 passed, 3 skipped; build passes).
+
+## Review round 2
+
+- Finding (issue): `hideTerm` used a regex lookbehind. Safari before 16.4 cannot compile one, and the pattern is built at run time, so the quiz would throw there. The pattern now captures the character before a name and puts it back; the check after a name stays a lookahead. A new unit test covers a name repeated with one space between and a name in parentheses.
+- The first-round fix was rechecked against the real 300 terms: still 18 changed, the same 3 inflected forms left.
+- `npm run test -w frontend -- src/terms-study`: 44 passed. `npm run check` (branch already up to date with `origin/main`): pass (backend 161 pass, 0 fail, 31 DB tests skipped; frontend 341 passed, 3 skipped; build passes).

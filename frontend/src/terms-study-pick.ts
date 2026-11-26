@@ -75,9 +75,11 @@ export function hideTerm(meaning: string, term: Pick<QuizTerm, 'term' | 'origina
     // Longer names first, so "Single Cask" is replaced before "Cask" could be.
     .sort((a, b) => b.length - a.length);
   if (names.length === 0) return meaning;
+  // No lookbehind: Safari before 16.4 cannot compile one. The character before a name is captured
+  // and put back instead; the check after it is a lookahead, so it does not use up a space.
   const pattern = new RegExp(
-    `(?<![\\p{L}\\p{N}])(?:${names.map(escape).join('|')})(?![\\p{L}\\p{N}])`,
+    `(^|[^\\p{L}\\p{N}])(?:${names.map(escape).join('|')})(?![\\p{L}\\p{N}])`,
     'giu',
   );
-  return meaning.replace(pattern, HIDDEN_TERM);
+  return meaning.replace(pattern, (_match, before: string) => `${before}${HIDDEN_TERM}`);
 }
