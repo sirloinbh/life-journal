@@ -1,9 +1,17 @@
 import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BookOpen, LayoutDashboard, ListChecks, Settings2, Table2 } from 'lucide-react';
+import {
+  BookOpen,
+  CalendarDays,
+  LayoutDashboard,
+  ListChecks,
+  Settings2,
+  Table2,
+} from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
 import { BucketList } from './bucket-list';
+import { Calendar } from './calendar';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { EmptyState } from './components/ui/empty-state';
 import { Toaster } from './components/ui/sonner';
@@ -18,6 +26,7 @@ const pages = {
   overview: '/',
   bucketList: '/bucket-list',
   table: '/table',
+  calendar: '/calendar',
   terms: '/terms',
   settings: '/settings',
 } as const;
@@ -27,6 +36,7 @@ const nav: NavItem[] = [
   { to: pages.overview, label: 'Dashboard', icon: LayoutDashboard },
   { to: pages.bucketList, label: 'Bucket list', icon: ListChecks },
   { to: pages.table, label: 'Table view', icon: Table2 },
+  { to: pages.calendar, label: 'Calendar', icon: CalendarDays },
   { to: pages.terms, label: 'Study terms', icon: BookOpen },
   { to: pages.settings, label: 'Settings', icon: Settings2 },
 ];
@@ -136,6 +146,18 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
                     health={health}
                   >
                     <ItemsTable bucketListPath={pages.bucketList} />
+                  </Page>
+                }
+              />
+              <Route
+                path={`${pages.calendar}/:month?`}
+                element={
+                  <Page
+                    title="Calendar"
+                    description="See what is planned and what was done on each day of a month"
+                    health={health}
+                  >
+                    <Calendar path={pages.calendar} bucketListPath={pages.bucketList} />
                   </Page>
                 }
               />
