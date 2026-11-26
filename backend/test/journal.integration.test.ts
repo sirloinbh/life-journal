@@ -17,7 +17,7 @@ async function scratchPool(t: { after: (fn: () => Promise<void>) => void }) {
   const setup = testPool({ max: 1 });
   await setup.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE; CREATE SCHEMA ${SCHEMA}`);
   await setup.query(`SET search_path TO ${SCHEMA}`);
-  const sql = await migration('012_journal_entries.sql');
+  const sql = await migration('016_journal_entries.sql');
   await setup.query(sql);
   await setup.query(sql);
   await setup.end();
