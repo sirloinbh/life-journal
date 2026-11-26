@@ -12,17 +12,15 @@ import {
   MAX_ITEM_NAMES,
   MAX_REVIEW_LENGTH,
   MAX_REVIEW_LINES,
-  SCORES,
 } from './contract.js';
+import { addLogRoutes, keepLoggedItemInLogCategory } from './item-logs.js';
 import { addQuoteRoutes, keepQuotedItemInReading } from './item-quotes.js';
 import { withTransaction } from './standard/db.js';
 import { HttpError, parseId } from './standard/http.js';
-import { isStorable, strictObject } from './validation.js';
+import { costKrw, date, isStorable, MAX_COST_KRW, score, strictObject } from './validation.js';
 
 // The database handle the list query runs on: the pool for the route and the AI tool, a client in a transaction.
 export type Db = Pick<Pool, 'query'> | PoolClient;
-
-const MAX_COST_KRW = 2_147_483_647; // items.cost_krw is a PostgreSQL integer.
 
 // Every column except companions, which are personal data and never reach the AI tools (#215).
 const SHARED_COLUMNS = `id, category, subtype, title, status, cost_krw AS "costKrw",
@@ -47,31 +45,12 @@ const text = (label: string, max: number) =>
     .refine(maxLength(max), `${label} must be ${max} characters or fewer`)
     .refine(isStorable, `${label} contains a character that is not allowed`);
 
-const isRealDate = (value: string) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value < '0001-01-01') return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
-};
-
-const date = (label: string) => {
-  const message = `${label} must be a real date in YYYY-MM-DD format`;
-  return z.string({ error: message }).refine(isRealDate, message);
-};
-
 const details = (label: string, fields: z.ZodRawShape) =>
   strictObject(
     fields,
     `${label} details contain an unknown field`,
     () => `${label} details are not valid`,
   );
-
-const scores: readonly number[] = SCORES;
-const scoreRange = `from ${scores[0]} to ${scores.at(-1)} in steps of ${scores[1] - scores[0]}`;
-
-const score = (label: string) => {
-  const message = `${label} must be ${scoreRange}`;
-  return z.number({ error: message }).refine((value) => scores.includes(value), message);
-};
 
 const criteria = (label: string, names: readonly { key: string; label: string }[]) =>
   strictObject(
@@ -172,7 +151,6 @@ const CATEGORIES = Object.fromEntries(
 
 const categoryMessage = 'The category is not valid';
 const statusMessage = 'Status must be wishlist or done';
-const costMessage = 'Cost must be a whole number of won, 0 or more';
 
 const status = z.enum(['wishlist', 'done'], { error: statusMessage });
 const detailsRecord = z.record(z.string(), z.unknown(), {
@@ -189,12 +167,7 @@ const itemShape = {
   subtype: text('Subtype', 50).nullable().optional(),
   title: text('Title', 200),
   status,
-  costKrw: z
-    .number({ error: costMessage })
-    .refine((cost) => Number.isInteger(cost) && cost >= 0, costMessage)
-    .refine((cost) => cost <= MAX_COST_KRW, `Cost must be ${MAX_COST_KRW} won or less`)
-    .nullable()
-    .optional(),
+  costKrw: costKrw.nullable().optional(),
   plannedDate: date('Planned date').nullable().optional(),
   completedDate: date('Completed date').nullable().optional(),
   details: detailsRecord,
@@ -504,6 +477,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         today(),
       );
       await keepQuotedItemInReading(client, id, category as string, item.category);
+      await keepLoggedItemInLogCategory(client, id, category as string, item.category);
       const { rows } = await client.query(
         `UPDATE items
          SET category = $2, subtype = $3, title = $4, status = $5, cost_krw = $6,
@@ -536,6 +510,7 @@ export function createItemsRouter(pool: Pool, today: () => string) {
   });
 
   addQuoteRoutes(router, pool);
+  addLogRoutes(router, pool, today);
 
   router.delete('/:id', async (req, res) => {
     const id = parseId(req.params.id, 'item');

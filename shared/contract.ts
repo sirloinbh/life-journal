@@ -17,6 +17,9 @@ export const MAX_QUOTE_PAGE = 99999;
 export const MAX_ITEM_NAMES = 20;
 export const MAX_ITEM_NAME_LENGTH = 50;
 
+/** Repeated tastings and visits of an item (#214): the note of a log is this long at most. */
+export const MAX_LOG_NOTE_LENGTH = 500;
+
 /** A detail field: free text up to `maxLength` characters, or a 4-digit year sent as a number. */
 export type DetailField =
   | { key: string; label: string; type: 'text'; maxLength: number }
@@ -150,3 +153,6 @@ export type CategoryKey = (typeof CATEGORIES)[number]['key'];
 
 /** The category keys in menu order, as a non-empty list for an enum. */
 export const CATEGORY_KEYS = CATEGORIES.map(({ key }) => key) as [CategoryKey, ...CategoryKey[]];
+
+/** The categories whose items take tastings and visits (#214), drinks and travel first. */
+export const LOG_CATEGORIES = ['drink', 'travel'] as const satisfies readonly CategoryKey[];

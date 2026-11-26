@@ -2,6 +2,7 @@
 // (z.toJSONSchema). `npm run openapi -w backend` writes docs/openapi.json; a test fails when it is out of date or
 // when the table and the registered routes differ.
 import { calendarQuery } from './calendar.js';
+import { logFields, logPatch } from './item-logs.js';
 import { quoteFields, quotePatch } from './item-quotes.js';
 import { itemFields, itemPatch, listQuery } from './items.js';
 import { buildOpenApi, type Operation } from './standard/openapi.js';
@@ -34,7 +35,7 @@ export const operations: Record<string, Operation> = {
     status: [200, 400, 401, 404, 413, 500, 503],
   },
   'DELETE /api/items/:id': {
-    summary: 'Delete an item, with its quotes',
+    summary: 'Delete an item, with its quotes and logs',
     status: [204, 400, 401, 404, 500, 503],
   },
   'GET /api/items/:id/quotes': {
@@ -54,6 +55,25 @@ export const operations: Record<string, Operation> = {
   },
   'DELETE /api/items/:id/quotes/:quoteId': {
     summary: 'Delete a quote',
+    status: [204, 400, 401, 404, 500, 503],
+  },
+  'GET /api/items/:id/logs': {
+    summary: 'List the tastings and visits of an item, newest first; answers { logs }',
+    status: [200, 400, 401, 404, 500, 503],
+  },
+  'POST /api/items/:id/logs': {
+    summary:
+      'Add a tasting or visit to a drink or travel item (a date up to today, optional rating, note, and cost)',
+    body: ['LogInput', logFields],
+    status: [201, 400, 401, 404, 413, 500, 503],
+  },
+  'PATCH /api/items/:id/logs/:logId': {
+    summary: 'Update some fields of a tasting or visit',
+    body: ['LogPatch', logPatch],
+    status: [200, 400, 401, 404, 413, 500, 503],
+  },
+  'DELETE /api/items/:id/logs/:logId': {
+    summary: 'Delete a tasting or visit',
     status: [204, 400, 401, 404, 500, 503],
   },
   'GET /api/terms': {
