@@ -33,3 +33,7 @@ What the export contains (asked the coordinator, which stopped without answering
 - The real API was not started for the browser check; the backend tests cover the real answers.
 - The integration test fails while the database has an `items` column that the export does not list. That is on purpose: a lane that adds a column (such as `tags` and `companions`, which another lane is adding) has to add it to `EXPORT_TABLES` in the same PR.
 - The CSV does not guard against spreadsheet formulas (a value starting with `=`): it holds only my own records, and changing values would break the round trip (`docs/export-format.md`).
+
+## Review round 1
+
+- No blocking findings. Notes left as is: a 401 from a download shows the message but does not go through the sign-in gate (`fetch`, not `requestJson`); the export is built in memory, which is fine at this size.
