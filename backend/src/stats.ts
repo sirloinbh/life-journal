@@ -26,7 +26,7 @@ export const statsQuery = z.strictObject(
   },
 );
 
-export const TOP_RATED = 5;
+const TOP_RATED = 5;
 
 // The year runs from January 1 up to, not including, January 1 of the next year.
 const IN_YEAR = `status = 'done'
@@ -40,7 +40,7 @@ type CategoryRow = {
   spendingKrw: number;
 };
 
-export async function yearStats(db: Pick<Pool, 'query'>, year: string) {
+async function yearStats(db: Pick<Pool, 'query'>, year: string) {
   const params = [`${year}-01-01`];
   const [byMonth, byCategory, top] = await Promise.all([
     db.query<{ month: number; category: string; count: number }>(
