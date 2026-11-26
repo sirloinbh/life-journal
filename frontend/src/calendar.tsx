@@ -126,9 +126,7 @@ function Day({
   const number = Number(date.slice(8));
   const heading = (
     <span className="flex items-baseline gap-2">
-      <span className={cn('text-body-sm font-medium md:hidden')}>
-        {weekdayDate.format(utc(date))}
-      </span>
+      <span className="text-body-sm font-medium md:hidden">{weekdayDate.format(utc(date))}</span>
       <span
         className={cn(
           'hidden text-body-sm font-medium md:inline',
@@ -154,14 +152,15 @@ function Day({
       className="flex min-h-16 w-full flex-col items-stretch gap-1 rounded-md border bg-card p-1.5 text-left outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 max-md:min-h-11 max-md:p-3"
     >
       {heading}
-      <ul className="flex flex-col gap-0.5 text-caption md:[&>li:nth-child(n+4)]:hidden">
+      {/* Spans, not a list: a button may only hold phrasing content. */}
+      <span className="flex flex-col gap-0.5 text-caption md:[&>span:nth-child(n+4)]:hidden">
         {entries.map(({ kind, item }) => (
-          <li key={`${kind}-${item.id}`} className="flex min-w-0 items-center gap-1">
+          <span key={`${kind}-${item.id}`} className="flex min-w-0 items-center gap-1">
             <EntryMark kind={kind} />
             <span className="truncate">{item.title}</span>
-          </li>
+          </span>
         ))}
-      </ul>
+      </span>
       {hidden > 0 ? (
         <span className="hidden text-caption text-muted-foreground md:block">+{hidden} more</span>
       ) : null}

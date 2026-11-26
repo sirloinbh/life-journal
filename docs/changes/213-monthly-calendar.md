@@ -44,3 +44,10 @@ Planned and completed dates are stored on every item but can only be read in the
 - Checked and left as is: the month range is computed by PostgreSQL (no JavaScript date math on the server), invalid months never reach the database, the integration test runs in its own schema, and only days with items take keyboard focus.
 - `vitest run src/calendar.test.tsx`: 7 passed.
 - `npm run check` with `TEST_DATABASE_URL` after the fix: pass (backend 201 passed, 0 skipped; frontend 327 passed, 3 skipped; contract 3; skills 4; build).
+
+## Review round 2
+
+- issue: the day button held a `<ul>`, which a button may not contain (phrasing content only). The entries are now spans; the grid still hides the fourth and later entries.
+- nit: a needless `cn()` around a fixed class string was removed.
+- `vitest run src/calendar.test.tsx`: 7 passed. Browser at 1440×900: the Nov 3 button shows three of its four entries; at 390×844 all four.
+- `npm run check` with `TEST_DATABASE_URL` after the fix: pass (backend 201 passed, 0 skipped; frontend 327 passed, 3 skipped; contract 3; skills 4; build).
