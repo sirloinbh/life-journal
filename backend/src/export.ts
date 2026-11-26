@@ -17,8 +17,8 @@ const utc = (column: string) =>
 /**
  * Every data table in the export, in restore order (a table after the tables it refers to), with its
  * columns in file order. A new data table is added here, to docs/export-format.md, and to restore.
- * DATE columns come back as YYYY-MM-DD and BIGINT as numbers (pool.ts); rating is numeric(2,1), sent
- * as a number; text[] columns (tags, companions) are JSON arrays of strings.
+ * DATE columns come back as YYYY-MM-DD and BIGINT as numbers (pool.ts); rating (items and item_logs) is
+ * numeric(2,1), sent as a number; text[] columns (tags, companions) are JSON arrays of strings.
  */
 export const EXPORT_TABLES = {
   items: {
@@ -44,6 +44,25 @@ export const EXPORT_TABLES = {
     sql: `SELECT id, category, subtype, title, status, cost_krw, planned_date, completed_date, details,
             rating::float8 AS rating, sub_ratings, review, link, tags, companions, ${utc('created_at')}, ${utc('updated_at')}
           FROM items ORDER BY id`,
+  },
+  item_quotes: {
+    columns: ['id', 'item_id', 'text', 'page', 'note', 'created_at', 'updated_at'],
+    sql: `SELECT id, item_id, text, page, note, ${utc('created_at')}, ${utc('updated_at')}
+          FROM item_quotes ORDER BY id`,
+  },
+  item_logs: {
+    columns: [
+      'id',
+      'item_id',
+      'logged_on',
+      'rating',
+      'note',
+      'cost_krw',
+      'created_at',
+      'updated_at',
+    ],
+    sql: `SELECT id, item_id, logged_on, rating::float8 AS rating, note, cost_krw, ${utc('created_at')}, ${utc('updated_at')}
+          FROM item_logs ORDER BY id`,
   },
   learned_terms: {
     columns: ['term_id', 'learned_at'],

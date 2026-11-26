@@ -10,7 +10,7 @@ const url = process.env.TEST_DATABASE_URL;
 // The rows are written and read inside one transaction that is rolled back, so other test files that
 // clear the tables at the same time cannot change what this test sees, and nothing is left behind.
 test(
-  'an export of a seeded database holds every item and learned term with all fields',
+  'an export of a seeded database holds every item, quote, log, and learned term with all fields',
   { skip: !url },
   async (t) => {
     const pool = testPool();
@@ -20,7 +20,9 @@ test(
       await client.query('BEGIN');
       // Other test files write these tables at the same time; the lock makes them wait until the
       // rollback, so every statement here sees the same rows. Reads still go through.
-      await client.query('LOCK TABLE items, learned_terms IN EXCLUSIVE MODE');
+      await client.query(
+        'LOCK TABLE items, item_quotes, item_logs, learned_terms IN EXCLUSIVE MODE',
+      );
       const { rows: inserted } = await client.query<{ id: number }>(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
            details, rating, sub_ratings, review, link, tags, companions, created_at, updated_at)
@@ -36,6 +38,23 @@ Line two', 'https://example.com/a?b=c,d', ARRAY['birthday', 'with "quotes", comm
             '2026-11-02 21:00:00+09', '2026-11-03 08:30:00.5+09')
          RETURNING id`,
       );
+      const {
+        rows: [quote],
+      } = await client.query<{ id: number }>(
+        `INSERT INTO item_quotes (item_id, text, page, note, created_at, updated_at)
+         VALUES ($1, 'First line, "quoted"
+second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.000007+09')
+         RETURNING id`,
+        [inserted[0].id],
+      );
+      const {
+        rows: [log],
+      } = await client.query<{ id: number }>(
+        `INSERT INTO item_logs (item_id, logged_on, rating, note, cost_krw, created_at, updated_at)
+         VALUES ($1, '2026-11-10', 3.5, '두 번째 관람', 90000, '2026-11-10 22:00:00+09', '2026-11-11 08:00:00.25+09')
+         RETURNING id`,
+        [inserted[1].id],
+      );
       await client.query(
         `INSERT INTO learned_terms (term_id, learned_at) VALUES
            ('wine-tannin', '2026-11-20 09:00:00.000004+09'), ('opera-aria', '2026-11-21 09:00:00+09')
@@ -48,7 +67,7 @@ Line two', 'https://example.com/a?b=c,d', ARRAY['birthday', 'with "quotes", comm
       assert.equal(file.exportedAt, '2026-11-26T09:00:00.000+09:00');
 
       // Every row, not only the seeded ones.
-      for (const table of ['items', 'learned_terms'] as const) {
+      for (const table of ['items', 'item_quotes', 'item_logs', 'learned_terms'] as const) {
         const { rows } = await client.query<{ total: number }>(
           `SELECT count(*)::int AS total FROM ${table}`,
         );
@@ -94,16 +113,48 @@ Line two', 'https://example.com/a?b=c,d', ARRAY['birthday', 'with "quotes", comm
         created_at: '2026-11-02T12:00:00.000000Z',
         updated_at: '2026-11-02T23:30:00.500000Z',
       });
-      // Every column of the table is in the file, so a new column cannot be left out silently.
-      const { rows: columns } = await client.query<{ column_name: string }>(
-        `SELECT column_name FROM information_schema.columns
-         WHERE table_schema = 'public' AND table_name = $1 ORDER BY column_name`,
-        ['items'],
+      assert.deepEqual(
+        file.tables.item_quotes.find((row) => row.id === quote!.id),
+        {
+          id: quote!.id,
+          item_id: inserted[0].id,
+          text: 'First line, "quoted"\nsecond line',
+          page: 12,
+          note: null,
+          created_at: '2026-11-20T01:00:00.000007Z',
+          updated_at: '2026-11-20T01:00:00.000007Z',
+        },
       );
       assert.deepEqual(
-        Object.keys(wish!).sort(),
-        columns.map(({ column_name }) => column_name),
+        file.tables.item_logs.find((row) => row.id === log!.id),
+        {
+          id: log!.id,
+          item_id: inserted[1].id,
+          logged_on: '2026-11-10',
+          rating: 3.5,
+          note: '두 번째 관람',
+          cost_krw: 90000,
+          created_at: '2026-11-10T13:00:00.000000Z',
+          updated_at: '2026-11-10T23:00:00.250000Z',
+        },
       );
+      // Every column of each table is in the file, so a new column cannot be left out silently.
+      for (const [table, row] of [
+        ['items', wish],
+        ['item_quotes', file.tables.item_quotes[0]],
+        ['item_logs', file.tables.item_logs[0]],
+      ] as const) {
+        const { rows: columns } = await client.query<{ column_name: string }>(
+          `SELECT column_name FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = $1 ORDER BY column_name`,
+          [table],
+        );
+        assert.deepEqual(
+          Object.keys(row!).sort(),
+          columns.map(({ column_name }) => column_name),
+          table,
+        );
+      }
       assert.deepEqual(
         file.tables.learned_terms.filter(({ term_id }) =>
           ['wine-tannin', 'opera-aria'].includes(String(term_id)),
