@@ -59,7 +59,7 @@ export function pickQuestion(
   return { answerId: answer.id, choiceIds: choices.map(({ id }) => id) };
 }
 
-export const HIDDEN_TERM = '(this term)';
+const HIDDEN_TERM = '(this term)';
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

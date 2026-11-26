@@ -40,3 +40,8 @@ The terms page only listed terms and let me mark them as learned. There was no w
 - Finding (issue): `hideTerm` used a regex lookbehind. Safari before 16.4 cannot compile one, and the pattern is built at run time, so the quiz would throw there. The pattern now captures the character before a name and puts it back; the check after a name stays a lookahead. A new unit test covers a name repeated with one space between and a name in parentheses.
 - The first-round fix was rechecked against the real 300 terms: still 18 changed, the same 3 inflected forms left.
 - `npm run test -w frontend -- src/terms-study`: 44 passed. `npm run check` (branch already up to date with `origin/main`): pass (backend 161 pass, 0 fail, 31 DB tests skipped; frontend 341 passed, 3 skipped; build passes).
+
+## CI fix
+
+- CI `verify` failed at `knip`: `HIDDEN_TERM` in `frontend/src/terms-study-pick.ts` was exported but used only inside the file (`npm run check` does not run knip, so the local check missed it). It is no longer exported.
+- After the fix: `npm run knip` no longer lists it (the local run still lists `e2e/smoke.spec.ts` and `@axe-core/playwright`, which CI did not report and this branch does not touch), eslint and the frontend typecheck pass, `npm run test -w frontend -- src/terms-study` 44 passed. The full check runs in CI.
