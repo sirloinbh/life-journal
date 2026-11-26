@@ -76,3 +76,7 @@ Checked and fine: the PATCH builds its `SET` only from the fixed keys `text`, `p
 ### `npm run check` after round 1 (2026-11-26)
 
 - Pass. Format, lint, contract 3, typecheck, backend 192 passed and 37 DB tests skipped (frontend-only change, no `TEST_DATABASE_URL`), frontend 353 passed and 3 skipped, skills 4, build.
+
+## Review round 2 — 2026-11-26
+
+Self-review of head `1daec78` and the full final diff. Decision: approve, no blocking comments.
