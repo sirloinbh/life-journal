@@ -6,6 +6,7 @@ import { logFields, logPatch } from './item-logs.js';
 import { quoteFields, quotePatch } from './item-quotes.js';
 import { itemFields, itemPatch, listQuery } from './items.js';
 import { entryDate, entryInput, journalListQuery } from './journal.js';
+import { exportFile } from './restore.js';
 import { buildOpenApi, type Operation } from './standard/openapi.js';
 import { statsQuery } from './stats.js';
 
@@ -111,6 +112,22 @@ export const operations: Record<string, Operation> = {
     summary: 'Delete the journal entry of a date',
     params: { date: entryDate },
     status: [204, 400, 401, 404, 500, 503],
+  },
+  'GET /api/export': {
+    summary:
+      'Download every record as one JSON file (docs/export-format.md): { format, version, exportedAt, tables: { items, item_quotes, item_logs, learned_terms, audit_log } }',
+    status: [200, 401, 500, 503],
+  },
+  'GET /api/export/items.csv': {
+    summary:
+      'Download the items as CSV (UTF-8 with BOM; details, sub_ratings, tags, and companions as JSON text; null is an empty unquoted field)',
+    status: [200, 401, 500, 503],
+  },
+  'POST /api/restore': {
+    summary:
+      'Replace every record with a JSON export (docs/export-format.md, up to 20 MB). The whole file is checked first and written in one transaction, so a refused file changes nothing; answers { restored: { items, item_quotes, item_logs, learned_terms, audit_log } }',
+    body: ['ExportFile', exportFile],
+    status: [200, 400, 401, 413, 500, 503],
   },
   'GET /api/calendar': {
     summary:
