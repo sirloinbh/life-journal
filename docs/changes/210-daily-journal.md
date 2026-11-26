@@ -33,3 +33,14 @@ The service is described as a place for reviews and diary entries, but only buck
 ## Limits and follow-up
 
 - Export and restore (#208, #209) are not on `main` yet, so the journal table is not in the export. When #208 merges, the table has to be added to export and restore (the lane rules put that on the lane that owns the table).
+
+## Verification
+
+- With the shared lock and `TEST_DATABASE_URL` on a fresh lane DB: `tsx --test backend/test/journal.test.ts backend/test/journal.integration.test.ts backend/test/openapi.test.ts`: first run 20 passed, 1 failed (a test used `2026/11/26`, whose slashes make another route and a 404; it now uses `26-11-2026`), then 14 of 14 in `journal.test.ts`.
+- `vitest run src/journal.test.tsx`: 7 passed.
+- Merged `origin/main` (#212 statistics): `app.ts`, `openapi.test.ts`, and `app.tsx` kept both sides; `docs/openapi.json` regenerated (10 paths).
+- Browser: Vite on 127.0.0.1:5214 with `/api/*` stubbed by Playwright (24 entries in November 2026, today 2026-11-26), Chrome.
+  - 1440×900 and 390×844: no horizontal page overflow; the day navigation wraps on the phone; the list shows 20 entries and "Load more".
+  - Keyboard: typing in the entry and one Tab reaches Save; Enter saves, "Saved" appears, and the entry is first in the list.
+  - Console: the expected 404 for a day with no entry, and 403s for the Pretendard font files (this worktree's `node_modules` is outside the Vite allow list); not related.
+- `npm run check` and `npm run knip` with `TEST_DATABASE_URL` on a fresh lane DB (migrations 001-010, 012): pass. Backend 234 passed, 0 skipped; frontend 364 passed, 3 skipped (existing); contract 3; skills 4; build passed; knip shows only its two existing configuration hints.
