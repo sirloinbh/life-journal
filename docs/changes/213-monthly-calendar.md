@@ -36,3 +36,11 @@ Planned and completed dates are stored on every item but can only be read in the
   - Keyboard: Tab from "Next month" reaches the first day with items (empty days are skipped), Enter opens the dialog with the focus on Close, Escape closes it. The first run showed the focus was lost after closing (fixed above, now it returns to the day). A link in the dialog opens `/bucket-list/reading#item-12`.
   - Console: only 403s for the Pretendard font files, because this worktree's `node_modules` is outside the Vite allow list; not related to this change.
 - Second `npm run check` with `TEST_DATABASE_URL` (shared local `journal_test`): pass. Backend 201 passed, 0 skipped (including the new calendar integration test); frontend 327 passed, 3 skipped (existing); contract 3; skills 4; build passed.
+
+## Review round 1
+
+- issue: the month links were inside the component keyed by month, so pressing "Next month" with the keyboard remounted it and dropped the focus. The page no longer keys the month view, and "This month" is always shown (with `aria-current="date"` on this month) so the link pressed stays on the page. The screen test now checks that "Next month" keeps the focus; it fails with the old key.
+- nit: `aria-live` on the month heading never announced anything (the heading was new on each month), so it was removed.
+- Checked and left as is: the month range is computed by PostgreSQL (no JavaScript date math on the server), invalid months never reach the database, the integration test runs in its own schema, and only days with items take keyboard focus.
+- `vitest run src/calendar.test.tsx`: 7 passed.
+- `npm run check` with `TEST_DATABASE_URL` after the fix: pass (backend 201 passed, 0 skipped; frontend 327 passed, 3 skipped; contract 3; skills 4; build).

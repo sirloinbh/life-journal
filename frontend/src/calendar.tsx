@@ -239,11 +239,12 @@ function MonthNav({ month, path }: { month: string; path: string }) {
           </Link>
         </Button>
       ) : null}
-      {month !== current ? (
-        <Button asChild variant="ghost" size="sm">
-          <Link to={`${path}/${current}`}>This month</Link>
-        </Button>
-      ) : null}
+      {/* Always there, so a keyboard user who presses it keeps the focus on it. */}
+      <Button asChild variant="ghost" size="sm">
+        <Link to={`${path}/${current}`} aria-current={month === current ? 'date' : undefined}>
+          This month
+        </Link>
+      </Button>
       {next ? (
         <Button asChild variant="outline" size="sm">
           <Link to={`${path}/${next}`}>
@@ -292,7 +293,7 @@ function Month({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 aria-live="polite">{title}</h2>
+        <h2>{title}</h2>
         <MonthNav month={month} path={path} />
       </div>
       <Legend />
@@ -353,5 +354,6 @@ export function Calendar({ path, bucketListPath }: { path: string; bucketListPat
   if (!month || !isMonth(month)) {
     return <Navigate to={`${path}/${serviceToday().slice(0, 7)}`} replace />;
   }
-  return <Month key={month} month={month} path={path} bucketListPath={bucketListPath} />;
+  // No key per month: the month links stay mounted, so the one just pressed keeps the keyboard focus.
+  return <Month month={month} path={path} bucketListPath={bucketListPath} />;
 }

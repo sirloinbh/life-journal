@@ -87,9 +87,13 @@ test('moving to next month and opening a day shows its items with a link to each
   openAt('/calendar/2026-11');
   await screen.findByRole('list', { name: 'Days of November 2026' });
 
-  fireEvent.click(screen.getByRole('link', { name: 'Next month' }));
+  const nextMonth = screen.getByRole('link', { name: 'Next month' });
+  nextMonth.focus();
+  fireEvent.click(nextMonth);
   const days = await screen.findByRole('list', { name: 'Days of December 2026' });
   expect(window.location.pathname).toBe('/calendar/2026-12');
+  // The link stays on the page, so a keyboard user can keep pressing it.
+  expect(screen.getByRole('link', { name: 'Next month' })).toHaveFocus();
   expect(asked).toEqual(['2026-11', '2026-12']);
 
   fireEvent.click(within(days).getByRole('button', { name: 'December 24, 2026: 1 done' }));
