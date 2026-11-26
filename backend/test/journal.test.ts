@@ -99,6 +99,30 @@ const refused: {
     error: 'The request contains an unknown field',
   },
   {
+    name: 'a bad date when listing linked items',
+    method: 'GET',
+    path: '2026-13-01/items',
+    error: dateMessage,
+  },
+  {
+    name: 'a bad date when linking an item',
+    method: 'PUT',
+    path: '2026-02-30/items/1',
+    error: dateMessage,
+  },
+  {
+    name: 'a bad item ID to link',
+    method: 'PUT',
+    path: `${TODAY}/items/x`,
+    error: 'Invalid item ID',
+  },
+  {
+    name: 'a bad item ID to unlink',
+    method: 'DELETE',
+    path: `${TODAY}/items/0`,
+    error: 'Invalid item ID',
+  },
+  {
     name: 'a page size over 100',
     method: 'GET',
     path: '?limit=101',

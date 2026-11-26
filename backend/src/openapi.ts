@@ -37,7 +37,7 @@ export const operations: Record<string, Operation> = {
     status: [200, 400, 401, 404, 413, 500, 503],
   },
   'DELETE /api/items/:id': {
-    summary: 'Delete an item, with its quotes and logs',
+    summary: 'Delete an item, with its quotes, logs, and journal links',
     status: [204, 400, 401, 404, 500, 503],
   },
   'GET /api/items/:id/quotes': {
@@ -109,7 +109,24 @@ export const operations: Record<string, Operation> = {
     status: [200, 201, 400, 401, 413, 500, 503],
   },
   'DELETE /api/journal/:date': {
-    summary: 'Delete the journal entry of a date',
+    summary: 'Delete the journal entry of a date, with its item links',
+    params: { date: entryDate },
+    status: [204, 400, 401, 404, 500, 503],
+  },
+  'GET /api/journal/:date/items': {
+    summary:
+      'List the items linked to the journal entry of a date and the items completed that day that are not linked yet; answers { linked, suggestions }',
+    params: { date: entryDate },
+    status: [200, 400, 401, 500, 503],
+  },
+  'PUT /api/journal/:date/items/:itemId': {
+    summary:
+      'Link an item completed on that day to the journal entry of the date; 201 when new, 200 when it was already linked',
+    params: { date: entryDate },
+    status: [200, 201, 400, 401, 404, 500, 503],
+  },
+  'DELETE /api/journal/:date/items/:itemId': {
+    summary: 'Unlink an item from the journal entry of a date',
     params: { date: entryDate },
     status: [204, 400, 401, 404, 500, 503],
   },
