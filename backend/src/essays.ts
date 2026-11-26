@@ -12,8 +12,8 @@ import { date, isStorable, lines, strictObject } from './validation.js';
 // done), and tags. The screen saves a draft by itself every few seconds, so the body may be empty and a blank
 // title becomes "Untitled". Every change writes an audit row in the same transaction, without the body.
 
-export const MAX_ESSAY_TITLE_LENGTH = 200;
-export const MAX_ESSAY_LENGTH = 50_000;
+const MAX_ESSAY_TITLE_LENGTH = 200;
+const MAX_ESSAY_LENGTH = 50_000;
 const DEFAULT_TITLE = 'Untitled';
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
