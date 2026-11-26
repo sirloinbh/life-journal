@@ -9,6 +9,10 @@ export const SCORES = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5] as const;
 export const MAX_REVIEW_LINES = 5;
 export const MAX_REVIEW_LENGTH = 500;
 
+/** Free tags and companions of an item (#215): at most this many names per list, each this long at most. */
+export const MAX_ITEM_NAMES = 20;
+export const MAX_ITEM_NAME_LENGTH = 50;
+
 /** A detail field: free text up to `maxLength` characters, or a 4-digit year sent as a number. */
 export type DetailField =
   | { key: string; label: string; type: 'text'; maxLength: number }
