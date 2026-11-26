@@ -51,9 +51,17 @@ All tables are read in one `REPEATABLE READ` snapshot, so the tables of a file a
 - `schema_migrations`: the migration runner's own table.
 - Photos (#29): not included until that issue decides where they are stored.
 
+## Restore
+
+`POST /api/restore` (Settings › Restore records, #209) takes the JSON file as the request body, up to 20 MB (`backend/src/restore.ts`; every other route keeps the 256 kB limit).
+
+- The whole file is checked before anything changes: `format`, `version` 1, both tables, and every row's fields and types. Unknown fields and tables are refused, not dropped, so a file from a newer app is never restored with data missing. Two rows with the same key are refused. The answer names the first problems by path, such as `tables.items.2.title: Title must not be empty`.
+- Then, in one transaction: lock both tables, delete every row, insert the file's rows with their own ids (`OVERRIDING SYSTEM VALUE`), and move the `items` id sequence past the largest id, so a new item gets the next id. A row the database refuses (a CHECK) rolls everything back and answers 400 with the rule's name.
+- A restore replaces all data; it never merges (owner decision on #209). The screen shows the counts in the file and asks for confirmation first, and suggests downloading a fresh export before.
+
 ## Adding a column
 
-A new column of an exported table is added to its `columns` list and its `SELECT` in `EXPORT_TABLES` in the same PR, and to restore. `backend/test/export.integration.test.ts` compares the exported `items` columns with the table's columns, so a forgotten column fails the test.
+A new column of an exported table is added to its `columns` list and its `SELECT` in `EXPORT_TABLES` in the same PR, and to restore (the row schema and the column lists of the `INSERT` in `backend/src/restore.ts`). A column added after version 1 should be optional in the row schema, so older files still restore; `jsonb_to_recordset` gives `NULL` for a missing field, so the `INSERT` uses `COALESCE` to the column default where the column is `NOT NULL`. `backend/test/export.integration.test.ts` compares the exported `items` columns with the table's columns, so a forgotten column fails the test.
 
 ## Adding a table
 
@@ -61,7 +69,8 @@ A lane that adds a data table adds it to the export and to restore in the same P
 
 1. Add the table to `EXPORT_TABLES` in `backend/src/export.ts`, after the tables it refers to, with every column (timestamps through `utc()`, `numeric` cast to `float8`) and `ORDER BY` its primary key.
 2. Add it to the table list above.
-3. Add it to restore (#209), and extend the export integration test (`backend/test/export.integration.test.ts`) with a seeded row.
+3. Add it to restore: its row schema and the `tables` object in `exportFile`, and its delete and insert in `replaceRecords` (`backend/src/restore.ts`; delete children before parents, insert parents first). A table added after version 1 should be optional in `tables` (missing means empty), so older files still restore.
+4. Extend the export and restore integration tests (`backend/test/export.integration.test.ts`, `backend/test/restore.integration.test.ts`) with a seeded row.
 
 Adding a table or a column keeps `version` at 1 as long as restore treats a missing table as empty. Raise `version` when a column is renamed or removed or a value changes meaning, and teach restore to read the older version or to refuse it with a clear message.
 

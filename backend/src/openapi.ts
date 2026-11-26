@@ -3,6 +3,7 @@
 // when the table and the registered routes differ.
 import { calendarQuery } from './calendar.js';
 import { itemFields, itemPatch, listQuery } from './items.js';
+import { exportFile } from './restore.js';
 import { buildOpenApi, type Operation } from './standard/openapi.js';
 
 // Every registered route must appear here exactly once (checked in test/openapi.test.ts).
@@ -53,6 +54,12 @@ export const operations: Record<string, Operation> = {
     summary:
       'Download the items as CSV (UTF-8 with BOM; details and sub_ratings as JSON text; null is an empty unquoted field)',
     status: [200, 401, 500, 503],
+  },
+  'POST /api/restore': {
+    summary:
+      'Replace every record with a JSON export (docs/export-format.md, up to 20 MB). The whole file is checked first and written in one transaction, so a refused file changes nothing; answers { restored: { items, learned_terms } }',
+    body: ['ExportFile', exportFile],
+    status: [200, 400, 401, 413, 500, 503],
   },
   'GET /api/calendar': {
     summary:

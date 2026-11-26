@@ -6,6 +6,7 @@ import { tools } from './ai-tools.js';
 import { createCalendarRouter } from './calendar.js';
 import { createExportRouter } from './export.js';
 import { createItemsRouter } from './items.js';
+import { createRestoreRouter, RESTORE_PATH } from './restore.js';
 import { errorHandler, notFound, requestLog, serviceDate } from './standard/http.js';
 import { apiRateLimit } from './standard/rate-limit.js';
 import { registerToolRoutes } from './standard/tools.js';
@@ -26,7 +27,10 @@ export function createApp(
   // project-standards#658: a request ID and one JSON log line for every request, first so a 401 has them too.
   app.use(requestLog);
   apiRateLimit(app);
-  app.use(express.json({ limit: '256kb' }));
+  // #209: a restore file can be far larger than 256 kB, so that route reads its own body, after the
+  // sign-in check below; every other route keeps the small limit.
+  const smallJson = express.json({ limit: '256kb' });
+  app.use((req, res, next) => (req.path === RESTORE_PATH ? next() : smallJson(req, res, next)));
   // #111: the shared sign-in guards every /api route except /api/health, before any route registers.
   if (options.auth) app.use('/api', options.auth);
   app.get('/api/me', meHandler);
@@ -37,6 +41,7 @@ export function createApp(
   app.use('/api/items', createItemsRouter(pool, today));
   app.use('/api/terms', createTermsRouter(pool));
   app.use('/api/export', createExportRouter(pool, today));
+  app.use(RESTORE_PATH, createRestoreRouter(pool));
   app.use('/api/calendar', createCalendarRouter(pool, today));
   // AI tools for shared-ai on /internal/tools: outside /api, so nginx never forwards them and the signed
   // call token, not the session, is the check. The token must name its tool and carry a jti (#822).
