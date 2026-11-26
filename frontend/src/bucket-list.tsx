@@ -31,6 +31,7 @@ import {
 import { Spinner } from './components/ui/spinner';
 import { ItemNamesField } from './item-names-field';
 import { allItemsKey, fetchAllItems, tablePagesKey } from './item-pages';
+import { ItemQuotes } from './item-quotes';
 import {
   categories,
   type Category,
@@ -415,12 +416,14 @@ function ItemCard({
   onRate,
   onReview,
   onComplete,
+  onQuotes,
   onReopen,
   onDelete,
 }: {
   item: Item;
   category: Category;
   onEdit: (event: MouseEvent<HTMLButtonElement>) => void;
+  onQuotes: (event: MouseEvent<HTMLButtonElement>) => void;
   onRate: (event: MouseEvent<HTMLButtonElement>) => void;
   onReview: (event: MouseEvent<HTMLButtonElement>) => void;
   onComplete: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -514,6 +517,17 @@ function ItemCard({
             Mark as done
           </Button>
         )}
+        {/* #217: quotes and highlights of books. */}
+        {item.category === 'reading' ? (
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label={`Quotes of ${item.title}`}
+            onClick={onQuotes}
+          >
+            Quotes
+          </Button>
+        ) : null}
         <Button size="sm" variant="outline" aria-label={`Edit ${item.title}`} onClick={onEdit}>
           Edit
         </Button>
@@ -537,7 +551,8 @@ type FormModal =
   | { kind: 'edit'; item: Item }
   | { kind: 'complete'; item: Item }
   | { kind: 'rate'; item: Item }
-  | { kind: 'review'; item: Item };
+  | { kind: 'review'; item: Item }
+  | { kind: 'quotes'; item: Item };
 
 const FORM_TITLES = {
   new: 'Add item',
@@ -545,6 +560,7 @@ const FORM_TITLES = {
   complete: 'Mark as done',
   rate: 'Rating',
   review: 'Review',
+  quotes: 'Quotes',
 };
 
 /**
@@ -672,6 +688,7 @@ function CategoryItems({
                 onRate={(event) => openForm({ kind: 'rate', item }, event)}
                 onReview={(event) => openForm({ kind: 'review', item }, event)}
                 onComplete={(event) => openForm({ kind: 'complete', item }, event)}
+                onQuotes={(event) => openForm({ kind: 'quotes', item }, event)}
                 onReopen={() =>
                   changeFromDialog(async () => {
                     keepSaved(
@@ -718,7 +735,9 @@ function CategoryItems({
               {modal.kind === 'new' ? category.label : modal.item.title}
             </DialogDescription>
           </DialogHeader>
-          {modal.kind === 'complete' ? (
+          {modal.kind === 'quotes' ? (
+            <ItemQuotes key={modal.item.id} item={modal.item} />
+          ) : modal.kind === 'complete' ? (
             <CompleteForm item={modal.item} pending={pending} save={save} />
           ) : modal.kind === 'review' ? (
             <ReviewForm key={modal.item.id} item={modal.item} pending={pending} save={save} />

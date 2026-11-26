@@ -9,6 +9,10 @@ export const SCORES = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5] as const;
 export const MAX_REVIEW_LINES = 5;
 export const MAX_REVIEW_LENGTH = 500;
 
+/** Quotes of reading items (#217): the quoted text, an optional page, and an optional note. */
+export const MAX_QUOTE_LENGTH = 1000;
+export const MAX_QUOTE_NOTE_LENGTH = 500;
+export const MAX_QUOTE_PAGE = 99999;
 /** Free tags and companions of an item (#215): at most this many names per list, each this long at most. */
 export const MAX_ITEM_NAMES = 20;
 export const MAX_ITEM_NAME_LENGTH = 50;
