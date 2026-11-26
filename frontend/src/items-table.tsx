@@ -247,10 +247,26 @@ export function ItemsTable({ bucketListPath }: { bucketListPath: string }) {
           resetCount={resetCount}
           onChange={(value) => setFilter('costMax', value)}
         />
+        {/* #216: one whole tag or companion name, in any letter case. */}
+        <InputFilter
+          id="table-tag"
+          label="Tag"
+          value={filterValue('tag')}
+          resetCount={resetCount}
+          onChange={(value) => setFilter('tag', value)}
+        />
+        <InputFilter
+          id="table-companion"
+          label="Companion"
+          value={filterValue('companion')}
+          resetCount={resetCount}
+          onChange={(value) => setFilter('companion', value)}
+        />
       </div>
       <p className="text-caption text-muted-foreground">
-        The period matches the completed date, or the planned date if there is none. Text and dates
-        apply when you press Enter or leave the field.
+        The period matches the completed date, or the planned date if there is none. Tag and
+        companion match a whole name in any letter case. Text and dates apply when you press Enter
+        or leave the field.
       </p>
       <div className="flex min-h-9 items-center justify-between gap-4">
         <p role="status" className="text-body-sm text-muted-foreground">
