@@ -52,3 +52,5 @@ The service is described as a place for reviews and diary entries, but only buck
 - Checked, no change: the date is validated before any query, the upsert relies on the unique date so two saves cannot create two rows, the counter and the server count characters the same way, and the integration test runs in its own schema.
 - `vitest run src/journal.test.tsx`: 7 passed.
 - `npm run check` and `npm run knip` with `TEST_DATABASE_URL` after the fix: pass (backend 234/0 skipped, frontend 364 passed + 3 skipped).
+- Merged `origin/main` (#217 book quotes, migration 011): `docs/openapi.json` took main's version and was regenerated (12 paths). The journal module now uses the shared `isStorable` from `backend/src/validation.ts` (added by #217) instead of its own copy. Migration 012 stays next after 011.
+- `npm run check` and `npm run knip` with `TEST_DATABASE_URL` (fresh DB, migrations 001-012) after the merge: pass. Backend 253 passed, 0 skipped; frontend 365 passed, 3 skipped (existing); contract 3; skills 4; build passed.

@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v4';
 
 import { HttpError } from './standard/http.js';
+import { isStorable } from './validation.js';
 
 // #210: one journal entry per date. Entry rules (owner decision recorded on #210, the issue's
 // recommendation): plain text with line breaks, up to 10,000 characters, no title, no dates after today.
@@ -22,9 +23,6 @@ const isRealDate = (value: string) => {
 
 const dateMessage = 'Entry date must be a real date in YYYY-MM-DD format';
 export const entryDate = z.string({ error: dateMessage }).refine(isRealDate, dateMessage);
-
-// PostgreSQL text cannot hold NUL, and a lone surrogate would be stored as a replacement character.
-const isStorable = (value: string) => !value.includes('\0') && !/\p{Cs}/u.test(value);
 
 // Every kind of line break becomes a plain line feed (the same rule as an item review).
 const LINE_BREAKS = /\r\n?|[\u0085\u2028\u2029]/g;
