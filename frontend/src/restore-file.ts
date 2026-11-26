@@ -12,6 +12,8 @@ export type ExportSummary = {
   quotes: number;
   logs: number;
   learnedTerms: number;
+  /** Change history rows (audit_log); files from before 2026-11-26 have none. */
+  history: number;
   /** The parsed file, sent as it is. */
   body: unknown;
 };
@@ -46,24 +48,28 @@ export function summarizeExport(text: string): ExportSummary {
     quotes: Array.isArray(tables.item_quotes) ? tables.item_quotes.length : 0,
     logs: Array.isArray(tables.item_logs) ? tables.item_logs.length : 0,
     learnedTerms: tables.learned_terms.length,
+    history: Array.isArray(tables.audit_log) ? tables.audit_log.length : 0,
     body,
   };
 }
 
 const count = (value: number, one: string, many: string) => `${value} ${value === 1 ? one : many}`;
 
-/** "2 items, 1 quote, and 1 learned term": quotes and tastings or visits only when there are some. */
+/** "2 items, 1 quote, and 1 learned term": quotes, tastings or visits, and history only when there are some. */
 export function describeCounts({
   items,
   quotes,
   logs,
   learnedTerms,
-}: Pick<ExportSummary, 'items' | 'quotes' | 'logs' | 'learnedTerms'>) {
+  history = 0,
+}: Pick<ExportSummary, 'items' | 'quotes' | 'logs' | 'learnedTerms'> &
+  Partial<Pick<ExportSummary, 'history'>>) {
   const parts = [
     count(items, 'item', 'items'),
     quotes > 0 && count(quotes, 'quote', 'quotes'),
     logs > 0 && count(logs, 'tasting or visit', 'tastings or visits'),
     count(learnedTerms, 'learned term', 'learned terms'),
+    history > 0 && count(history, 'history entry', 'history entries'),
   ].filter((part): part is string => typeof part === 'string');
   return parts.length === 2
     ? parts.join(' and ')

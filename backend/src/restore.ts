@@ -80,6 +80,24 @@ const learnedTermRow = z.strictObject({
   learned_at: timestamp,
 });
 
+// The change history (008_audit_log.sql), in the export since the owner's decision on #208 (option B).
+// before and after are any JSON value; z.json() still requires the field, so a missing one is refused.
+const auditRow = z.strictObject({
+  id,
+  at: timestamp,
+  actor_type: z.enum(['user', 'ai-tool', 'system']),
+  actor_id: optionalText,
+  client: optionalText,
+  tool: optionalText,
+  action: z.enum(['read', 'create', 'update', 'delete']),
+  entity: z.string().min(1),
+  entity_id: optionalText,
+  result: z.enum(['ok', 'denied', 'error']),
+  before: z.json(),
+  after: z.json(),
+  request_id: optionalText,
+});
+
 function unique<T>(
   rows: readonly T[],
   key: (row: T) => unknown,
@@ -138,10 +156,13 @@ export const exportFile = z
       item_quotes: z.array(quoteRow).default([]),
       item_logs: z.array(logRow).default([]),
       learned_terms: z.array(learnedTermRow),
+      // Added on 2026-11-26 (#208, option B): a file without it restores an empty history.
+      audit_log: z.array(auditRow).default([]),
     }),
   })
   .superRefine((file, ctx) => {
-    const { items, item_quotes, item_logs, learned_terms } = file.tables;
+    const { items, item_quotes, item_logs, learned_terms, audit_log } = file.tables;
+    unique(audit_log, (row) => row.id, ctx, 'audit_log');
     unique(items, (row) => row.id, ctx, 'items');
     unique(item_quotes, (row) => row.id, ctx, 'item_quotes');
     unique(item_logs, (row) => row.id, ctx, 'item_logs');
@@ -168,18 +189,24 @@ const ITEM_COLUMNS = `id, category, subtype, title, status, cost_krw, planned_da
 
 const QUOTE_COLUMNS = 'id, item_id, text, page, note, created_at, updated_at';
 const LOG_COLUMNS = 'id, item_id, logged_on, rating, note, cost_krw, created_at, updated_at';
+// Quoted: at, before, and after are SQL keywords.
+const AUDIT_COLUMNS = `id, "at", actor_type, actor_id, client, tool, action, entity, entity_id, result,
+  "before", "after", request_id`;
 
 /** Replaces every record with the file's rows. Runs inside the caller's transaction. */
 export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: ExportInput) {
-  const { items, item_quotes, item_logs, learned_terms } = file.tables;
+  const { items, item_quotes, item_logs, learned_terms, audit_log } = file.tables;
   // Nothing else may write while the tables are replaced. items first, as a cascading DELETE FROM
   // items takes its locks, so the two cannot deadlock.
-  await client.query('LOCK TABLE items, item_quotes, item_logs, learned_terms IN EXCLUSIVE MODE');
+  await client.query(
+    'LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log IN EXCLUSIVE MODE',
+  );
   // Children before their parents.
   await client.query('DELETE FROM item_logs');
   await client.query('DELETE FROM item_quotes');
   await client.query('DELETE FROM learned_terms');
   await client.query('DELETE FROM items');
+  await client.query('DELETE FROM audit_log');
   // One statement per table: jsonb_to_recordset turns the rows into a table, so the file is sent once.
   await client.query(
     `INSERT INTO items (${ITEM_COLUMNS}) OVERRIDING SYSTEM VALUE
@@ -209,8 +236,16 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
      SELECT term_id, learned_at FROM jsonb_to_recordset($1::jsonb) AS r(term_id text, learned_at timestamptz)`,
     [JSON.stringify(learned_terms)],
   );
+  await client.query(
+    `INSERT INTO audit_log (${AUDIT_COLUMNS}) OVERRIDING SYSTEM VALUE
+     SELECT ${AUDIT_COLUMNS} FROM jsonb_to_recordset($1::jsonb) AS r(
+       id bigint, "at" timestamptz, actor_type text, actor_id text, client text, tool text,
+       action text, entity text, entity_id text, result text, "before" jsonb, "after" jsonb,
+       request_id text)`,
+    [JSON.stringify(audit_log)],
+  );
   // The ids came from the file, so the next new row of each table continues after the largest one.
-  for (const table of ['items', 'item_quotes', 'item_logs']) {
+  for (const table of ['items', 'item_quotes', 'item_logs', 'audit_log']) {
     await client.query(
       `SELECT setval(pg_get_serial_sequence('${table}', 'id'),
          COALESCE((SELECT max(id) FROM ${table}), 1), (SELECT count(*) > 0 FROM ${table}))`,
@@ -221,6 +256,7 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
     item_quotes: item_quotes.length,
     item_logs: item_logs.length,
     learned_terms: learned_terms.length,
+    audit_log: audit_log.length,
   };
 }
 

@@ -16,7 +16,7 @@ test(
     const pool = testPool();
     t.after(() => pool.end());
     const client = await pool.connect();
-    const tables = ['items', 'item_quotes', 'item_logs'] as const;
+    const tables = ['items', 'item_quotes', 'item_logs', 'audit_log'] as const;
     const sequence = (table: string) => `pg_get_serial_sequence('${table}', 'id')`;
     const started = new Map<string, number>();
     try {
@@ -30,7 +30,7 @@ test(
       // Other test files write these tables at the same time; the lock makes them wait until the
       // rollback, so every statement here sees the same rows. Reads still go through.
       await client.query(
-        'LOCK TABLE items, item_quotes, item_logs, learned_terms IN EXCLUSIVE MODE',
+        'LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log IN EXCLUSIVE MODE',
       );
       const { rows: seeded } = await client.query<{ id: number }>(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
@@ -60,6 +60,12 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
         `INSERT INTO learned_terms (term_id, learned_at) VALUES ('wine-tannin', '2026-11-20 09:00:00.000004+09')
          ON CONFLICT (term_id) DO UPDATE SET learned_at = EXCLUDED.learned_at`,
       );
+      await client.query(
+        `INSERT INTO audit_log (at, actor_type, client, tool, action, entity, entity_id, before, after)
+         VALUES ('2026-11-25 23:59:59.000009+09', 'ai-tool', 'shared-ai', 'life_journal__update_item',
+           'update', 'items', $1, '{"title": "옛 제목"}', NULL)`,
+        [String(seeded[0].id)],
+      );
 
       // Through JSON, as the file travels: export, then parse the text the way the route does.
       const now = new Date('2026-11-26T00:00:00Z');
@@ -68,16 +74,19 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
       assert.ok(before.tables.items.length >= 3);
       assert.ok(before.tables.item_quotes.length >= 1);
       assert.ok(before.tables.item_logs.length >= 1);
+      assert.ok(before.tables.audit_log.length >= 1);
 
       // An empty database, as after `docker compose down -v` and the migrations.
       await client.query('DELETE FROM learned_terms');
       await client.query('DELETE FROM items');
+      await client.query('DELETE FROM audit_log');
       const restored = await replaceRecords(client, file);
       assert.deepEqual(restored, {
         items: before.tables.items.length,
         item_quotes: before.tables.item_quotes.length,
         item_logs: before.tables.item_logs.length,
         learned_terms: before.tables.learned_terms.length,
+        audit_log: before.tables.audit_log.length,
       });
       assert.deepEqual(await readExport(client, now), before);
 
@@ -112,6 +121,10 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
         [item[0].id],
       );
       assert.equal(log[0].id, largest(file.tables.item_logs) + 1);
+      const { rows: entry } = await client.query<{ id: number }>(
+        "INSERT INTO audit_log (actor_type, action, entity) VALUES ('user', 'create', 'items') RETURNING id",
+      );
+      assert.equal(entry[0].id, largest(file.tables.audit_log) + 1);
     } finally {
       // Released here, not in t.after: pool.end() waits for every client, so the run would never end.
       try {

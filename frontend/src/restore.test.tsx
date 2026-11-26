@@ -18,7 +18,9 @@ const exportBody = {
 
 function fakeApi(
   answer: () => Response = () =>
-    json({ restored: { items: 2, item_quotes: 0, item_logs: 0, learned_terms: 1 } }),
+    json({
+      restored: { items: 2, item_quotes: 0, item_logs: 0, learned_terms: 1, audit_log: 0 },
+    }),
 ) {
   const sent: { path: string; method: string; body: unknown }[] = [];
   vi.stubGlobal(
@@ -135,12 +137,22 @@ test('summarizeExport reads the counts and refuses files it cannot restore', () 
     quotes: 0,
     logs: 0,
     learnedTerms: 1,
+    history: 0,
   });
   const withChildren = {
     ...exportBody,
-    tables: { ...exportBody.tables, item_quotes: [{ id: 1 }], item_logs: [{ id: 1 }, { id: 2 }] },
+    tables: {
+      ...exportBody.tables,
+      item_quotes: [{ id: 1 }],
+      item_logs: [{ id: 1 }, { id: 2 }],
+      audit_log: [{ id: 1 }, { id: 2 }, { id: 3 }],
+    },
   };
-  expect(summarizeExport(JSON.stringify(withChildren))).toMatchObject({ quotes: 1, logs: 2 });
+  expect(summarizeExport(JSON.stringify(withChildren))).toMatchObject({
+    quotes: 1,
+    logs: 2,
+    history: 3,
+  });
   expect(summarizeExport(JSON.stringify({ ...exportBody, exportedAt: 7 })).exportedAt).toBe(
     'an unknown time',
   );
@@ -160,5 +172,8 @@ test('describeCounts names quotes and tastings or visits only when the file has 
   );
   expect(describeCounts({ items: 5, quotes: 1, logs: 2, learnedTerms: 4 })).toBe(
     '5 items, 1 quote, 2 tastings or visits, and 4 learned terms',
+  );
+  expect(describeCounts({ items: 1, quotes: 0, logs: 0, learnedTerms: 2, history: 1 })).toBe(
+    '1 item, 2 learned terms, and 1 history entry',
   );
 });

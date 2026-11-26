@@ -91,7 +91,7 @@ export const operations: Record<string, Operation> = {
   },
   'GET /api/export': {
     summary:
-      'Download every record as one JSON file (docs/export-format.md): { format, version, exportedAt, tables: { items, item_quotes, item_logs, learned_terms } }',
+      'Download every record as one JSON file (docs/export-format.md): { format, version, exportedAt, tables: { items, item_quotes, item_logs, learned_terms, audit_log } }',
     status: [200, 401, 500, 503],
   },
   'GET /api/export/items.csv': {

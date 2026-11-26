@@ -17,7 +17,13 @@ import {
 } from './restore-file';
 
 type Restored = {
-  restored: { items: number; item_quotes: number; item_logs: number; learned_terms: number };
+  restored: {
+    items: number;
+    item_quotes: number;
+    item_logs: number;
+    learned_terms: number;
+    audit_log: number;
+  };
 };
 
 // Settings › Restore records (#209). Owner decision: a restore replaces every record (no merge), after
@@ -55,6 +61,7 @@ export function RestoreRecords() {
         quotes: restored.item_quotes,
         logs: restored.item_logs,
         learnedTerms: restored.learned_terms,
+        history: restored.audit_log,
       });
       status(`Restored ${counts} from ${chosen.name}.`);
       setChosen(null);
@@ -73,9 +80,9 @@ export function RestoreRecords() {
       <CardHeader>
         <CardTitle asHeading="h2">Restore records</CardTitle>
         <CardDescription>
-          Choose a JSON file downloaded above. A restore replaces every current record and learned
-          term with the ones in the file, so download a fresh export first to keep what you have
-          now.
+          Choose a JSON file downloaded above. A restore replaces every current record, learned
+          term, and history entry with the ones in the file, so download a fresh export first to
+          keep what you have now.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">

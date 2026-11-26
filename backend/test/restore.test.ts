@@ -50,6 +50,23 @@ const log = (id: number, itemId: number, fields: Record<string, unknown> = {}) =
   ...fields,
 });
 
+const audit = (id: number, fields: Record<string, unknown> = {}) => ({
+  id,
+  at: '2026-11-23T01:00:00.000009Z',
+  actor_type: 'ai-tool',
+  actor_id: null,
+  client: 'shared-ai',
+  tool: 'life_journal__update_item',
+  action: 'update',
+  entity: 'items',
+  entity_id: '1',
+  result: 'ok',
+  before: { title: 'Old' },
+  after: null,
+  request_id: null,
+  ...fields,
+});
+
 const exportFile = (tables: Record<string, unknown[]> = {}) => ({
   format: 'life-journal-export',
   version: 1,
@@ -59,6 +76,7 @@ const exportFile = (tables: Record<string, unknown[]> = {}) => ({
     item_quotes: [quote(1, 1)],
     item_logs: [log(1, 2), log(2, 2)],
     learned_terms: [{ term_id: 'wine-tannin', learned_at: '2026-11-20T00:00:00.000004Z' }],
+    audit_log: [audit(1)],
     ...tables,
   },
 });
@@ -89,7 +107,7 @@ test('a valid file replaces every record in one transaction and answers the coun
     const { status, data } = await call('/api/restore', { method: 'POST', body: exportFile() });
     assert.equal(status, 200);
     assert.deepEqual(data, {
-      restored: { items: 2, item_quotes: 1, item_logs: 2, learned_terms: 1 },
+      restored: { items: 2, item_quotes: 1, item_logs: 2, learned_terms: 1, audit_log: 1 },
     });
   });
   assert.deepEqual(asked, [
@@ -99,22 +117,25 @@ test('a valid file replaces every record in one transaction and answers the coun
     'DELETE FROM item_quotes',
     'DELETE FROM learned_terms',
     'DELETE FROM items',
+    'DELETE FROM audit_log',
     'INSERT INTO items',
     'INSERT INTO item_quotes',
     'INSERT INTO item_logs',
     'INSERT INTO learned_terms',
+    'INSERT INTO audit_log',
     "SELECT setval(pg_get_serial_sequence('items', 'id'),",
     "SELECT setval(pg_get_serial_sequence('item_quotes', 'id'),",
     "SELECT setval(pg_get_serial_sequence('item_logs', 'id'),",
+    "SELECT setval(pg_get_serial_sequence('audit_log', 'id'),",
     'COMMIT',
     'release',
   ]);
 });
 
-test('a version-1 file from before quotes and logs restores with none of them', async () => {
+test('a version-1 file from before quotes, logs, and the audit log restores with none of them', async () => {
   const { pool } = fakePool();
   const older = exportFile();
-  const { item_quotes: _quotes, item_logs: _logs, ...tables } = older.tables;
+  const { item_quotes: _quotes, item_logs: _logs, audit_log: _audit, ...tables } = older.tables;
   await withApi(createApp(pool), async (call) => {
     const { status, data } = await call('/api/restore', {
       method: 'POST',
@@ -122,7 +143,7 @@ test('a version-1 file from before quotes and logs restores with none of them', 
     });
     assert.equal(status, 200);
     assert.deepEqual(data, {
-      restored: { items: 2, item_quotes: 0, item_logs: 0, learned_terms: 1 },
+      restored: { items: 2, item_quotes: 0, item_logs: 0, learned_terms: 1, audit_log: 0 },
     });
   });
 });
@@ -219,6 +240,24 @@ const refused: [string, unknown, RegExp, string][] = [
     /tables\.item_logs\.0\.logged_on/,
     'tables.item_logs.0.logged_on',
   ],
+  [
+    'an audit row of an unknown actor',
+    exportFile({ audit_log: [audit(1, { actor_type: 'robot' })] }),
+    /tables\.audit_log\.0\.actor_type/,
+    'tables.audit_log.0.actor_type',
+  ],
+  [
+    'an audit row without its before snapshot',
+    exportFile({ audit_log: [(({ before: _before, ...row }) => row)(audit(1))] }),
+    /tables\.audit_log\.0\.before/,
+    'tables.audit_log.0.before',
+  ],
+  [
+    'the same audit id twice',
+    exportFile({ audit_log: [audit(5), audit(5)] }),
+    /tables\.audit_log\.1: Duplicate key 5/,
+    'tables.audit_log.1',
+  ],
 ];
 
 for (const [name, body, message, path] of refused) {
@@ -261,7 +300,7 @@ test('a restore file larger than 256 kB is read, while other routes keep their l
     const restore = await call('/api/restore', { method: 'POST', body });
     assert.equal(restore.status, 200);
     assert.deepEqual(restore.data, {
-      restored: { items: 1500, item_quotes: 1, item_logs: 0, learned_terms: 1 },
+      restored: { items: 1500, item_quotes: 1, item_logs: 0, learned_terms: 1, audit_log: 1 },
     });
     const other = await call('/api/items', {
       method: 'POST',
