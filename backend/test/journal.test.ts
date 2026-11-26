@@ -131,8 +131,14 @@ const refused: {
   {
     name: 'an unknown list filter',
     method: 'GET',
-    path: '?from=2026-01-01',
+    path: '?since=2026-01-01',
     error: 'The journal request contains an unknown filter',
+  },
+  {
+    name: 'a list range with a date that does not exist',
+    method: 'GET',
+    path: '?from=2026-02-30',
+    error: 'Entry date must be a real date in YYYY-MM-DD format',
   },
 ];
 

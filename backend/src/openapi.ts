@@ -92,7 +92,7 @@ export const operations: Record<string, Operation> = {
   },
   'GET /api/journal': {
     summary:
-      'List journal entries, newest date first (limit 1-100, default 20; offset); answers { entries, nextOffset, total }',
+      'List journal entries, newest date first (limit 1-100, default 20; offset; optional from and to dates, both included); answers { entries, nextOffset, total }',
     query: journalListQuery,
     status: [200, 400, 401, 500, 503],
   },

@@ -87,6 +87,9 @@ export const journalListQuery = z.strictObject(
   {
     limit: whole('Page size', 1, MAX_PAGE_SIZE),
     offset: whole('Offset', 0, MAX_OFFSET),
+    // #235: the Week and 12-week views read the entries of a date range (both ends included).
+    from: entryDate.optional(),
+    to: entryDate.optional(),
   },
   {
     error: (issue) =>
@@ -106,12 +109,19 @@ export function createJournalRouter(pool: Pool, today: () => string) {
     const query = journalListQuery.parse(req.query);
     const limit = query.limit ?? DEFAULT_PAGE_SIZE;
     const offset = query.offset ?? 0;
+    // A missing end leaves that side open: NULL means "no bound" in the two comparisons below.
+    const range = [query.from ?? null, query.to ?? null];
+    const where =
+      'WHERE ($1::date IS NULL OR entry_date >= $1) AND ($2::date IS NULL OR entry_date <= $2)';
     const [{ rows }, counted] = await Promise.all([
       pool.query(
-        `SELECT ${COLUMNS} FROM journal_entries ORDER BY entry_date DESC LIMIT $1 OFFSET $2`,
-        [limit, offset],
+        `SELECT ${COLUMNS} FROM journal_entries ${where} ORDER BY entry_date DESC LIMIT $3 OFFSET $4`,
+        [...range, limit, offset],
       ),
-      pool.query<{ total: number }>('SELECT count(*)::int AS total FROM journal_entries'),
+      pool.query<{ total: number }>(
+        `SELECT count(*)::int AS total FROM journal_entries ${where}`,
+        range,
+      ),
     ]);
     const total = counted.rows[0]?.total ?? 0;
     const next = offset + rows.length;
