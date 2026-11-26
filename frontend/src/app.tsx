@@ -4,6 +4,7 @@ import {
   CalendarDays,
   LayoutDashboard,
   ListChecks,
+  NotebookPen,
   Settings2,
   Table2,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ import { EmptyState } from './components/ui/empty-state';
 import { Toaster } from './components/ui/sonner';
 import { type Health, healthText } from './health';
 import { ItemsTable } from './items-table';
+import { Journal } from './journal';
 import { createQueryClient } from './lib/query';
 import { AccountActions, SignInGate } from './sign-in';
 import { TermsStudy } from './terms-study';
@@ -27,6 +29,7 @@ const pages = {
   bucketList: '/bucket-list',
   table: '/table',
   calendar: '/calendar',
+  journal: '/journal',
   terms: '/terms',
   settings: '/settings',
 } as const;
@@ -37,6 +40,7 @@ const nav: NavItem[] = [
   { to: pages.bucketList, label: 'Bucket list', icon: ListChecks },
   { to: pages.table, label: 'Table view', icon: Table2 },
   { to: pages.calendar, label: 'Calendar', icon: CalendarDays },
+  { to: pages.journal, label: 'Journal', icon: NotebookPen },
   { to: pages.terms, label: 'Study terms', icon: BookOpen },
   { to: pages.settings, label: 'Settings', icon: Settings2 },
 ];
@@ -158,6 +162,18 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
                     health={health}
                   >
                     <Calendar path={pages.calendar} bucketListPath={pages.bucketList} />
+                  </Page>
+                }
+              />
+              <Route
+                path={`${pages.journal}/:date?`}
+                element={
+                  <Page
+                    title="Journal"
+                    description="Write one entry a day and read the days before"
+                    health={health}
+                  >
+                    <Journal path={pages.journal} />
                   </Page>
                 }
               />

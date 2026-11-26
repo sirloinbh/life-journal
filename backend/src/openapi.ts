@@ -3,6 +3,7 @@
 // when the table and the registered routes differ.
 import { calendarQuery } from './calendar.js';
 import { itemFields, itemPatch, listQuery } from './items.js';
+import { entryDate, entryInput, journalListQuery } from './journal.js';
 import { buildOpenApi, type Operation } from './standard/openapi.js';
 
 // Every registered route must appear here exactly once (checked in test/openapi.test.ts).
@@ -43,6 +44,29 @@ export const operations: Record<string, Operation> = {
   'DELETE /api/terms/:termId/learned': {
     summary: 'Mark a term as not learned',
     status: [204, 401, 404, 500, 503],
+  },
+  'GET /api/journal': {
+    summary:
+      'List journal entries, newest date first (limit 1-100, default 20; offset); answers { entries, nextOffset, total }',
+    query: journalListQuery,
+    status: [200, 400, 401, 500, 503],
+  },
+  'GET /api/journal/:date': {
+    summary: 'Get the journal entry of a date',
+    params: { date: entryDate },
+    status: [200, 400, 401, 404, 500, 503],
+  },
+  'PUT /api/journal/:date': {
+    summary:
+      'Write the journal entry of a date (plain text up to 10,000 characters; not after today in Asia/Seoul); 201 when new, 200 when it replaced the text',
+    params: { date: entryDate },
+    body: ['JournalEntryInput', entryInput],
+    status: [200, 201, 400, 401, 413, 500, 503],
+  },
+  'DELETE /api/journal/:date': {
+    summary: 'Delete the journal entry of a date',
+    params: { date: entryDate },
+    status: [204, 400, 401, 404, 500, 503],
   },
   'GET /api/calendar': {
     summary:

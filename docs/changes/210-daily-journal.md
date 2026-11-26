@@ -1,0 +1,35 @@
+# #210 Write one journal entry per day
+
+- Issue: [#210](https://github.com/sirloinbh/life-journal/issues/210)
+- Branch: `feat/210-daily-journal`
+- Entry rules: the coordinator did not answer the decision question, so the issue's recommendation was applied and recorded on the issue ([comment](https://github.com/sirloinbh/life-journal/issues/210#issuecomment-7178067083)): plain text with line breaks, up to 10,000 characters, no title, no dates after today (Asia/Seoul).
+
+## Purpose
+
+The service is described as a place for reviews and diary entries, but only bucket-list items existed. This adds the diary: one entry per date, written and read in the app.
+
+## Changes
+
+- `database/migrations/012_journal_entries.sql` (new; 010 is on main and 011 is reserved by the open #217 branch): `journal_entries` with an id, a unique `entry_date`, the `body` text (CHECK 1 to 10,000 characters), and timestamps. Constraint names are explicit (`journal_entries_entry_date_key`, `journal_entries_body_check`). Safe to run again (`CREATE TABLE IF NOT EXISTS`).
+- `backend/src/journal.ts` (new):
+  - `GET /api/journal?limit&offset`: entries newest date first (limit 1-100, default 20), with `nextOffset` and `total`.
+  - `GET /api/journal/:date`: the entry, or 404 "Journal entry not found".
+  - `PUT /api/journal/:date` with `{ body }`: writes the entry of the date. Saving again on the same date replaces the text of the one entry (one upsert on the unique date): 201 when new, 200 when replaced. Line breaks of every kind become `\n`, the text is trimmed, and it must have 1 to 10,000 characters (counted as the screen's counter counts) with no NUL or lone surrogate. Unknown fields (a title) and dates after today are refused.
+  - `DELETE /api/journal/:date`: 204, or 404 when there is no entry.
+  - A date that is not a real `YYYY-MM-DD` answers 400 before any query.
+- `backend/src/app.ts`, `backend/src/openapi.ts`, `docs/openapi.json`: the routes are mounted at `/api/journal` and documented.
+- `frontend/src/journal.tsx` (new), `frontend/src/app.tsx`: a "Journal" menu entry and the page `/journal/:date`. A missing, unreal, or future date goes to today.
+  - Day navigation: previous day, a "Go to date" field (no later than today), next day (not on today), and "Today".
+  - The editor: a text field labelled with the date, the shared 10,000-character counter, Save, and Delete (with a confirmation) when the day has an entry. "Unsaved changes" shows while the text differs from the saved one; a new editor per date keeps one day's draft off another.
+  - "Past entries": newest first, the date and the first line of each, the open day marked, 20 at a time with "Load more".
+
+## Tests
+
+- `backend/test/journal.test.ts` (new, no DB): wrong date formats, a date that does not exist, year 0000, a date after today, a missing, blank, non-text, too long, or NUL text, a title field, a page size over 100, and an unknown list filter are refused with 400 before any query; exactly 10,000 characters with CRLF is accepted and reaches the database trimmed and with LF.
+- `backend/test/journal.integration.test.ts` (new, needs `TEST_DATABASE_URL`, own schema `test_journal`, the migration applied twice): saving twice on one date gives 201 then 200 with one row, the same `createdAt`, and the new text; an empty day is 404; the list pages newest first with `nextOffset` and `total`; delete is 204 then 404. The database itself refuses an empty body and a second row for a date.
+- `backend/test/openapi.test.ts`: the router list knows `/api/journal`.
+- `frontend/src/journal.test.tsx` (new): writes an entry for today, reloads, and sees it in the editor and at the top of the list; saving again updates the one entry; a refused save shows the server's message and keeps the text; past days open from the list, previous and next day, and the date field; a future or unreal date address goes to today; delete asks first and empties the day and the list; the list loads more 20 at a time.
+
+## Limits and follow-up
+
+- Export and restore (#208, #209) are not on `main` yet, so the journal table is not in the export. When #208 merges, the table has to be added to export and restore (the lane rules put that on the lane that owns the table).
