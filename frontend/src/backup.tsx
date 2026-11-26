@@ -6,6 +6,7 @@ import { Button } from './components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Notice } from './components/ui/notice';
 import { errorText, useNotice } from './lib/use-notice';
+import { RestoreRecords } from './restore';
 
 type Export = { key: 'json' | 'csv'; path: string; label: string; fallbackName: string };
 
@@ -27,6 +28,7 @@ const EXPORTS: readonly Export[] = [
 ];
 
 // Settings › Back up records (#208): download every record to keep a copy outside the Docker volume.
+// Restore records (#209) follows it on the same page.
 export function DataBackup() {
   const { notice, status, error } = useNotice();
   const [busy, setBusy] = useState<Export['key'] | null>(null);
@@ -46,30 +48,33 @@ export function DataBackup() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle asHeading="h2">Back up records</CardTitle>
-        <CardDescription>
-          The JSON file holds every record and learned term; keep it to restore the records later.
-          The CSV file holds the items for a spreadsheet.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <div className="flex flex-wrap gap-2">
-          {EXPORTS.map((file) => (
-            <Button
-              key={file.key}
-              variant={file.key === 'json' ? 'default' : 'outline'}
-              aria-disabled={busy !== null || undefined}
-              onClick={() => void start(file)}
-            >
-              <Download aria-hidden />
-              {file.label}
-            </Button>
-          ))}
-        </div>
-        <Notice notice={notice} className="wrap-anywhere" />
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle asHeading="h2">Back up records</CardTitle>
+          <CardDescription>
+            The JSON file holds every record and learned term; keep it to restore the records later.
+            The CSV file holds the items for a spreadsheet.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            {EXPORTS.map((file) => (
+              <Button
+                key={file.key}
+                variant={file.key === 'json' ? 'default' : 'outline'}
+                aria-disabled={busy !== null || undefined}
+                onClick={() => void start(file)}
+              >
+                <Download aria-hidden />
+                {file.label}
+              </Button>
+            ))}
+          </div>
+          <Notice notice={notice} className="wrap-anywhere" />
+        </CardContent>
+      </Card>
+      <RestoreRecords />
+    </>
   );
 }

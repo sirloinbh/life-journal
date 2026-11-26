@@ -6,8 +6,8 @@ import type { Pool, PoolClient } from 'pg';
 
 import { serviceDate } from './standard/http.js';
 
-const EXPORT_FORMAT = 'life-journal-export';
-const EXPORT_VERSION = 1;
+export const EXPORT_FORMAT = 'life-journal-export';
+export const EXPORT_VERSION = 1;
 
 // Timestamps as UTC text with microseconds: a JS Date keeps only milliseconds, so a restore could not
 // write back the same value. The name is quoted because audit_log's column is called `at`.
