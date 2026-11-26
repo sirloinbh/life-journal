@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ListChecks,
   NotebookPen,
+  PenLine,
   Rows3,
   Settings2,
   Table2,
@@ -20,6 +21,7 @@ import { Calendar } from './calendar';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { EmptyState } from './components/ui/empty-state';
 import { Toaster } from './components/ui/sonner';
+import { EssayEditor, EssayList } from './essays';
 import { type Health, healthText } from './health';
 import { ItemsTable } from './items-table';
 import { Journal } from './journal';
@@ -35,6 +37,7 @@ const pages = {
   overview: '/dashboard',
   week: '/week',
   weeks: '/weeks',
+  essays: '/essays',
   bucketList: '/bucket-list',
   table: '/table',
   calendar: '/calendar',
@@ -50,6 +53,7 @@ const nav: NavItem[] = [
   { to: pages.journal, label: 'Day log', icon: NotebookPen },
   { to: pages.week, label: 'Week', icon: Rows3 },
   { to: pages.weeks, label: '12 weeks', icon: CalendarRange },
+  { to: pages.essays, label: 'Essays', icon: PenLine },
   { to: pages.bucketList, label: 'Bucket list', icon: ListChecks },
   { to: pages.table, label: 'Table view', icon: Table2 },
   { to: pages.calendar, label: 'Calendar', icon: CalendarDays },
@@ -217,6 +221,30 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
                     health={health}
                   >
                     <TwelveWeeks path={pages.weeks} weekPath={pages.week} />
+                  </Page>
+                }
+              />
+              <Route
+                path={pages.essays}
+                element={
+                  <Page
+                    title="Essays"
+                    description="Write longer pieces in Markdown; drafts save themselves"
+                    health={health}
+                  >
+                    <EssayList path={pages.essays} />
+                  </Page>
+                }
+              />
+              <Route
+                path={`${pages.essays}/:id`}
+                element={
+                  <Page
+                    title="Essay"
+                    description="Write and edit one essay; changes save themselves a few seconds after you stop typing"
+                    health={health}
+                  >
+                    <EssayEditor path={pages.essays} />
                   </Page>
                 }
               />

@@ -2,6 +2,7 @@
 // (z.toJSONSchema). `npm run openapi -w backend` writes docs/openapi.json; a test fails when it is out of date or
 // when the table and the registered routes differ.
 import { calendarQuery } from './calendar.js';
+import { essayInput, essayListQuery, essayPatch } from './essays.js';
 import { logFields, logPatch } from './item-logs.js';
 import { quoteFields, quotePatch } from './item-quotes.js';
 import { itemFields, itemPatch, listQuery } from './items.js';
@@ -94,6 +95,35 @@ export const operations: Record<string, Operation> = {
   'DELETE /api/terms/:termId/learned': {
     summary: 'Mark a term as not learned',
     status: [204, 401, 404, 500, 503],
+  },
+  'GET /api/essays': {
+    summary:
+      'List essays, newest written date first, without their text (q searches title and text; tag; status draft or done; limit 1-100, default 20; offset); answers { essays, nextOffset, total }',
+    query: essayListQuery,
+    status: [200, 400, 401, 500, 503],
+  },
+  'GET /api/essays/tags': {
+    summary: 'List the tags already used on essays, the most used first; answers { tags }',
+    status: [200, 401, 500, 503],
+  },
+  'GET /api/essays/:id': {
+    summary: 'Get one essay with its text',
+    status: [200, 400, 401, 404, 500, 503],
+  },
+  'POST /api/essays': {
+    summary:
+      'Create an essay (title up to 200 characters, blank becomes Untitled; Markdown text up to 50,000 characters; written date, default today; status, default draft; tags)',
+    body: ['EssayInput', essayInput],
+    status: [201, 400, 401, 413, 500, 503],
+  },
+  'PATCH /api/essays/:id': {
+    summary: 'Update some fields of an essay',
+    body: ['EssayPatch', essayPatch],
+    status: [200, 400, 401, 404, 413, 500, 503],
+  },
+  'DELETE /api/essays/:id': {
+    summary: 'Delete an essay',
+    status: [204, 400, 401, 404, 500, 503],
   },
   'GET /api/journal': {
     summary:

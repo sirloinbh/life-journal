@@ -4,6 +4,7 @@ import type { Pool } from 'pg';
 
 import { tools } from './ai-tools.js';
 import { createCalendarRouter } from './calendar.js';
+import { createEssaysRouter } from './essays.js';
 import { createExportRouter } from './export.js';
 import { createItemsRouter } from './items.js';
 import { createJournalRouter } from './journal.js';
@@ -47,6 +48,7 @@ export function createApp(
   app.use('/api/calendar', createCalendarRouter(pool, today));
   app.use('/api/stats', createStatsRouter(pool, today));
   app.use('/api/journal', createJournalRouter(pool, today));
+  app.use('/api/essays', createEssaysRouter(pool, today));
   // AI tools for shared-ai on /internal/tools: outside /api, so nginx never forwards them and the signed
   // call token, not the session, is the check. The token must name its tool and carry a jti (#822).
   registerToolRoutes(app, {
