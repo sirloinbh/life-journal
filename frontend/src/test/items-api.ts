@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 
+import type { Quote } from '../item-quotes';
 import type { Item } from '../items';
 import { json } from './app';
 
@@ -38,6 +39,35 @@ export function fakeItemsApi(initial: Partial<Item>[] = [], today = '2026-10-31'
     failList: false,
     gate: null as Promise<void> | null,
     listGate: null as Promise<void> | null,
+    /** Quotes of reading items (#217), kept apart from the items as the server does. */
+    quotes: [] as (Quote & { itemId: number })[],
+  };
+  let nextQuoteId = 1;
+  // `/api/items/<item>/quotes[/<quote>]`: list, add, edit, and delete; only reading items take quotes.
+  const quotesApi = (method: string, itemId: number, quoteId: number | null, body: Quote) => {
+    const item = api.items.find(({ id }) => id === itemId);
+    if (!item) return json({ error: 'Item not found' }, 404);
+    if (method === 'GET') {
+      const quotes = api.quotes.filter((quote) => quote.itemId === itemId);
+      return json({ quotes });
+    }
+    if (method === 'POST') {
+      if (item.category !== 'reading') {
+        return json({ error: 'Only reading items can have quotes' }, 400);
+      }
+      if (!body.text.trim()) return json({ error: 'Quote is required' }, 400);
+      const quote = { ...body, id: nextQuoteId++, itemId };
+      api.quotes.push(quote);
+      return json(quote, 201);
+    }
+    const found = api.quotes.find((quote) => quote.id === quoteId && quote.itemId === itemId);
+    if (!found) return json({ error: 'Quote not found' }, 404);
+    if (method === 'DELETE') {
+      api.quotes = api.quotes.filter((quote) => quote !== found);
+      return json(undefined, 204);
+    }
+    Object.assign(found, body);
+    return json(found);
   };
   vi.stubGlobal(
     'fetch',
@@ -45,6 +75,13 @@ export function fakeItemsApi(initial: Partial<Item>[] = [], today = '2026-10-31'
       const method = init.method ?? 'GET';
       if (path === '/api/health') return json({ today });
       if (api.gate) await api.gate;
+      const quotePath = /^\/api\/items\/(\d+)\/quotes(?:\/(\d+))?$/.exec(path);
+      if (quotePath) {
+        const body = (init.body ? JSON.parse(init.body) : {}) as Quote;
+        if (method !== 'GET') api.requests.push({ method, path, body });
+        const quoteId = quotePath[2] === undefined ? null : Number(quotePath[2]);
+        return quotesApi(method, Number(quotePath[1]), quoteId, body);
+      }
       if (method === 'GET') {
         const items = api.items;
         if (api.listGate) {

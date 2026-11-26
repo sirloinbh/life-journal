@@ -1,13 +1,22 @@
 import {
   CATEGORIES,
   MAX_ITEM_NAME_LENGTH,
+  MAX_QUOTE_LENGTH,
+  MAX_QUOTE_NOTE_LENGTH,
   MAX_REVIEW_LENGTH,
   MAX_REVIEW_LINES,
   SCORES,
 } from '../../shared/contract';
 
 // Category rules come from shared/contract.ts, which the server also uses. It checks every value again.
-export { MAX_ITEM_NAME_LENGTH, MAX_REVIEW_LENGTH, MAX_REVIEW_LINES, SCORES };
+export {
+  MAX_ITEM_NAME_LENGTH,
+  MAX_QUOTE_LENGTH,
+  MAX_QUOTE_NOTE_LENGTH,
+  MAX_REVIEW_LENGTH,
+  MAX_REVIEW_LINES,
+  SCORES,
+};
 
 export type Item = {
   id: number;
