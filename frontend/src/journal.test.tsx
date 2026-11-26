@@ -5,11 +5,19 @@ import { json, openAt } from './test/app';
 import { findLive } from './test/live';
 
 type Entry = { date: string; body: string; createdAt: string; updatedAt: string };
+type DayItem = {
+  id: number;
+  category: string;
+  subtype: string | null;
+  title: string;
+  completedDate: string;
+  rating: number | null;
+};
 
 const TODAY = '2026-11-10';
 
 // An in-memory journal API. Its entries outlive a render, like the server's do across a reload.
-function fakeApi(initial: Record<string, string> = {}) {
+function fakeApi(initial: Record<string, string> = {}, items: DayItem[] = []) {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-11-10T03:00:00Z'));
   const entries = new Map<string, Entry>(
@@ -19,7 +27,9 @@ function fakeApi(initial: Record<string, string> = {}) {
     ]),
   );
   const writes: { method: string; path: string; body?: unknown }[] = [];
-  const api = { entries, writes, failSave: null as string | null };
+  // The linked item ids of each date.
+  const links = new Map<string, number[]>();
+  const api = { entries, writes, links, failSave: null as string | null };
   vi.stubGlobal(
     'fetch',
     vi.fn((path: string, init: { method?: string; body?: string } = {}) => {
@@ -39,6 +49,39 @@ function fakeApi(initial: Record<string, string> = {}) {
           }),
         );
       }
+      const dayItems = /^\/api\/journal\/(\d{4}-\d{2}-\d{2})\/items(?:\/(\d+))?$/.exec(path);
+      if (dayItems) {
+        const [, day, id] = dayItems;
+        const linked = links.get(day) ?? [];
+        if (method === 'GET') {
+          return Promise.resolve(
+            json({
+              linked: linked.map((itemId) => items.find((item) => item.id === itemId)),
+              suggestions: items.filter(
+                (item) => item.completedDate === day && !linked.includes(item.id),
+              ),
+            }),
+          );
+        }
+        writes.push({ method, path });
+        const item = items.find((candidate) => candidate.id === Number(id));
+        if (method === 'PUT') {
+          if (!entries.has(day)) {
+            return Promise.resolve(json({ error: 'Journal entry not found' }, 404));
+          }
+          if (!item) return Promise.resolve(json({ error: 'Item not found' }, 404));
+          links.set(day, [...linked, item.id]);
+          return Promise.resolve(json(item, 201));
+        }
+        if (!item || !linked.includes(item.id)) {
+          return Promise.resolve(json({ error: 'Link not found' }, 404));
+        }
+        links.set(
+          day,
+          linked.filter((itemId) => itemId !== item.id),
+        );
+        return Promise.resolve(json(undefined, 204));
+      }
       const date = /^\/api\/journal\/(\d{4}-\d{2}-\d{2})$/.exec(path)?.[1];
       if (!date) return Promise.resolve(json({ error: 'API not found' }, 404));
       const found = entries.get(date);
@@ -52,6 +95,7 @@ function fakeApi(initial: Record<string, string> = {}) {
       if (method === 'DELETE') {
         if (!found) return Promise.resolve(json({ error: 'Journal entry not found' }, 404));
         entries.delete(date);
+        links.delete(date);
         return Promise.resolve(json(undefined, 204));
       }
       if (api.failSave) return Promise.resolve(json({ error: api.failSave }, 400));
@@ -191,4 +235,58 @@ test('the list loads more entries page by page', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
   await waitFor(() => expect(within(list).getAllByRole('link')).toHaveLength(25));
   expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+});
+
+test('an item completed on the day is suggested, linked to the saved entry, and unlinked', async () => {
+  const play: DayItem = {
+    id: 7,
+    category: 'stage',
+    subtype: null,
+    title: 'Hamlet',
+    completedDate: TODAY,
+    rating: 4.5,
+  };
+  const other: DayItem = { ...play, id: 8, title: 'Another day', completedDate: '2026-11-09' };
+  const api = fakeApi({}, [play, other]);
+  openAt(`/journal/${TODAY}`);
+  const section = within(await screen.findByRole('region', { name: 'Done that day' }));
+  const suggested = within(await section.findByRole('list', { name: 'Items to link' }));
+  // Only the day's item, with a link to it on the bucket list; no entry yet, so it cannot be linked.
+  expect(suggested.getAllByRole('listitem')).toHaveLength(1);
+  expect(suggested.getByRole('link', { name: 'Hamlet' })).toHaveAttribute(
+    'href',
+    '/bucket-list/stage#item-7',
+  );
+  expect(suggested.getByText(/Rating 4.5\/5/)).toBeInTheDocument();
+  expect(section.getByText(/Save the entry first/)).toBeInTheDocument();
+  expect(suggested.getByRole('button', { name: 'Link Hamlet' })).toBeDisabled();
+
+  fireEvent.change(await editor(), { target: { value: 'Saw Hamlet.' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  expect(await screen.findByText('Saved')).toBeInTheDocument();
+  await waitFor(() => expect(suggested.getByRole('button', { name: 'Link Hamlet' })).toBeEnabled());
+
+  fireEvent.click(suggested.getByRole('button', { name: 'Link Hamlet' }));
+  expect(await section.findByText('Linked Hamlet')).toBeInTheDocument();
+  const linked = within(section.getByRole('list', { name: 'Linked items' }));
+  expect(linked.getByRole('link', { name: 'Hamlet' })).toBeInTheDocument();
+  expect(section.queryByRole('list', { name: 'Items to link' })).toBeNull();
+  // The focus moves to the button that took the pressed one's place.
+  await waitFor(() => expect(linked.getByRole('button', { name: 'Unlink Hamlet' })).toHaveFocus());
+  expect(api.links.get(TODAY)).toEqual([7]);
+
+  fireEvent.click(linked.getByRole('button', { name: 'Unlink Hamlet' }));
+  expect(await section.findByText('Unlinked Hamlet')).toBeInTheDocument();
+  expect(section.queryByRole('list', { name: 'Linked items' })).toBeNull();
+  await waitFor(() => expect(section.getByRole('button', { name: 'Link Hamlet' })).toHaveFocus());
+  expect(api.links.get(TODAY)).toEqual([]);
+});
+
+test('a day with nothing completed says so', async () => {
+  fakeApi({ '2026-11-08': 'Quiet.' });
+  openAt('/journal/2026-11-08');
+  const section = within(await screen.findByRole('region', { name: 'Done that day' }));
+  expect(
+    await section.findByText('No bucket-list items were completed on this day.'),
+  ).toBeInTheDocument();
 });

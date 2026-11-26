@@ -177,7 +177,7 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
                     description="Write one entry a day and read the days before"
                     health={health}
                   >
-                    <Journal path={pages.journal} />
+                    <Journal path={pages.journal} bucketListPath={pages.bucketList} />
                   </Page>
                 }
               />

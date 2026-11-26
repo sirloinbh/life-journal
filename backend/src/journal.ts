@@ -2,11 +2,13 @@ import { Router } from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod/v4';
 
+import { addJournalItemRoutes } from './journal-items.js';
 import { HttpError } from './standard/http.js';
 import { isStorable } from './validation.js';
 
-// #210: one journal entry per date. Entry rules (owner decision recorded on #210, the issue's
-// recommendation): plain text with line breaks, up to 10,000 characters, no title, no dates after today.
+// #210: one journal entry per date. Entry rules (owner decision pending on #210; the issue's recommendation is
+// applied): plain text with line breaks, up to 10,000 characters, no title, no dates after today. The items linked to
+// an entry (#211) are in journal-items.ts.
 
 const MAX_ENTRY_LENGTH = 10_000;
 const DEFAULT_PAGE_SIZE = 20;
@@ -137,6 +139,8 @@ export function createJournalRouter(pool: Pool, today: () => string) {
     if (rowCount === 0) throw notFound();
     res.status(204).end();
   });
+
+  addJournalItemRoutes(router, pool, entryDate);
 
   return router;
 }
