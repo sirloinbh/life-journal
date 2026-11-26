@@ -6,6 +6,7 @@ import {
   categories,
   type Item,
   itemFields,
+  logWords,
   measureReview,
   numberOrText,
   ratingSummary,
@@ -104,4 +105,12 @@ test('usedNames suggests names from every item, the most used first, one per let
   expect(usedNames(items, 'tags')).toEqual(['family', 'autumn', 'birthday']);
   expect(usedNames(items, 'companions')).toEqual(['엄마', '아빠']);
   expect(usedNames([], 'tags')).toEqual([]);
+});
+
+test('drinks and travel name their logs, and other categories take none (#214)', () => {
+  expect(logWords('drink')).toEqual({ one: 'tasting', many: 'Tastings' });
+  expect(logWords('travel')).toEqual({ one: 'visit', many: 'Visits' });
+  for (const category of ['reading', 'screen', 'stage', 'coffee', 'unknown']) {
+    expect(logWords(category)).toBeNull();
+  }
 });

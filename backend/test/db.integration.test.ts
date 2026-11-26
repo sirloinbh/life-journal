@@ -746,6 +746,74 @@ test('tags and companions are trimmed, merged, kept, and replaced', { skip: !url
   }
 });
 
+test(
+  'the list filters by a whole tag or companion in any letter case, with other filters and paging (#216)',
+  { skip: !url },
+  async (t) => {
+    const pool = testPool();
+    t.after(() => pool.end());
+    await pool.query('DELETE FROM items');
+    await withApi(
+      pool,
+      async (call) => {
+        const samples = [
+          {
+            category: 'travel',
+            title: '교토',
+            tags: ['With family'],
+            companions: ['엄마', '아빠'],
+          },
+          { category: 'reading', title: '데미안', tags: ['birthday'], companions: ['엄마'] },
+          { category: 'drink', subtype: 'wine', title: '샤블리', tags: ['with family'] },
+          { category: 'reading', title: '싯다르타', tags: ['family'] },
+          { category: 'travel', title: '제주', costKrw: 300000, tags: ['WITH FAMILY'] },
+        ];
+        for (const body of samples) {
+          assert.equal((await call('/api/items', { method: 'POST', body })).status, 201);
+        }
+        const list = async (query: string) => {
+          const { status, data } = await call(`/api/items?${query}`);
+          assert.equal(status, 200, query);
+          return {
+            titles: (data.items as { title: string }[]).map((item) => item.title).sort(),
+            total: data.total,
+            nextOffset: data.nextOffset,
+          };
+        };
+        const titles = async (query: string) => (await list(query)).titles;
+        const encoded = encodeURIComponent;
+
+        // A whole name in any case: "family" does not match "with family".
+        assert.deepEqual(await titles(`tag=${encoded(' with family ')}`), [
+          '교토',
+          '샤블리',
+          '제주',
+        ]);
+        assert.deepEqual(await titles('tag=family'), ['싯다르타']);
+        assert.deepEqual(await titles('tag=fam'), []);
+        assert.deepEqual(await titles(`companion=${encoded('엄마')}`), ['교토', '데미안']);
+        assert.deepEqual(await titles(`companion=${encoded('엄마')}&tag=birthday`), ['데미안']);
+        assert.deepEqual(await titles(`tag=${encoded('with family')}&category=travel`), [
+          '교토',
+          '제주',
+        ]);
+        assert.deepEqual(await titles(`tag=${encoded('with family')}&costMin=1`), ['제주']);
+        // A blank tag is no filter. Other test files may add rows meanwhile, so only these five are checked.
+        const blank = await titles('tag=%20');
+        for (const { title } of samples) assert.ok(blank.includes(title), title);
+        // Paging counts only the matching items.
+        const first = await list(`tag=${encoded('with family')}&limit=2&sort=title&order=asc`);
+        assert.deepEqual([first.total, first.nextOffset, first.titles.length], [3, 2, 2]);
+        const rest = await list(
+          `tag=${encoded('with family')}&limit=2&offset=2&sort=title&order=asc`,
+        );
+        assert.deepEqual([rest.total, rest.nextOffset, rest.titles], [3, null, ['제주']]);
+      },
+      { today: () => TODAY },
+    );
+  },
+);
+
 const createTestItem = async (pool: Pool) => {
   const { rows } = await pool.query<{ id: number }>(
     "INSERT INTO items (category, title, cost_krw) VALUES ('reading', '원래 제목', 1000) RETURNING id",

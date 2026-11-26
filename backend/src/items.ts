@@ -12,15 +12,15 @@ import {
   MAX_ITEM_NAMES,
   MAX_REVIEW_LENGTH,
   MAX_REVIEW_LINES,
-  SCORES,
 } from './contract.js';
+import { addLogRoutes, keepLoggedItemInLogCategory } from './item-logs.js';
+import { addQuoteRoutes, keepQuotedItemInReading } from './item-quotes.js';
 import { withTransaction } from './standard/db.js';
 import { HttpError, parseId } from './standard/http.js';
+import { costKrw, date, isStorable, MAX_COST_KRW, score, strictObject } from './validation.js';
 
 // The database handle the list query runs on: the pool for the route and the AI tool, a client in a transaction.
 export type Db = Pick<Pool, 'query'> | PoolClient;
-
-const MAX_COST_KRW = 2_147_483_647; // items.cost_krw is a PostgreSQL integer.
 
 // Every column except companions, which are personal data and never reach the AI tools (#215).
 const SHARED_COLUMNS = `id, category, subtype, title, status, cost_krw AS "costKrw",
@@ -34,9 +34,6 @@ const COLUMNS = `${SHARED_COLUMNS}, companions`;
 const minLength = (min: number) => (value: string) => value.length >= min;
 const maxLength = (max: number) => (value: string) => value.length <= max;
 
-// PostgreSQL rejects NUL and lone surrogates inside jsonb, which would otherwise surface as a 500.
-const isStorable = (value: string) => !value.includes('\0') && !/\p{Cs}/u.test(value);
-
 const text = (label: string, max: number) =>
   z
     .string({
@@ -48,41 +45,12 @@ const text = (label: string, max: number) =>
     .refine(maxLength(max), `${label} must be ${max} characters or fewer`)
     .refine(isStorable, `${label} contains a character that is not allowed`);
 
-const isRealDate = (value: string) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value < '0001-01-01') return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
-};
-
-const date = (label: string) => {
-  const message = `${label} must be a real date in YYYY-MM-DD format`;
-  return z.string({ error: message }).refine(isRealDate, message);
-};
-
-// One `error` answers both a wrong type and unknown keys, which zod 3 kept apart.
-const strictObject = <Shape extends z.ZodRawShape>(
-  fields: Shape,
-  unknownKeys: string,
-  otherwise: (input: unknown) => string,
-) =>
-  z.strictObject(fields, {
-    error: (issue) => (issue.code === 'unrecognized_keys' ? unknownKeys : otherwise(issue.input)),
-  });
-
 const details = (label: string, fields: z.ZodRawShape) =>
   strictObject(
     fields,
     `${label} details contain an unknown field`,
     () => `${label} details are not valid`,
   );
-
-const scores: readonly number[] = SCORES;
-const scoreRange = `from ${scores[0]} to ${scores.at(-1)} in steps of ${scores[1] - scores[0]}`;
-
-const score = (label: string) => {
-  const message = `${label} must be ${scoreRange}`;
-  return z.number({ error: message }).refine((value) => scores.includes(value), message);
-};
 
 const criteria = (label: string, names: readonly { key: string; label: string }[]) =>
   strictObject(
@@ -183,7 +151,6 @@ const CATEGORIES = Object.fromEntries(
 
 const categoryMessage = 'The category is not valid';
 const statusMessage = 'Status must be wishlist or done';
-const costMessage = 'Cost must be a whole number of won, 0 or more';
 
 const status = z.enum(['wishlist', 'done'], { error: statusMessage });
 const detailsRecord = z.record(z.string(), z.unknown(), {
@@ -200,12 +167,7 @@ const itemShape = {
   subtype: text('Subtype', 50).nullable().optional(),
   title: text('Title', 200),
   status,
-  costKrw: z
-    .number({ error: costMessage })
-    .refine((cost) => Number.isInteger(cost) && cost >= 0, costMessage)
-    .refine((cost) => cost <= MAX_COST_KRW, `Cost must be ${MAX_COST_KRW} won or less`)
-    .nullable()
-    .optional(),
+  costKrw: costKrw.nullable().optional(),
   plannedDate: date('Planned date').nullable().optional(),
   completedDate: date('Completed date').nullable().optional(),
   details: detailsRecord,
@@ -308,6 +270,18 @@ const queryCost = (label: string) => {
 
 const queryDate = (label: string) => date(label).optional();
 
+// #216: one tag or companion name, matched whole and without regard to letter case. Blank means no filter.
+const queryName = (label: string) =>
+  z
+    .string({ error: `${label} filter must be a single value` })
+    .transform((value) => value.normalize('NFC').trim())
+    .refine(
+      maxLength(MAX_ITEM_NAME_LENGTH),
+      `${label} filter must be ${MAX_ITEM_NAME_LENGTH} characters or fewer`,
+    )
+    .refine(isStorable, `${label} filter contains a character that is not allowed`)
+    .optional();
+
 // #144: offset paging of the list (user decision 2026-11-23: limit 1-500, default 100).
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 500;
@@ -343,6 +317,8 @@ export const listQuery = strictObject(
     to: queryDate('End date'),
     costMin: queryCost('Minimum cost'),
     costMax: queryCost('Maximum cost'),
+    tag: queryName('Tag'),
+    companion: queryName('Companion'),
     sort: z
       .enum(
         [
@@ -390,6 +366,16 @@ function listSql(input: unknown, columns = COLUMNS) {
   if (query.to) where.push(`COALESCE(completed_date, planned_date) <= ${param(query.to)}`);
   if (query.costMin !== undefined) where.push(`cost_krw >= ${param(query.costMin)}`);
   if (query.costMax !== undefined) where.push(`cost_krw <= ${param(query.costMax)}`);
+  // Whole names in any letter case, the way the lists are kept unique (migration 010).
+  for (const [column, name] of [
+    ['tags', query.tag],
+    ['companions', query.companion],
+  ] as const) {
+    if (name) {
+      where.push(`EXISTS (SELECT 1 FROM unnest(${column}) AS name
+                  WHERE lower(name) = lower(${param(name)}))`);
+    }
+  }
   const direction = query.order === 'asc' ? 'ASC' : 'DESC';
   const filter = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
   // id breaks ties, so every row has one place in the order and offset pages neither repeat nor skip rows.
@@ -514,6 +500,8 @@ export function createItemsRouter(pool: Pool, today: () => string) {
         },
         today(),
       );
+      await keepQuotedItemInReading(client, id, category as string, item.category);
+      await keepLoggedItemInLogCategory(client, id, category as string, item.category);
       const { rows } = await client.query(
         `UPDATE items
          SET category = $2, subtype = $3, title = $4, status = $5, cost_krw = $6,
@@ -544,6 +532,9 @@ export function createItemsRouter(pool: Pool, today: () => string) {
     });
     res.json(updated);
   });
+
+  addQuoteRoutes(router, pool);
+  addLogRoutes(router, pool, today);
 
   router.delete('/:id', async (req, res) => {
     const id = parseId(req.params.id, 'item');
