@@ -1,5 +1,5 @@
-import type { FormEvent } from 'react';
-import { useId, useState } from 'react';
+import type { FormEvent, RefObject } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { Button } from './components/ui/button';
 import { ConfirmDialog } from './components/ui/confirm-dialog';
@@ -36,12 +36,22 @@ function QuoteForm({
   quote,
   onSave,
   onCancel,
+  textRef,
 }: {
   quote: Quote | null;
   onSave: (body: ReturnType<typeof quoteFields>) => Promise<void>;
   onCancel?: () => void;
+  textRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const id = useId();
+  const ownText = useRef<HTMLTextAreaElement>(null);
+  const text = textRef ?? ownText;
+  // The edit form takes the place of the Edit button that opened it, so the focus moves into it. By id: a refresh in
+  // the background hands over a new quote object, which must not pull the focus back.
+  const editedId = quote?.id ?? null;
+  useEffect(() => {
+    if (editedId !== null) text.current?.focus();
+  }, [editedId, text]);
   const { notice, error } = useNotice();
   const [pending, setPending] = useState(false);
 
@@ -68,6 +78,7 @@ function QuoteForm({
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${id}-text`}>Quote</Label>
         <Textarea
+          ref={text}
           id={`${id}-text`}
           name="text"
           rows={3}
@@ -121,6 +132,18 @@ export function ItemQuotes({ item }: { item: Item }) {
   const [editing, setEditing] = useState<number | null>(null);
   // A new add form after each added quote: empty fields and counters (a form reset leaves the counters).
   const [added, setAdded] = useState(0);
+  // Focus targets for buttons that disappear: the add form after a delete, and the Edit button of a quote whose
+  // edit form closes.
+  const addText = useRef<HTMLTextAreaElement>(null);
+  const list = useRef<HTMLOListElement>(null);
+  const closeEdit = (quoteId: number) => {
+    setEditing(null);
+    requestAnimationFrame(() => {
+      list.current
+        ?.querySelector<HTMLButtonElement>(`[data-quote-edit="${String(quoteId)}"]`)
+        ?.focus();
+    });
+  };
   const save = useApiMutation<Quote, { id: number | null; body: object }>(
     ({ id, body }) => ({
       path: id === null ? path : `${path}/${id}`,
@@ -152,16 +175,16 @@ export function ItemQuotes({ item }: { item: Item }) {
       ) : quotes.length === 0 ? (
         <p className="text-body-sm text-muted-foreground">No quotes yet.</p>
       ) : (
-        <ol aria-label={`Quotes of ${item.title}`} className="flex flex-col gap-3">
+        <ol ref={list} aria-label={`Quotes of ${item.title}`} className="flex flex-col gap-3">
           {quotes.map((quote) => (
             <li key={quote.id} className="rounded-md border p-3">
               {editing === quote.id ? (
                 <QuoteForm
                   quote={quote}
-                  onCancel={() => setEditing(null)}
+                  onCancel={() => closeEdit(quote.id)}
                   onSave={async (body) => {
                     await save.mutateAsync({ id: quote.id, body });
-                    setEditing(null);
+                    closeEdit(quote.id);
                     status('Saved the quote');
                   }}
                 />
@@ -182,6 +205,7 @@ export function ItemQuotes({ item }: { item: Item }) {
                       size="sm"
                       variant="outline"
                       aria-label={`Edit quote ${quote.text.slice(0, 40)}`}
+                      data-quote-edit={quote.id}
                       onClick={() => setEditing(quote.id)}
                     >
                       Edit
@@ -191,6 +215,7 @@ export function ItemQuotes({ item }: { item: Item }) {
                       description={
                         <span className="wrap-anywhere">This deletes the quote from the book.</span>
                       }
+                      returnFocusRef={addText}
                       onConfirm={async () => {
                         try {
                           await remove.mutateAsync(quote.id);
@@ -221,6 +246,7 @@ export function ItemQuotes({ item }: { item: Item }) {
         <QuoteForm
           key={added}
           quote={null}
+          textRef={addText}
           onSave={async (body) => {
             await save.mutateAsync({ id: null, body });
             setAdded((count) => count + 1);

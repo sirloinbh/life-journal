@@ -773,9 +773,14 @@ test('a book keeps quotes that are added, edited, deleted, and still there after
   // Edit the second quote in place.
   fireEvent.click(within(list()[1]).getByRole('button', { name: /^Edit quote/ }));
   const edit = within(screen.getByRole('form', { name: 'Edit the quote' }));
+  expect(edit.getByLabelText('Quote')).toHaveFocus();
   fireEvent.change(edit.getByLabelText('Page (optional)'), { target: { value: '7' } });
   fireEvent.click(edit.getByRole('button', { name: 'Save quote' }));
   await waitFor(() => expect(list()[1]).toHaveTextContent('p. 7'));
+  // The focus goes back to the Edit button of that quote.
+  await waitFor(() =>
+    expect(within(list()[1]).getByRole('button', { name: /^Edit quote/ })).toHaveFocus(),
+  );
   expect(api.requests.at(-1)).toMatchObject({ method: 'PATCH', path: '/api/items/1/quotes/2' });
 
   // Close the dialog, then open the app again as a reload would: the quotes come back from the server.
@@ -793,6 +798,8 @@ test('a book keeps quotes that are added, edited, deleted, and still there after
   fireEvent.click(within(list()[0]).getByRole('button', { name: /^Delete quote/ }));
   fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
   await waitFor(() => expect(list()).toHaveLength(1));
+  // The Delete button is gone, so the focus moves to the add form.
+  await waitFor(() => expect(dialog.getByLabelText('Quote')).toHaveFocus());
   expect(api.quotes.map(({ text }) => text)).toEqual(['나는 나 자신에게서 솟아 나오려는 것']);
 
   // Only reading items offer quotes.

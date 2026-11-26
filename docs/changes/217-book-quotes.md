@@ -55,3 +55,24 @@ Playwright Chromium on the Vite dev server (temporary port) with this branch's A
 ### `npm run check` after the counter fix (2026-11-26)
 
 - Pass. Format, lint, contract 3, typecheck, backend 192 passed and 37 DB tests skipped (run without `TEST_DATABASE_URL`; the backend is unchanged since the DB run above), frontend 353 passed and 3 skipped, skills 4, build. `npm run knip`: no unused export from this change.
+
+## Review round 1 — 2026-11-26
+
+Self-review of head `f727c8f` (std-code-review section 8). Decision: changes needed, 3 findings (non-blocking), all fixed.
+
+| Finding                                                                                                             | Handling                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `suggestion:` Edit swaps the quote for its form, so the focused Edit button vanished and the focus fell to the page | The edit form focuses its Quote field when it opens (keyed by the quote id, so a background refresh does not pull the focus back) |
+| `suggestion:` Save quote or Cancel closes the edit form and its buttons vanished                                    | The focus goes back to that quote's Edit button                                                                                   |
+| `suggestion:` after a confirmed delete the focus returned to the vanished Delete button                             | `returnFocusRef` sends it to the add form's Quote field                                                                           |
+
+Checked and fine: the PATCH builds its `SET` only from the fixed keys `text`, `page`, `note`; a quote is reached only through its own item (`AND item_id = $2`); adding locks the item `FOR SHARE`, and the item PATCH holds `FOR UPDATE`, so a category change and a new quote cannot pass each other; `ON DELETE CASCADE` removes quotes with the item (tested).
+
+### Verification
+
+- The #217 screen test also checks the focus in the edit form, back on the Edit button after saving, and on the add form after a delete. `npm test -w frontend -- src/bucket-list.test.tsx -t quotes`: passed.
+- `npm run check`: see below.
+
+### `npm run check` after round 1 (2026-11-26)
+
+- Pass. Format, lint, contract 3, typecheck, backend 192 passed and 37 DB tests skipped (frontend-only change, no `TEST_DATABASE_URL`), frontend 353 passed and 3 skipped, skills 4, build.
