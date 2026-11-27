@@ -64,6 +64,7 @@ type Status = {
   updated: number;
   unchanged: number;
   deleted: number;
+  skipped: number;
   error: string | null;
 };
 
@@ -259,6 +260,37 @@ test('a failed run deletes nothing; a missing token is refused', { skip: !url },
     { notion: { token: '' } },
   );
 });
+
+test(
+  'a page that is gone or unshared during the walk is skipped and marked removed, not a failed run',
+  { skip: !url },
+  async (t) => {
+    const pool = await scratchPool(t);
+    const world = makeWorld();
+    const { config } = notion(world);
+    await withApi(
+      pool,
+      async (call) => {
+        await runImport(call);
+        // Japan is moved out of the shared tree, so its page and blocks answer 404; Kyoto lived under it.
+        world.objects.delete(ids.japan);
+        world.blocks.delete(ids.japan);
+        world.objects.delete(ids.kyoto);
+        const run = await runImport(call);
+        assert.equal(run.state, 'done');
+        assert.equal(run.error, null);
+        assert.ok(run.skipped >= 1);
+        const docs = await documents(call);
+        assert.equal(byTitle(docs, 'Travel').deletedAt, null);
+        assert.equal(byTitle(docs, 'Notes').deletedAt, null);
+        assert.equal(byTitle(docs, 'Dune').deletedAt, null);
+        assert.notEqual(byTitle(docs, 'Japan').deletedAt, null);
+        assert.notEqual(byTitle(docs, 'Kyoto notes').deletedAt, null);
+      },
+      { notion: config },
+    );
+  },
+);
 
 test(
   'a rate-limited request is retried, and a second start while running is refused',

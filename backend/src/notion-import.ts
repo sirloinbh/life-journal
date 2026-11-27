@@ -16,6 +16,8 @@ const MAX_TITLE = 500;
 const MAX_BODY = 2_000_000;
 
 export class NotionError extends Error {}
+/** Notion says the page, database, or block does not exist or is not shared (404, or 403 restricted). */
+class NotionMissing extends NotionError {}
 
 export type NotionOptions = {
   token: string;
@@ -68,6 +70,8 @@ export class NotionClient {
       }
       if (response.status === 401) throw new NotionError('Notion rejected the token');
       const data = (await response.json().catch(() => null)) as Json | null;
+      if (response.status === 404 || response.status === 403)
+        throw new NotionMissing(`Notion answered ${response.status}`);
       if (!response.ok) {
         const message = typeof data?.message === 'string' ? `: ${data.message}` : '';
         throw new NotionError(`Notion answered ${response.status}${message}`);
@@ -111,6 +115,7 @@ export type ImportStatus = {
   updated: number;
   unchanged: number;
   deleted: number;
+  skipped: number;
   current: string | null;
   error: string | null;
 };
@@ -124,6 +129,7 @@ const emptyStatus = (): ImportStatus => ({
   updated: 0,
   unchanged: 0,
   deleted: 0,
+  skipped: 0,
   current: null,
   error: null,
 });
@@ -237,23 +243,39 @@ async function runImport(pool: Pool, client: NotionClient, status: ImportStatus)
   ): Promise<void> => {
     const id = normalizeId(String(object.id));
     if (seen.has(id) || object.archived === true || object.in_trash === true) return;
-    seen.add(id);
-    status.seen = seen.size;
     const title = titleOf(object);
     status.current = title;
     const path = parentPath ? `${parentPath} / ${title}` : title;
     const refs: Ref[] = [];
     let body = '';
-    if (kind === 'page') {
-      body = clean(toMarkdown(await fetchBlocks(String(object.id), refs))).slice(0, MAX_BODY);
-    } else {
-      for (const row of await client.all('POST', `/databases/${object.id}/query`, {}))
-        refs.push({ kind: 'page', id: String(row.id), object: row });
+    try {
+      if (kind === 'page') {
+        body = clean(toMarkdown(await fetchBlocks(String(object.id), refs))).slice(0, MAX_BODY);
+      } else {
+        for (const row of await client.all('POST', `/databases/${object.id}/query`, {}))
+          refs.push({ kind: 'page', id: String(row.id), object: row });
+      }
+    } catch (cause) {
+      // Deleted, moved out of the shared tree, or unshared while the walk ran: leave it out of `seen`, so the
+      // end of the run marks it as removed, and carry on with the rest.
+      if (!(cause instanceof NotionMissing)) throw cause;
+      status.skipped += 1;
+      return;
     }
+    seen.add(id);
+    status.seen = seen.size;
     await save(object, kind, parentId, path, body);
     for (const ref of refs) {
       // A database's rows are in the query result; a child_page block needs its own page object.
-      await walk(await lookup(ref), ref.kind, id, path);
+      let child: Json;
+      try {
+        child = await lookup(ref);
+      } catch (cause) {
+        if (!(cause instanceof NotionMissing)) throw cause;
+        status.skipped += 1;
+        continue;
+      }
+      await walk(child, ref.kind, id, path);
     }
   };
 

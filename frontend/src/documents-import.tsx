@@ -24,6 +24,7 @@ type Status = {
   updated: number;
   unchanged: number;
   deleted: number;
+  skipped?: number;
   current: string | null;
   error: string | null;
 };
@@ -105,7 +106,11 @@ export function NotionImport({ documentsPath }: { documentsPath: string }) {
         {status?.state === 'done' ? (
           <p role="status" className="text-body-sm">
             Imported {pages(status.seen)}: {status.created} new, {status.updated} updated,{' '}
-            {status.unchanged} unchanged, {status.deleted} removed from Notion.
+            {status.unchanged} unchanged, {status.deleted} removed from Notion
+            {status.skipped
+              ? `, ${pages(status.skipped)} skipped because Notion no longer shows them`
+              : ''}
+            .
           </p>
         ) : null}
         {status?.state === 'failed' ? (
