@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CalendarRange,
   ChartColumn,
+  FileText,
   LayoutDashboard,
   ListChecks,
   NotebookPen,
@@ -21,6 +22,8 @@ import { Calendar } from './calendar';
 import { AppShell, type NavItem } from './components/layout/app-shell';
 import { EmptyState } from './components/ui/empty-state';
 import { Toaster } from './components/ui/sonner';
+import { DocumentList, DocumentView } from './documents';
+import { NotionImport } from './documents-import';
 import { EssayEditor, EssayList } from './essays';
 import { type Health, healthText } from './health';
 import { ItemsTable } from './items-table';
@@ -38,6 +41,7 @@ const pages = {
   week: '/week',
   weeks: '/weeks',
   essays: '/essays',
+  documents: '/documents',
   bucketList: '/bucket-list',
   table: '/table',
   calendar: '/calendar',
@@ -54,6 +58,7 @@ const nav: NavItem[] = [
   { to: pages.week, label: 'Week', icon: Rows3 },
   { to: pages.weeks, label: '12 weeks', icon: CalendarRange },
   { to: pages.essays, label: 'Essays', icon: PenLine },
+  { to: pages.documents, label: 'Documents', icon: FileText },
   { to: pages.bucketList, label: 'Bucket list', icon: ListChecks },
   { to: pages.table, label: 'Table view', icon: Table2 },
   { to: pages.calendar, label: 'Calendar', icon: CalendarDays },
@@ -237,6 +242,30 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
                 }
               />
               <Route
+                path={pages.documents}
+                element={
+                  <Page
+                    title="Documents"
+                    description="Pages imported from Notion, with the tree they have in Notion"
+                    health={health}
+                  >
+                    <DocumentList path={pages.documents} settingsPath={pages.settings} />
+                  </Page>
+                }
+              />
+              <Route
+                path={`${pages.documents}/:id`}
+                element={
+                  <Page
+                    title="Document"
+                    description="Read an imported Notion page or copy it into an essay"
+                    health={health}
+                  >
+                    <DocumentView path={pages.documents} essaysPath={pages.essays} />
+                  </Page>
+                }
+              />
+              <Route
                 path={`${pages.essays}/:id`}
                 element={
                   <Page
@@ -281,6 +310,7 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
                     health={health}
                   >
                     <DataBackup />
+                    <NotionImport documentsPath={pages.documents} />
                   </Page>
                 }
               />

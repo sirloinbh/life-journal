@@ -125,6 +125,30 @@ export const operations: Record<string, Operation> = {
     summary: 'Delete an essay',
     status: [204, 400, 401, 404, 500, 503],
   },
+  'GET /api/notion/import': {
+    summary:
+      'Get the state of the Notion import: whether a token is set, and the progress or result of the last run since the server started',
+    status: [200, 401, 500, 503],
+  },
+  'POST /api/notion/import': {
+    summary:
+      'Start importing the pages shared with the Notion integration and all their descendants in the background (400 without a token, 409 while a run is going); poll GET /api/notion/import',
+    status: [202, 400, 401, 409, 500, 503],
+  },
+  'GET /api/documents': {
+    summary:
+      'List every imported Notion page and database without its text; the tree follows parentNotionId (deletedAt is set for a page that is gone from Notion)',
+    status: [200, 401, 500, 503],
+  },
+  'GET /api/documents/:id': {
+    summary: 'Get one imported Notion page with its Markdown text',
+    status: [200, 400, 401, 404, 500, 503],
+  },
+  'POST /api/documents/:id/essay': {
+    summary:
+      'Copy an imported page into a new draft essay (title and text; 400 when the text is longer than an essay can be); answers { id }',
+    status: [201, 400, 401, 404, 500, 503],
+  },
   'GET /api/journal': {
     summary:
       'List journal entries, newest date first (limit 1-100, default 20; offset; optional from and to dates, both included); answers { entries, nextOffset, total }',

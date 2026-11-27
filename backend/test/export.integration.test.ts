@@ -22,7 +22,7 @@ test(
       // rollback, so every statement here sees the same rows. Reads still go through.
       await client.query(
         `LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log, journal_entries,
-           journal_entry_items IN EXCLUSIVE MODE`,
+           journal_entry_items, notion_pages IN EXCLUSIVE MODE`,
       );
       const { rows: inserted } = await client.query<{ id: number }>(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
@@ -74,6 +74,14 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
          VALUES ($1, $2, '2026-11-02 23:05:00.000003+09')`,
         [entry!.id, inserted[1].id],
       );
+      await client.query(
+        `INSERT INTO notion_pages (notion_id, parent_notion_id, kind, title, body, path, notion_edited_at,
+           imported_at, deleted_at)
+         VALUES ('aaa', NULL, 'page', '여행, "Travel"', E'# 여행\n\n- 도쿄', '여행, "Travel"',
+           '2026-11-20 09:00:00.000001+09', '2026-11-27 10:00:00+09', NULL),
+           ('bbb', 'aaa', 'database', 'Reading', '', '여행, "Travel" / Reading',
+           '2026-11-21 09:00:00+09', '2026-11-27 10:00:00+09', '2026-11-27 11:00:00.5+09')`,
+      );
       const {
         rows: [audit],
       } = await client.query<{ id: number }>(
@@ -98,6 +106,7 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
         'learned_terms',
         'journal_entries',
         'journal_entry_items',
+        'notion_pages',
         'audit_log',
       ] as const) {
         const { rows } = await client.query<{ total: number }>(
@@ -190,6 +199,35 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
         },
       );
       assert.deepEqual(
+        file.tables.notion_pages
+          .filter((row) => ['aaa', 'bbb'].includes(String(row.notion_id)))
+          .map(({ id: _id, ...row }) => row),
+        [
+          {
+            notion_id: 'aaa',
+            parent_notion_id: null,
+            kind: 'page',
+            title: '여행, "Travel"',
+            body: '# 여행\n\n- 도쿄',
+            path: '여행, "Travel"',
+            notion_edited_at: '2026-11-20T00:00:00.000001Z',
+            imported_at: '2026-11-27T01:00:00.000000Z',
+            deleted_at: null,
+          },
+          {
+            notion_id: 'bbb',
+            parent_notion_id: 'aaa',
+            kind: 'database',
+            title: 'Reading',
+            body: '',
+            path: '여행, "Travel" / Reading',
+            notion_edited_at: '2026-11-21T00:00:00.000000Z',
+            imported_at: '2026-11-27T01:00:00.000000Z',
+            deleted_at: '2026-11-27T02:00:00.500000Z',
+          },
+        ],
+      );
+      assert.deepEqual(
         file.tables.audit_log.find((row) => row.id === audit!.id),
         {
           id: audit!.id,
@@ -214,6 +252,7 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
         ['item_logs', file.tables.item_logs[0]],
         ['journal_entries', file.tables.journal_entries[0]],
         ['journal_entry_items', file.tables.journal_entry_items[0]],
+        ['notion_pages', file.tables.notion_pages[0]],
         ['audit_log', file.tables.audit_log[0]],
       ] as const) {
         const { rows: columns } = await client.query<{ column_name: string }>(

@@ -1,0 +1,38 @@
+# Import Notion pages into a separate Documents list (#241)
+
+The user wants the documents in Notion loaded into the database, following every child page. Decision (2026-11-27, recorded on #241): imported pages are a **separate Documents list**, not essays. A page can be copied into an essay on demand, and a re-import never touches essays.
+
+## What it does
+
+- **Import** (Settings, "Import from Notion"): `POST /api/notion/import` starts a background run and answers 202 (400 without a token, 409 while a run is going). `GET /api/notion/import` answers the progress (`state`, pages read, created, updated, unchanged, removed, the page being read) and, when it ended, the result or the error. The card polls every 2 seconds while a run is going. The status lives in server memory, so it resets when the server restarts.
+- **Walk:** the search API finds the pages shared with the integration; the top pages are those whose parent is the workspace or a page that is not shared. From each top page the importer follows `child_page` and `child_database` blocks at any depth (also inside toggles and columns) and the rows of each database. Every list is read across pages (100 per call). Calls are spaced 350 ms apart (about 3 a second), and a 429 answer is retried after its `Retry-After`.
+- **Markdown:** blocks become Markdown (headings, lists with nesting, to-dos, toggles, quotes, callouts, code, dividers, equations, bookmarks, images and files as links, tables, columns). An unknown block type keeps its text. Child pages and databases are shown by the tree, not written into the body.
+- **Changes only:** a page is written only when it is new, or its Notion last edited time, title, parent, or path changed. A page that is gone from Notion (or archived) gets `deleted_at` and keeps its text; it returns to normal if it comes back. Nothing is marked deleted unless the whole walk worked, and a token with nothing shared is an error, not a delete-everything.
+- **Documents** (`/documents`, in the menu after Essays): the tree from `parent_notion_id`, a "Database" badge, a "Removed from Notion" badge. A page opens at `/documents/<id>` with its Markdown and "Copy into an essay", which makes a new draft essay (title and text, today's date) and opens it. A page longer than 50,000 characters is refused with a message. The copy writes an audit row like any essay create.
+- **Export and restore** (after #233, per "Adding a table" in `docs/export-format.md`): `notion_pages` is exported and restored; the table is optional in a file, so older files still restore.
+
+## Files
+
+| File                                                              | Change                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `database/migrations/018_notion_pages.sql`                        | `notion_pages` (Notion id unique, parent Notion id without a foreign key, kind page or database, title, Markdown body, path, edited and imported times, `deleted_at`).                                                                                                                                                                    |
+| `backend/src/notion-markdown.ts`, `notion-import.ts`, `notion.ts` | The block converter, the Notion client and walk, the import and Documents routes. `app.ts` mounts `/api/notion` and `/api/documents` and takes `options.notion` (token, fetch) for tests; the token comes from `NOTION_TOKEN`.                                                                                                            |
+| `backend/src/export.ts`, `restore.ts`, `docs/export-format.md`    | `notion_pages` in export and restore.                                                                                                                                                                                                                                                                                                     |
+| `backend/src/openapi.ts`, `docs/openapi.json`                     | Five new operations.                                                                                                                                                                                                                                                                                                                      |
+| `frontend/src/documents.tsx`, `documents-import.tsx`, `app.tsx`   | The Documents pages, the Settings card, the route and menu entry. `restore-file.ts` and `restore.tsx` show the page count.                                                                                                                                                                                                                |
+| `.env.example`                                                    | `NOTION_TOKEN` (SSM `/sirloinbh/life-journal/notion-token`, `@secret`).                                                                                                                                                                                                                                                                   |
+| Tests                                                             | `notion-markdown.test.ts`, `notion.integration.test.ts` with `notion-fixtures.ts` (a fake `fetch` with the Notion API response shapes), `documents.test.tsx`, and the export and restore tests. Existing Settings tests answer the new status call; the menu test lists Documents. `helpers.ts` `withApi` passes all `createApp` options. |
+
+## Not verified: the real Notion API
+
+No token exists yet (#240), and CI and the tests never need one. The fixtures were written from the Notion API reference (version 2022-06-28), not recorded from a live workspace. **User step, at the end:** once #240 is done, set `NOTION_TOKEN`, click "Import from Notion" in Settings, and check that the tree and text match Notion. If a real response differs from the fixtures, open an issue with the page's block types.
+
+## Results
+
+- `npm run check` (format, lint, contract, typecheck, backend and frontend tests, skills, migrations, build) with `TEST_DATABASE_URL` set to a throwaway PostgreSQL 17 (`postgres:17-alpine`, `journal_test`, migrations 001-018 applied by the runner): pass. Backend 351 passed, 0 skipped; frontend 59 files passed.
+- `npm run test:e2e` (same DB): 1 passed.
+- Browser check of Documents, a document, and Settings at 390x844 and 1440x900 (dev servers on the throwaway DB with five seeded pages): no horizontal scroll, the tree and the menu entry show, the buttons are 40 px high. The import itself was not run against Notion (see above).
+
+## Review fixes
+
+- Round 1 (CI): `runImport` is no longer exported (knip). Inline code with backticks gets a longer fence and a backslash in a table cell is escaped (CodeQL "incomplete string escaping").

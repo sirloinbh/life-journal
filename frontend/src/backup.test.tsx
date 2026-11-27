@@ -36,6 +36,7 @@ function fakeApi(answer: (path: string) => Response | Promise<Response>) {
     'fetch',
     vi.fn(async (path: string) => {
       if (path === '/api/health') return json({ today: '2026-11-26' });
+      if (path === '/api/notion/import') return json({ configured: false, state: 'idle' });
       asked.push(path);
       return answer(path);
     }),

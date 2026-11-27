@@ -84,6 +84,20 @@ const link = (entryId: number, itemId: number, fields: Record<string, unknown> =
   ...fields,
 });
 
+const notionPage = (id: number, fields: Record<string, unknown> = {}) => ({
+  id,
+  notion_id: `page${id}`,
+  parent_notion_id: null,
+  kind: 'page',
+  title: 'Travel',
+  body: '# Travel',
+  path: 'Travel',
+  notion_edited_at: '2026-11-20T00:00:00.000000Z',
+  imported_at: '2026-11-27T01:00:00.000000Z',
+  deleted_at: null,
+  ...fields,
+});
+
 const exportFile = (tables: Record<string, unknown[]> = {}) => ({
   format: 'life-journal-export',
   version: 1,
@@ -96,6 +110,7 @@ const exportFile = (tables: Record<string, unknown[]> = {}) => ({
     journal_entries: [entry(1, '2026-11-22', { title: 'A day' })],
     journal_entry_items: [link(1, 2)],
     audit_log: [audit(1)],
+    notion_pages: [notionPage(1)],
     ...tables,
   },
 });
@@ -134,6 +149,7 @@ test('a valid file replaces every record in one transaction and answers the coun
         audit_log: 1,
         journal_entries: 1,
         journal_entry_items: 1,
+        notion_pages: 1,
       },
     });
   });
@@ -147,6 +163,7 @@ test('a valid file replaces every record in one transaction and answers the coun
     'DELETE FROM learned_terms',
     'DELETE FROM items',
     'DELETE FROM audit_log',
+    'DELETE FROM notion_pages',
     'INSERT INTO items',
     'INSERT INTO item_quotes',
     'INSERT INTO item_logs',
@@ -154,11 +171,13 @@ test('a valid file replaces every record in one transaction and answers the coun
     'INSERT INTO journal_entries',
     'INSERT INTO journal_entry_items',
     'INSERT INTO audit_log',
+    'INSERT INTO notion_pages',
     "SELECT setval(pg_get_serial_sequence('items', 'id'),",
     "SELECT setval(pg_get_serial_sequence('item_quotes', 'id'),",
     "SELECT setval(pg_get_serial_sequence('item_logs', 'id'),",
     "SELECT setval(pg_get_serial_sequence('journal_entries', 'id'),",
     "SELECT setval(pg_get_serial_sequence('audit_log', 'id'),",
+    "SELECT setval(pg_get_serial_sequence('notion_pages', 'id'),",
     'COMMIT',
     'release',
   ]);
@@ -173,6 +192,7 @@ test('a version-1 file from before quotes, logs, and the audit log restores with
     audit_log: _audit,
     journal_entries: _entries,
     journal_entry_items: _links,
+    notion_pages: _pages,
     ...tables
   } = older.tables;
   await withApi(createApp(pool), async (call) => {
@@ -190,6 +210,7 @@ test('a version-1 file from before quotes, logs, and the audit log restores with
         audit_log: 0,
         journal_entries: 0,
         journal_entry_items: 0,
+        notion_pages: 0,
       },
     });
   });
@@ -396,6 +417,7 @@ test('a restore file larger than 256 kB is read, while other routes keep their l
         audit_log: 1,
         journal_entries: 0,
         journal_entry_items: 0,
+        notion_pages: 1,
       },
     });
     const other = await call('/api/items', {

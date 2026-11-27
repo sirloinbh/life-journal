@@ -80,6 +80,23 @@ export const EXPORT_TABLES = {
     sql: `SELECT entry_id, item_id, ${utc('linked_at')}
           FROM journal_entry_items ORDER BY entry_id, item_id`,
   },
+  // Pages imported from Notion (#241); the tree is kept by Notion ids, so no table must come first.
+  notion_pages: {
+    columns: [
+      'id',
+      'notion_id',
+      'parent_notion_id',
+      'kind',
+      'title',
+      'body',
+      'path',
+      'notion_edited_at',
+      'imported_at',
+      'deleted_at',
+    ],
+    sql: `SELECT id, notion_id, parent_notion_id, kind, title, body, path, ${utc('notion_edited_at')},
+            ${utc('imported_at')}, ${utc('deleted_at')} FROM notion_pages ORDER BY id`,
+  },
   // The change history (owner decision on #208, option B); before and after are JSON snapshots.
   audit_log: {
     columns: [

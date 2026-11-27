@@ -56,7 +56,7 @@ function send(
 export async function withApi(
   pool: Pool,
   run: (call: Call) => Promise<void>,
-  options: { today?: () => string } = {},
+  options: Parameters<typeof createApp>[1] = {},
 ) {
   const server = createServer(createApp(pool, options));
   const port = await listenLocally(server);

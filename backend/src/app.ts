@@ -8,6 +8,7 @@ import { createEssaysRouter } from './essays.js';
 import { createExportRouter } from './export.js';
 import { createItemsRouter } from './items.js';
 import { createJournalRouter } from './journal.js';
+import { createDocumentsRouter, createNotionRouter, type NotionConfig } from './notion.js';
 import { createRestoreRouter, RESTORE_PATH } from './restore.js';
 import { errorHandler, notFound, requestLog, serviceDate } from './standard/http.js';
 import { apiRateLimit } from './standard/rate-limit.js';
@@ -22,6 +23,8 @@ export function createApp(
     auth?: express.RequestHandler;
     /** shared-ai's public key (PEM); without it the AI tool routes are off (project-standards#711). */
     toolsPublicKey?: string;
+    /** #241: the Notion token and, in tests, recorded responses. The token defaults to NOTION_TOKEN. */
+    notion?: NotionConfig;
   } = {},
 ) {
   const today = options.today ?? (() => serviceDate());
@@ -49,6 +52,11 @@ export function createApp(
   app.use('/api/stats', createStatsRouter(pool, today));
   app.use('/api/journal', createJournalRouter(pool, today));
   app.use('/api/essays', createEssaysRouter(pool, today));
+  app.use(
+    '/api/notion',
+    createNotionRouter(pool, { token: process.env.NOTION_TOKEN, ...options.notion }),
+  );
+  app.use('/api/documents', createDocumentsRouter(pool, today));
   // AI tools for shared-ai on /internal/tools: outside /api, so nginx never forwards them and the signed
   // call token, not the session, is the check. The token must name its tool and carry a jti (#822).
   registerToolRoutes(app, {
