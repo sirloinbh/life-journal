@@ -21,7 +21,8 @@ test(
       // Other test files write these tables at the same time; the lock makes them wait until the
       // rollback, so every statement here sees the same rows. Reads still go through.
       await client.query(
-        'LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log IN EXCLUSIVE MODE',
+        `LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log, journal_entries,
+           journal_entry_items IN EXCLUSIVE MODE`,
       );
       const { rows: inserted } = await client.query<{ id: number }>(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
@@ -61,6 +62,19 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
          ON CONFLICT (term_id) DO UPDATE SET learned_at = EXCLUDED.learned_at`,
       );
       const {
+        rows: [entry],
+      } = await client.query<{ id: number }>(
+        `INSERT INTO journal_entries (entry_date, title, body, created_at, updated_at)
+         VALUES ('2026-11-02', '뮤지컬, "본 날"', E'첫 줄
+둘째 줄', '2026-11-02 23:00:00.000005+09', '2026-11-03 08:00:00.5+09')
+         RETURNING id`,
+      );
+      await client.query(
+        `INSERT INTO journal_entry_items (entry_id, item_id, linked_at)
+         VALUES ($1, $2, '2026-11-02 23:05:00.000003+09')`,
+        [entry!.id, inserted[1].id],
+      );
+      const {
         rows: [audit],
       } = await client.query<{ id: number }>(
         `INSERT INTO audit_log (at, actor_type, actor_id, client, tool, action, entity, entity_id,
@@ -82,6 +96,8 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
         'item_quotes',
         'item_logs',
         'learned_terms',
+        'journal_entries',
+        'journal_entry_items',
         'audit_log',
       ] as const) {
         const { rows } = await client.query<{ total: number }>(
@@ -155,6 +171,25 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
         },
       );
       assert.deepEqual(
+        file.tables.journal_entries.find((row) => row.id === entry!.id),
+        {
+          id: entry!.id,
+          entry_date: '2026-11-02',
+          title: '뮤지컬, "본 날"',
+          body: '첫 줄\n둘째 줄',
+          created_at: '2026-11-02T14:00:00.000005Z',
+          updated_at: '2026-11-02T23:00:00.500000Z',
+        },
+      );
+      assert.deepEqual(
+        file.tables.journal_entry_items.find((row) => row.entry_id === entry!.id),
+        {
+          entry_id: entry!.id,
+          item_id: inserted[1].id,
+          linked_at: '2026-11-02T14:05:00.000003Z',
+        },
+      );
+      assert.deepEqual(
         file.tables.audit_log.find((row) => row.id === audit!.id),
         {
           id: audit!.id,
@@ -177,6 +212,8 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
         ['items', wish],
         ['item_quotes', file.tables.item_quotes[0]],
         ['item_logs', file.tables.item_logs[0]],
+        ['journal_entries', file.tables.journal_entries[0]],
+        ['journal_entry_items', file.tables.journal_entry_items[0]],
         ['audit_log', file.tables.audit_log[0]],
       ] as const) {
         const { rows: columns } = await client.query<{ column_name: string }>(

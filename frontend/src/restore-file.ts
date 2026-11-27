@@ -14,6 +14,9 @@ export type ExportSummary = {
   learnedTerms: number;
   /** Change history rows (audit_log); files from before 2026-11-26 have none. */
   history: number;
+  /** Journal entries and their item links; files from before #233 have none. */
+  entries: number;
+  entryLinks: number;
   /** The parsed file, sent as it is. */
   body: unknown;
 };
@@ -49,6 +52,8 @@ export function summarizeExport(text: string): ExportSummary {
     logs: Array.isArray(tables.item_logs) ? tables.item_logs.length : 0,
     learnedTerms: tables.learned_terms.length,
     history: Array.isArray(tables.audit_log) ? tables.audit_log.length : 0,
+    entries: Array.isArray(tables.journal_entries) ? tables.journal_entries.length : 0,
+    entryLinks: Array.isArray(tables.journal_entry_items) ? tables.journal_entry_items.length : 0,
     body,
   };
 }
@@ -62,12 +67,16 @@ export function describeCounts({
   logs,
   learnedTerms,
   history = 0,
+  entries = 0,
+  entryLinks = 0,
 }: Pick<ExportSummary, 'items' | 'quotes' | 'logs' | 'learnedTerms'> &
-  Partial<Pick<ExportSummary, 'history'>>) {
+  Partial<Pick<ExportSummary, 'history' | 'entries' | 'entryLinks'>>) {
   const parts = [
     count(items, 'item', 'items'),
     quotes > 0 && count(quotes, 'quote', 'quotes'),
     logs > 0 && count(logs, 'tasting or visit', 'tastings or visits'),
+    entries > 0 && count(entries, 'journal entry', 'journal entries'),
+    entryLinks > 0 && count(entryLinks, 'entry link', 'entry links'),
     count(learnedTerms, 'learned term', 'learned terms'),
     history > 0 && count(history, 'history entry', 'history entries'),
   ].filter((part): part is string => typeof part === 'string');

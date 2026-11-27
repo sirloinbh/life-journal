@@ -23,6 +23,9 @@ type Restored = {
     item_logs: number;
     learned_terms: number;
     audit_log: number;
+    // Missing in an answer from a server older than #233.
+    journal_entries?: number;
+    journal_entry_items?: number;
   };
 };
 
@@ -62,6 +65,8 @@ export function RestoreRecords() {
         logs: restored.item_logs,
         learnedTerms: restored.learned_terms,
         history: restored.audit_log,
+        entries: restored.journal_entries,
+        entryLinks: restored.journal_entry_items,
       });
       status(`Restored ${counts} from ${chosen.name}.`);
       setChosen(null);
@@ -81,8 +86,8 @@ export function RestoreRecords() {
         <CardTitle asHeading="h2">Restore records</CardTitle>
         <CardDescription>
           Choose a JSON file downloaded above. A restore replaces every current record, learned
-          term, and history entry with the ones in the file, so download a fresh export first to
-          keep what you have now.
+          term, journal entry, and history entry with the ones in the file, so download a fresh
+          export first to keep what you have now.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">

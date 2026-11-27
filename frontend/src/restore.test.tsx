@@ -138,6 +138,8 @@ test('summarizeExport reads the counts and refuses files it cannot restore', () 
     logs: 0,
     learnedTerms: 1,
     history: 0,
+    entries: 0,
+    entryLinks: 0,
   });
   const withChildren = {
     ...exportBody,
@@ -146,12 +148,16 @@ test('summarizeExport reads the counts and refuses files it cannot restore', () 
       item_quotes: [{ id: 1 }],
       item_logs: [{ id: 1 }, { id: 2 }],
       audit_log: [{ id: 1 }, { id: 2 }, { id: 3 }],
+      journal_entries: [{ id: 1 }, { id: 2 }],
+      journal_entry_items: [{ entry_id: 1, item_id: 1 }],
     },
   };
   expect(summarizeExport(JSON.stringify(withChildren))).toMatchObject({
     quotes: 1,
     logs: 2,
     history: 3,
+    entries: 2,
+    entryLinks: 1,
   });
   expect(summarizeExport(JSON.stringify({ ...exportBody, exportedAt: 7 })).exportedAt).toBe(
     'an unknown time',
@@ -161,6 +167,12 @@ test('summarizeExport reads the counts and refuses files it cannot restore', () 
   );
   expect(() => summarizeExport('[]')).toThrow('not a life-journal export');
   expect(MAX_RESTORE_BYTES).toBe(20 * 1024 * 1024);
+});
+
+test('describeCounts names journal entries and links only when the file has some', () => {
+  expect(
+    describeCounts({ items: 2, quotes: 0, logs: 0, learnedTerms: 1, entries: 3, entryLinks: 1 }),
+  ).toBe('2 items, 3 journal entries, 1 entry link, and 1 learned term');
 });
 
 test('describeCounts names quotes and tastings or visits only when the file has some', () => {
