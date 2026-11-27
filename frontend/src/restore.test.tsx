@@ -171,7 +171,7 @@ test('summarizeExport reads the counts and refuses files it cannot restore', () 
     'The file has no items or learned terms table',
   );
   expect(() => summarizeExport('[]')).toThrow('not a life-journal export');
-  expect(MAX_RESTORE_BYTES).toBe(20 * 1024 * 1024);
+  expect(MAX_RESTORE_BYTES).toBe(100 * 1024 * 1024);
 });
 
 test('describeCounts names essays only when the file has some', () => {
