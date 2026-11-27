@@ -16,7 +16,7 @@ export const RESTORE_PATH = '/api/restore';
 // UTF-8, and neither the number of pages nor the change history is capped, so 20 MB could refuse a file
 // the export had just made. 100 MB fits some 16 such pages beside everything else; the frontend checks
 // the same number (MAX_RESTORE_BYTES).
-export const RESTORE_BODY_LIMIT_MB = 100;
+const RESTORE_BODY_LIMIT_MB = 100;
 const RESTORE_BODY_LIMIT = `${RESTORE_BODY_LIMIT_MB}mb`;
 
 const timestamp = z
