@@ -201,7 +201,7 @@ export const operations: Record<string, Operation> = {
   },
   'POST /api/restore': {
     summary:
-      'Replace every record with a JSON export (docs/export-format.md, up to 20 MB). The whole file is checked first and written in one transaction, so a refused file changes nothing; answers { restored: { items, item_quotes, item_logs, learned_terms, audit_log } }',
+      'Replace every record with a JSON export (docs/export-format.md, up to 100 MB). The whole file is checked first and written in one transaction, so a refused file changes nothing; answers { restored: { items, item_quotes, item_logs, learned_terms, audit_log } }',
     body: ['ExportFile', exportFile],
     status: [200, 400, 401, 413, 500, 503],
   },

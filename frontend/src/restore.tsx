@@ -47,7 +47,7 @@ export function RestoreRecords() {
     setChosen(null);
     if (!file) return;
     try {
-      if (file.size > MAX_RESTORE_BYTES) throw new Error('The file is larger than 20 MB');
+      if (file.size > MAX_RESTORE_BYTES) throw new Error('The file is larger than 100 MB');
       setChosen({ name: file.name, summary: summarizeExport(await file.text()) });
     } catch (cause) {
       error(errorText(cause));

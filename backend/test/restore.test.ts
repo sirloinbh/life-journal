@@ -448,11 +448,30 @@ test('a restore file larger than 256 kB is read, while other routes keep their l
   });
 });
 
-test('a restore file over 20 MB is refused as too large', async () => {
+test('a restore file the export can make above the old 20 MB limit is restored (#254)', async () => {
+  // Five Notion pages at the 2,000,000-character cap, in Korean (3 bytes each in UTF-8): about 30 MB.
+  const body = '가'.repeat(2_000_000);
+  const pages = Array.from({ length: 5 }, (_, index) => notionPage(index + 1, { body }));
+  const file = exportFile({ notion_pages: pages });
+  const raw = JSON.stringify(file);
+  assert.ok(Buffer.byteLength(raw) > 20 * 1024 * 1024);
+  const { pool } = fakePool();
+  await withApi(createApp(pool), async (call) => {
+    const { status, data } = await call('/api/restore', {
+      method: 'POST',
+      rawBody: raw,
+      contentType: 'application/json',
+    });
+    assert.equal(status, 200);
+    assert.equal((data as { restored: { notion_pages: number } }).restored.notion_pages, 5);
+  });
+});
+
+test('a restore file over 100 MB is refused as too large', async () => {
   await withApi(createApp(noDatabase), async (call) => {
     const { status } = await call('/api/restore', {
       method: 'POST',
-      rawBody: `{"pad":"${'x'.repeat(21 * 1024 * 1024)}"}`,
+      rawBody: `{"pad":"${'x'.repeat(101 * 1024 * 1024)}"}`,
       contentType: 'application/json',
     });
     assert.equal(status, 413);

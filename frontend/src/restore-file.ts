@@ -2,7 +2,7 @@
 // catches the wrong file early and gives the counts for the confirmation.
 
 /** The server's body limit for a restore (backend/src/restore.ts). */
-export const MAX_RESTORE_BYTES = 20 * 1024 * 1024;
+export const MAX_RESTORE_BYTES = 100 * 1024 * 1024;
 
 export type ExportSummary = {
   /** When the file was made, as written in it (Asia/Seoul), cut to minutes for the screen. */
