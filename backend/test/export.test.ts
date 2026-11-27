@@ -112,11 +112,22 @@ const log = {
 };
 
 test('GET /api/export answers a dated JSON download of every table from one snapshot', async () => {
+  const journalEntry = {
+    id: 1,
+    entry_date: '2026-11-02',
+    title: null,
+    body: 'A day',
+    created_at: '2026-11-02T14:00:00.000000Z',
+    updated_at: '2026-11-02T14:00:00.000000Z',
+  };
+  const journalLink = { entry_id: 1, item_id: 1, linked_at: '2026-11-02T14:05:00.000000Z' };
   const { pool, asked } = fakePool({
     items: [item],
     item_quotes: [quote],
     item_logs: [log],
     learned_terms: [{ term_id: 'wine-tannin', learned_at: '2026-11-20T01:02:03.000004Z' }],
+    journal_entries: [journalEntry],
+    journal_entry_items: [journalLink],
     audit_log: [audit],
   });
   await withApi(createApp(pool, { today: () => '2026-11-26' }), async (call) => {
@@ -136,6 +147,8 @@ test('GET /api/export answers a dated JSON download of every table from one snap
       item_quotes: [quote],
       item_logs: [log],
       learned_terms: [{ term_id: 'wine-tannin', learned_at: '2026-11-20T01:02:03.000004Z' }],
+      journal_entries: [journalEntry],
+      journal_entry_items: [journalLink],
       audit_log: [audit],
     });
   });
@@ -145,6 +158,8 @@ test('GET /api/export answers a dated JSON download of every table from one snap
     'read item_quotes',
     'read item_logs',
     'read learned_terms',
+    'read journal_entries',
+    'read journal_entry_items',
     'read audit_log',
     'COMMIT',
     'release',

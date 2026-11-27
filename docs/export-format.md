@@ -17,6 +17,10 @@ File name: `life-journal-YYYY-MM-DD.json` (the service date, Asia/Seoul).
     "items": [{ "id": 1, "category": "reading", "...": "..." }],
     "item_quotes": [{ "id": 1, "item_id": 1, "...": "..." }],
     "item_logs": [{ "id": 1, "item_id": 1, "...": "..." }],
+    "journal_entries": [{ "id": 1, "entry_date": "2026-11-02", "...": "..." }],
+    "journal_entry_items": [
+      { "entry_id": 1, "item_id": 2, "linked_at": "2026-11-02T14:05:00.000003Z" }
+    ],
     "learned_terms": [{ "term_id": "wine-tannin", "learned_at": "2026-11-20T00:00:00.000004Z" }],
     "audit_log": [{ "id": 1, "at": "2026-11-25T14:59:59.000009Z", "...": "..." }]
   }
@@ -52,6 +56,10 @@ The file holds personal data (reviews, quotes, log notes, the names in `companio
 
 `item_logs` (ordered by `id`, #214): `id`, `item_id`, `logged_on`, `rating`, `note`, `cost_krw`, `created_at`, `updated_at`. More visits or tastings of an item; `item_id` refers to `items.id`. See `database/migrations/013_item_logs.sql`.
 
+`journal_entries` (ordered by `id`, #210, #233): `id`, `entry_date`, `title`, `body`, `created_at`, `updated_at`. One diary entry per date; `title` may be `null`. See `database/migrations/016_journal_entries.sql`.
+
+`journal_entry_items` (ordered by `entry_id`, `item_id`, #211, #233): `entry_id`, `item_id`, `linked_at`. The items linked to an entry; `entry_id` refers to `journal_entries.id` and `item_id` to `items.id`. See `database/migrations/017_journal_entry_items.sql`.
+
 `learned_terms` (ordered by `term_id`): `term_id`, `learned_at`. A `term_id` refers to a term in `backend/src/terms-data.ts`; ids are never renamed (`backend/test/term-ids.txt`).
 
 `audit_log` (ordered by `id`): `id`, `at`, `actor_type`, `actor_id`, `client`, `tool`, `action`, `entity`, `entity_id`, `result`, `before`, `after`, `request_id`. The change history of AI tool calls and routes; it is in the export so a restore keeps it (owner decision on #208, option B, 2026-11-26). See `database/migrations/008_audit_log.sql`. The nightly backup deletes rows older than a year, so the file holds only what is left.
@@ -66,13 +74,13 @@ The file holds personal data (reviews, quotes, log notes, the names in `companio
 
 `POST /api/restore` (Settings › Restore records, #209) takes the JSON file as the request body, up to 20 MB (`backend/src/restore.ts`; every other route keeps the 256 kB limit).
 
-- The whole file is checked before anything changes: `format`, `version` 1, the tables, and every row's fields and types. `item_quotes`, `item_logs`, and `audit_log` may be missing (files made before #217, #214, and the 2026-11-26 owner decision on #208 have none; a missing table restores as empty); `items` and `learned_terms` may not. A quote or log must belong to an item in the file, of a category that takes it (quotes: `reading`; logs: `LOG_CATEGORIES`, now `drink` and `travel`), as the API requires. Unknown fields and tables are refused, not dropped, so a file from a newer app is never restored with data missing. Two rows with the same key are refused. The answer names the first problems by path, such as `tables.items.2.title: Title must not be empty`.
-- Then, in one transaction: lock the four tables (`items` first), delete every row (children first), insert the file's rows with their own ids (`OVERRIDING SYSTEM VALUE`, parents first), and move the id sequences of `items`, `item_quotes`, and `item_logs` past their largest id, so a new row gets the next id. A row the database refuses (a CHECK) rolls everything back and answers 400 with the rule's name.
+- The whole file is checked before anything changes: `format`, `version` 1, the tables, and every row's fields and types. `item_quotes`, `item_logs`, `audit_log`, `journal_entries`, and `journal_entry_items` may be missing (files made before #217, #214, the 2026-11-26 owner decision on #208, and #233 have none; a missing table restores as empty); `items` and `learned_terms` may not. A quote or log must belong to an item in the file, of a category that takes it (quotes: `reading`; logs: `LOG_CATEGORIES`, now `drink` and `travel`), as the API requires. Two entries may not share a date, and a link needs its entry and its item in the file, with the item completed on the entry's date (the API's rule, #211). Unknown fields and tables are refused, not dropped, so a file from a newer app is never restored with data missing. Two rows with the same key are refused. The answer names the first problems by path, such as `tables.items.2.title: Title must not be empty`.
+- Then, in one transaction: lock the tables (`items` first), delete every row (children first; the entries' links and the entries go before `items`, whose delete would cascade into the links), insert the file's rows with their own ids (`OVERRIDING SYSTEM VALUE`, parents first), and move the id sequences of `items`, `item_quotes`, `item_logs`, `journal_entries`, and `audit_log` past their largest id, so a new row gets the next id. A row the database refuses (a CHECK) rolls everything back and answers 400 with the rule's name.
 - A restore replaces all data; it never merges (owner decision on #209). The screen shows the counts in the file and asks for confirmation first, and suggests downloading a fresh export before.
 
 ## Adding a column
 
-A new column of an exported table is added to its `columns` list and its `SELECT` in `EXPORT_TABLES` in the same PR, and to restore (the row schema and the column lists of the `INSERT` in `backend/src/restore.ts`). A column added after version 1 should be optional in the row schema, so older files still restore; `jsonb_to_recordset` gives `NULL` for a missing field, so the `INSERT` uses `COALESCE` to the column default where the column is `NOT NULL`. `backend/test/export.integration.test.ts` compares the exported columns of `items`, `item_quotes`, `item_logs`, and `audit_log` with each table's columns, so a forgotten column fails the test.
+A new column of an exported table is added to its `columns` list and its `SELECT` in `EXPORT_TABLES` in the same PR, and to restore (the row schema and the column lists of the `INSERT` in `backend/src/restore.ts`). A column added after version 1 should be optional in the row schema, so older files still restore; `jsonb_to_recordset` gives `NULL` for a missing field, so the `INSERT` uses `COALESCE` to the column default where the column is `NOT NULL`. `backend/test/export.integration.test.ts` compares the exported columns of `items`, `item_quotes`, `item_logs`, `journal_entries`, `journal_entry_items`, and `audit_log` with each table's columns, so a forgotten column fails the test.
 
 ## Adding a table
 

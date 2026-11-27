@@ -16,7 +16,7 @@ test(
     const pool = testPool();
     t.after(() => pool.end());
     const client = await pool.connect();
-    const tables = ['items', 'item_quotes', 'item_logs', 'audit_log'] as const;
+    const tables = ['items', 'item_quotes', 'item_logs', 'journal_entries', 'audit_log'] as const;
     const sequence = (table: string) => `pg_get_serial_sequence('${table}', 'id')`;
     const started = new Map<string, number>();
     try {
@@ -30,7 +30,8 @@ test(
       // Other test files write these tables at the same time; the lock makes them wait until the
       // rollback, so every statement here sees the same rows. Reads still go through.
       await client.query(
-        'LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log IN EXCLUSIVE MODE',
+        `LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log, journal_entries,
+           journal_entry_items IN EXCLUSIVE MODE`,
       );
       const { rows: seeded } = await client.query<{ id: number }>(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
@@ -56,6 +57,19 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
          VALUES ($1, '2026-11-10', 3.5, '두 번째 잔', 30000, '2026-11-10 22:00:00+09', now())`,
         [seeded[2].id],
       );
+      // A journal entry on the day item 3 was completed, titled and linked to it; a second one without title.
+      const { rows: entries } = await client.query<{ id: number }>(
+        `INSERT INTO journal_entries (entry_date, title, body, created_at, updated_at)
+         VALUES ('2026-11-01', '와인 마신 날', E'첫 줄
+둘째 줄', '2026-11-01 23:00:00.000005+09', now()),
+                ('2026-11-02', NULL, 'No title', now(), now())
+         RETURNING id`,
+      );
+      await client.query(
+        `INSERT INTO journal_entry_items (entry_id, item_id, linked_at)
+         VALUES ($1, $2, '2026-11-01 23:05:00.000003+09')`,
+        [entries[0].id, seeded[2].id],
+      );
       await client.query(
         `INSERT INTO learned_terms (term_id, learned_at) VALUES ('wine-tannin', '2026-11-20 09:00:00.000004+09')
          ON CONFLICT (term_id) DO UPDATE SET learned_at = EXCLUDED.learned_at`,
@@ -75,9 +89,12 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
       assert.ok(before.tables.item_quotes.length >= 1);
       assert.ok(before.tables.item_logs.length >= 1);
       assert.ok(before.tables.audit_log.length >= 1);
+      assert.ok(before.tables.journal_entries.length >= 2);
+      assert.ok(before.tables.journal_entry_items.length >= 1);
 
       // An empty database, as after `docker compose down -v` and the migrations.
       await client.query('DELETE FROM learned_terms');
+      await client.query('DELETE FROM journal_entries');
       await client.query('DELETE FROM items');
       await client.query('DELETE FROM audit_log');
       const restored = await replaceRecords(client, file);
@@ -87,8 +104,16 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
         item_logs: before.tables.item_logs.length,
         learned_terms: before.tables.learned_terms.length,
         audit_log: before.tables.audit_log.length,
+        journal_entries: before.tables.journal_entries.length,
+        journal_entry_items: before.tables.journal_entry_items.length,
       });
       assert.deepEqual(await readExport(client, now), before);
+
+      // A restore replaces the entries too, and keeps every link with its entry and item.
+      const { rows: linked } = await client.query<{ count: number }>(
+        'SELECT count(*)::int AS count FROM journal_entry_items',
+      );
+      assert.equal(linked[0].count, before.tables.journal_entry_items.length);
 
       // One invalid row (a rating the CHECK refuses) rolls the whole restore back.
       await client.query('SAVEPOINT broken');
@@ -121,6 +146,10 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
         [item[0].id],
       );
       assert.equal(log[0].id, largest(file.tables.item_logs) + 1);
+      const { rows: journal } = await client.query<{ id: number }>(
+        "INSERT INTO journal_entries (entry_date, body) VALUES ('2000-01-01', 'After the restore') RETURNING id",
+      );
+      assert.equal(journal[0].id, largest(file.tables.journal_entries) + 1);
       const { rows: entry } = await client.query<{ id: number }>(
         "INSERT INTO audit_log (actor_type, action, entity) VALUES ('user', 'create', 'items') RETURNING id",
       );

@@ -98,6 +98,22 @@ const auditRow = z.strictObject({
   request_id: optionalText,
 });
 
+// The database checks the lengths and the one-entry-per-date rule (016).
+const journalEntryRow = z.strictObject({
+  id,
+  entry_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date such as 2026-11-26'),
+  title: optionalText,
+  body: z.string().refine((body) => body.trim() !== '', 'Entry must not be empty'),
+  created_at: timestamp,
+  updated_at: timestamp,
+});
+
+const journalLinkRow = z.strictObject({
+  entry_id: id,
+  item_id: id,
+  linked_at: timestamp,
+});
+
 function unique<T>(
   rows: readonly T[],
   key: (row: T) => unknown,
@@ -158,10 +174,14 @@ export const exportFile = z
       learned_terms: z.array(learnedTermRow),
       // Added on 2026-11-26 (#208, option B): a file without it restores an empty history.
       audit_log: z.array(auditRow).default([]),
+      // Added with the journal (#233): a file without them has no entries or links.
+      journal_entries: z.array(journalEntryRow).default([]),
+      journal_entry_items: z.array(journalLinkRow).default([]),
     }),
   })
   .superRefine((file, ctx) => {
     const { items, item_quotes, item_logs, learned_terms, audit_log } = file.tables;
+    const { journal_entries, journal_entry_items } = file.tables;
     unique(audit_log, (row) => row.id, ctx, 'audit_log');
     unique(items, (row) => row.id, ctx, 'items');
     unique(item_quotes, (row) => row.id, ctx, 'item_quotes');
@@ -170,6 +190,30 @@ export const exportFile = z
     const categories = new Map(items.map((row) => [row.id, row.category]));
     belongs(item_quotes, categories, ['reading'], ctx, 'item_quotes', 'Quotes');
     belongs(item_logs, categories, LOG_CATEGORIES, ctx, 'item_logs', 'Logs');
+    unique(journal_entries, (row) => row.id, ctx, 'journal_entries');
+    unique(journal_entries, (row) => row.entry_date, ctx, 'journal_entries');
+    unique(
+      journal_entry_items,
+      (row) => `${row.entry_id}-${row.item_id}`,
+      ctx,
+      'journal_entry_items',
+    );
+    // A link needs its entry and its item in the file, and the item completed on the entry's date (the API's rule, #211).
+    const entryDates = new Map(journal_entries.map((row) => [row.id, row.entry_date]));
+    const completed = new Map(items.map((row) => [row.id, row.completed_date]));
+    journal_entry_items.forEach((row, index) => {
+      const entryDate = entryDates.get(row.entry_id);
+      const message =
+        entryDate === undefined
+          ? `Entry ${row.entry_id} is not in the file`
+          : !completed.has(row.item_id)
+            ? `Item ${row.item_id} is not in the file`
+            : completed.get(row.item_id) !== entryDate
+              ? `Item ${row.item_id} was not completed on ${entryDate}`
+              : null;
+      if (message)
+        ctx.addIssue({ code: 'custom', path: ['tables', 'journal_entry_items', index], message });
+    });
   });
 
 type ExportInput = z.infer<typeof exportFile>;
@@ -190,18 +234,23 @@ const ITEM_COLUMNS = `id, category, subtype, title, status, cost_krw, planned_da
 const QUOTE_COLUMNS = 'id, item_id, text, page, note, created_at, updated_at';
 const LOG_COLUMNS = 'id, item_id, logged_on, rating, note, cost_krw, created_at, updated_at';
 // Quoted: at, before, and after are SQL keywords.
+const ENTRY_COLUMNS = 'id, entry_date, title, body, created_at, updated_at';
 const AUDIT_COLUMNS = `id, "at", actor_type, actor_id, client, tool, action, entity, entity_id, result,
   "before", "after", request_id`;
 
 /** Replaces every record with the file's rows. Runs inside the caller's transaction. */
 export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: ExportInput) {
   const { items, item_quotes, item_logs, learned_terms, audit_log } = file.tables;
+  const { journal_entries, journal_entry_items } = file.tables;
   // Nothing else may write while the tables are replaced. items first, as a cascading DELETE FROM
   // items takes its locks, so the two cannot deadlock.
   await client.query(
-    'LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log IN EXCLUSIVE MODE',
+    `LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log, journal_entries,
+       journal_entry_items IN EXCLUSIVE MODE`,
   );
   // Children before their parents.
+  await client.query('DELETE FROM journal_entry_items');
+  await client.query('DELETE FROM journal_entries');
   await client.query('DELETE FROM item_logs');
   await client.query('DELETE FROM item_quotes');
   await client.query('DELETE FROM learned_terms');
@@ -237,6 +286,19 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
     [JSON.stringify(learned_terms)],
   );
   await client.query(
+    `INSERT INTO journal_entries (${ENTRY_COLUMNS}) OVERRIDING SYSTEM VALUE
+     SELECT ${ENTRY_COLUMNS} FROM jsonb_to_recordset($1::jsonb) AS r(
+       id bigint, entry_date date, title text, body text, created_at timestamptz,
+       updated_at timestamptz)`,
+    [JSON.stringify(journal_entries)],
+  );
+  await client.query(
+    `INSERT INTO journal_entry_items (entry_id, item_id, linked_at)
+     SELECT entry_id, item_id, linked_at FROM jsonb_to_recordset($1::jsonb) AS r(
+       entry_id bigint, item_id bigint, linked_at timestamptz)`,
+    [JSON.stringify(journal_entry_items)],
+  );
+  await client.query(
     `INSERT INTO audit_log (${AUDIT_COLUMNS}) OVERRIDING SYSTEM VALUE
      SELECT ${AUDIT_COLUMNS} FROM jsonb_to_recordset($1::jsonb) AS r(
        id bigint, "at" timestamptz, actor_type text, actor_id text, client text, tool text,
@@ -245,7 +307,7 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
     [JSON.stringify(audit_log)],
   );
   // The ids came from the file, so the next new row of each table continues after the largest one.
-  for (const table of ['items', 'item_quotes', 'item_logs', 'audit_log']) {
+  for (const table of ['items', 'item_quotes', 'item_logs', 'journal_entries', 'audit_log']) {
     await client.query(
       `SELECT setval(pg_get_serial_sequence('${table}', 'id'),
          COALESCE((SELECT max(id) FROM ${table}), 1), (SELECT count(*) > 0 FROM ${table}))`,
@@ -257,6 +319,8 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
     item_logs: item_logs.length,
     learned_terms: learned_terms.length,
     audit_log: audit_log.length,
+    journal_entries: journal_entries.length,
+    journal_entry_items: journal_entry_items.length,
   };
 }
 

@@ -69,6 +69,17 @@ export const EXPORT_TABLES = {
     columns: ['term_id', 'learned_at'],
     sql: `SELECT term_id, ${utc('learned_at')} FROM learned_terms ORDER BY term_id`,
   },
+  // Journal entries (#210) and their item links (#211, #233): one entry per date, links after both parents.
+  journal_entries: {
+    columns: ['id', 'entry_date', 'title', 'body', 'created_at', 'updated_at'],
+    sql: `SELECT id, entry_date, title, body, ${utc('created_at')}, ${utc('updated_at')}
+          FROM journal_entries ORDER BY id`,
+  },
+  journal_entry_items: {
+    columns: ['entry_id', 'item_id', 'linked_at'],
+    sql: `SELECT entry_id, item_id, ${utc('linked_at')}
+          FROM journal_entry_items ORDER BY entry_id, item_id`,
+  },
   // The change history (owner decision on #208, option B); before and after are JSON snapshots.
   audit_log: {
     columns: [
