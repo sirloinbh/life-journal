@@ -153,7 +153,7 @@ type Existing = {
 };
 
 /** Run one import. Progress is reported through `status`, which is updated in place. */
-export async function runImport(pool: Pool, client: NotionClient, status: ImportStatus) {
+async function runImport(pool: Pool, client: NotionClient, status: ImportStatus) {
   const found = await client.all('POST', '/search', {});
   const known = new Map<string, Json>();
   for (const object of found) known.set(normalizeId(String(object.id)), object);

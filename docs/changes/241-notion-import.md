@@ -32,3 +32,7 @@ No token exists yet (#240), and CI and the tests never need one. The fixtures we
 - `npm run check` (format, lint, contract, typecheck, backend and frontend tests, skills, migrations, build) with `TEST_DATABASE_URL` set to a throwaway PostgreSQL 17 (`postgres:17-alpine`, `journal_test`, migrations 001-018 applied by the runner): pass. Backend 351 passed, 0 skipped; frontend 59 files passed.
 - `npm run test:e2e` (same DB): 1 passed.
 - Browser check of Documents, a document, and Settings at 390x844 and 1440x900 (dev servers on the throwaway DB with five seeded pages): no horizontal scroll, the tree and the menu entry show, the buttons are 40 px high. The import itself was not run against Notion (see above).
+
+## Review fixes
+
+- Round 1 (CI): `runImport` is no longer exported (knip). Inline code with backticks gets a longer fence and a backslash in a table cell is escaped (CodeQL "incomplete string escaping").

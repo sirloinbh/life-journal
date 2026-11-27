@@ -41,7 +41,13 @@ export function richText(parts: RichText[] | undefined): string {
       let text = part.plain_text ?? '';
       if (text === '') return '';
       const a = part.annotations ?? {};
-      if (a.code) text = `\`${text.replace(/`/g, '\\`')}\``;
+      if (a.code) {
+        // A code span has no escapes: a fence longer than any backtick run inside it keeps the text as it is.
+        const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
+        const fence = '`'.repeat(longest + 1);
+        const pad = text.startsWith('`') || text.endsWith('`') ? ' ' : '';
+        text = `${fence}${pad}${text}${pad}${fence}`;
+      }
       // Markers hug the text, not its surrounding spaces, so the result stays valid Markdown.
       const wrap = (marker: string) => {
         const match = /^(\s*)([\s\S]*?)(\s*)$/.exec(text);
@@ -70,7 +76,7 @@ const mediaUrl = (p: Payload) => p.external?.url ?? p.file?.url ?? p.url ?? '';
 function tableRows(block: NotionBlock): string {
   const rows = (block.children ?? []).map((row) => {
     const cells = ((row.table_row as { cells?: RichText[][] } | undefined)?.cells ?? []).map(
-      (cell) => richText(cell).replace(/\|/g, '\\|').replace(/\n/g, ' '),
+      (cell) => richText(cell).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' '),
     );
     return `| ${cells.join(' | ')} |`;
   });

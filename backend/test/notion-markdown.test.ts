@@ -20,6 +20,16 @@ test('rich text keeps bold, italic, strikethrough, code, and links, with markers
   );
 });
 
+test('code with backticks gets a longer fence, and a backslash in a table cell is escaped', () => {
+  assert.equal(richText([text('a`b', { code: true })]), '``a`b``');
+  assert.equal(richText([text('`x`', { code: true })]), '`` `x` ``');
+  const table = block('t', 'table', {}, true);
+  table.children = [
+    { object: 'block', id: 'r', type: 'table_row', table_row: { cells: [[text('a\\|b')]] } },
+  ] as NotionBlock[];
+  assert.equal(blocks(b(table)), '| a\\\\\\|b |\n| --- |');
+});
+
 test('headings, lists, to-dos, and nested items become Markdown', () => {
   const nested = block('1', 'bulleted_list_item', { rich_text: [text('Tokyo')] }, true);
   nested.children = [block('2', 'bulleted_list_item', { rich_text: [text('Shibuya')] })];
