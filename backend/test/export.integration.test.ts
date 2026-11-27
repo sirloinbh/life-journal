@@ -22,7 +22,7 @@ test(
       // rollback, so every statement here sees the same rows. Reads still go through.
       await client.query(
         `LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log, journal_entries,
-           journal_entry_items, notion_pages IN EXCLUSIVE MODE`,
+           journal_entry_items, notion_pages, essays IN EXCLUSIVE MODE`,
       );
       const { rows: inserted } = await client.query<{ id: number }>(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
@@ -75,6 +75,11 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
         [entry!.id, inserted[1].id],
       );
       await client.query(
+        `INSERT INTO essays (title, body, written_date, status, tags, created_at, updated_at)
+         VALUES ('와인, "글"', E'첫 줄\n둘째 줄', '2026-11-20', 'done', '{wine,글}',
+           '2026-11-20 10:00:00.000007+09', '2026-11-21 10:00:00.5+09')`,
+      );
+      await client.query(
         `INSERT INTO notion_pages (notion_id, parent_notion_id, kind, title, body, path, notion_edited_at,
            imported_at, deleted_at)
          VALUES ('aaa', NULL, 'page', '여행, "Travel"', E'# 여행\n\n- 도쿄', '여행, "Travel"',
@@ -107,6 +112,7 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
         'journal_entries',
         'journal_entry_items',
         'notion_pages',
+        'essays',
         'audit_log',
       ] as const) {
         const { rows } = await client.query<{ total: number }>(
@@ -228,6 +234,19 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
         ],
       );
       assert.deepEqual(
+        file.tables.essays.find((row) => row.title === '와인, "글"'),
+        {
+          id: file.tables.essays.find((row) => row.title === '와인, "글"')!.id,
+          title: '와인, "글"',
+          body: '첫 줄\n둘째 줄',
+          written_date: '2026-11-20',
+          status: 'done',
+          tags: ['wine', '글'],
+          created_at: '2026-11-20T01:00:00.000007Z',
+          updated_at: '2026-11-21T01:00:00.500000Z',
+        },
+      );
+      assert.deepEqual(
         file.tables.audit_log.find((row) => row.id === audit!.id),
         {
           id: audit!.id,
@@ -253,6 +272,7 @@ second line', 12, NULL, '2026-11-20 10:00:00.000007+09', '2026-11-20 10:00:00.00
         ['journal_entries', file.tables.journal_entries[0]],
         ['journal_entry_items', file.tables.journal_entry_items[0]],
         ['notion_pages', file.tables.notion_pages[0]],
+        ['essays', file.tables.essays[0]],
         ['audit_log', file.tables.audit_log[0]],
       ] as const) {
         const { rows: columns } = await client.query<{ column_name: string }>(

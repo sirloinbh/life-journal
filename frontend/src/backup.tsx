@@ -53,8 +53,8 @@ export function DataBackup() {
         <CardHeader>
           <CardTitle asHeading="h2">Back up records</CardTitle>
           <CardDescription>
-            The JSON file holds every record and learned term; keep it to restore the records later.
-            The CSV file holds the items for a spreadsheet.
+            The JSON file holds every record, essay, journal entry, and learned term; keep it to
+            restore the records later. The CSV file holds the items for a spreadsheet.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

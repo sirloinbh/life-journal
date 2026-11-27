@@ -128,6 +128,18 @@ const notionPageRow = z.strictObject({
   deleted_at: timestamp.nullable(),
 });
 
+// Essays (#253). The database checks the title and text lengths, the status, and the tag rules (015).
+const essayRow = z.strictObject({
+  id,
+  title: z.string(),
+  body: z.string(),
+  written_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date such as 2026-11-26'),
+  status: z.enum(['draft', 'done']),
+  tags: z.array(z.string()),
+  created_at: timestamp,
+  updated_at: timestamp,
+});
+
 function unique<T>(
   rows: readonly T[],
   key: (row: T) => unknown,
@@ -193,6 +205,8 @@ export const exportFile = z
       journal_entry_items: z.array(journalLinkRow).default([]),
       // Added with the Notion import (#241): a file without it has no imported pages.
       notion_pages: z.array(notionPageRow).default([]),
+      // Added with the essays (#253): a file without it has no essays.
+      essays: z.array(essayRow).default([]),
     }),
   })
   .superRefine((file, ctx) => {
@@ -206,6 +220,7 @@ export const exportFile = z
     const categories = new Map(items.map((row) => [row.id, row.category]));
     belongs(item_quotes, categories, ['reading'], ctx, 'item_quotes', 'Quotes');
     belongs(item_logs, categories, LOG_CATEGORIES, ctx, 'item_logs', 'Logs');
+    unique(file.tables.essays, (row) => row.id, ctx, 'essays');
     unique(file.tables.notion_pages, (row) => row.id, ctx, 'notion_pages');
     unique(file.tables.notion_pages, (row) => row.notion_id, ctx, 'notion_pages');
     unique(journal_entries, (row) => row.id, ctx, 'journal_entries');
@@ -253,6 +268,7 @@ const QUOTE_COLUMNS = 'id, item_id, text, page, note, created_at, updated_at';
 const LOG_COLUMNS = 'id, item_id, logged_on, rating, note, cost_krw, created_at, updated_at';
 // Quoted: at, before, and after are SQL keywords.
 const ENTRY_COLUMNS = 'id, entry_date, title, body, created_at, updated_at';
+const ESSAY_COLUMNS = 'id, title, body, written_date, status, tags, created_at, updated_at';
 const NOTION_COLUMNS =
   'id, notion_id, parent_notion_id, kind, title, body, path, notion_edited_at, imported_at, deleted_at';
 const AUDIT_COLUMNS = `id, "at", actor_type, actor_id, client, tool, action, entity, entity_id, result,
@@ -261,12 +277,12 @@ const AUDIT_COLUMNS = `id, "at", actor_type, actor_id, client, tool, action, ent
 /** Replaces every record with the file's rows. Runs inside the caller's transaction. */
 export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: ExportInput) {
   const { items, item_quotes, item_logs, learned_terms, audit_log } = file.tables;
-  const { journal_entries, journal_entry_items, notion_pages } = file.tables;
+  const { journal_entries, journal_entry_items, notion_pages, essays } = file.tables;
   // Nothing else may write while the tables are replaced. items first, as a cascading DELETE FROM
   // items takes its locks, so the two cannot deadlock.
   await client.query(
     `LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log, journal_entries,
-       journal_entry_items, notion_pages IN EXCLUSIVE MODE`,
+       journal_entry_items, notion_pages, essays IN EXCLUSIVE MODE`,
   );
   // Children before their parents.
   await client.query('DELETE FROM journal_entry_items');
@@ -277,6 +293,7 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
   await client.query('DELETE FROM items');
   await client.query('DELETE FROM audit_log');
   await client.query('DELETE FROM notion_pages');
+  await client.query('DELETE FROM essays');
   // One statement per table: jsonb_to_recordset turns the rows into a table, so the file is sent once.
   await client.query(
     `INSERT INTO items (${ITEM_COLUMNS}) OVERRIDING SYSTEM VALUE
@@ -334,6 +351,13 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
        notion_edited_at timestamptz, imported_at timestamptz, deleted_at timestamptz)`,
     [JSON.stringify(notion_pages)],
   );
+  await client.query(
+    `INSERT INTO essays (${ESSAY_COLUMNS}) OVERRIDING SYSTEM VALUE
+     SELECT ${ESSAY_COLUMNS} FROM jsonb_to_recordset($1::jsonb) AS r(
+       id bigint, title text, body text, written_date date, status text, tags text[],
+       created_at timestamptz, updated_at timestamptz)`,
+    [JSON.stringify(essays)],
+  );
   // The ids came from the file, so the next new row of each table continues after the largest one.
   for (const table of [
     'items',
@@ -342,6 +366,7 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
     'journal_entries',
     'audit_log',
     'notion_pages',
+    'essays',
   ]) {
     await client.query(
       `SELECT setval(pg_get_serial_sequence('${table}', 'id'),
@@ -357,6 +382,7 @@ export async function replaceRecords(client: Pick<PoolClient, 'query'>, file: Ex
     journal_entries: journal_entries.length,
     journal_entry_items: journal_entry_items.length,
     notion_pages: notion_pages.length,
+    essays: essays.length,
   };
 }
 
