@@ -6,7 +6,7 @@ Restore refused a body over 20 MB, but nothing bounds an export: a Notion page b
 
 - One Notion page at the cap is 2,000,000 characters, up to about 6 MB in UTF-8 when it is Korean text (3 bytes per character), a little more with JSON escapes.
 - 100 MB fits about 16 such pages beside the other tables, far above what one person imports, while still bounding the request. The old 20 MB held only 3.
-- The 15 s statement timeout is per statement and the restore reads the body once; the large-file test runs the whole route on a 30 MB file.
+- The restore runs under the pool's 15 s statement timeout. The large-file test uses a recorded pool (no database), so it proves the body is accepted and validated, not the insert time; a file near 100 MB was not timed against PostgreSQL.
 
 ## Changes
 
