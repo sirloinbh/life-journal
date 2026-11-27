@@ -17,7 +17,7 @@ const MAX_BODY = 2_000_000;
 
 export class NotionError extends Error {}
 /** Notion says the page, database, or block does not exist or is not shared (404, or 403 restricted). */
-export class NotionMissing extends NotionError {}
+class NotionMissing extends NotionError {}
 
 export type NotionOptions = {
   token: string;
