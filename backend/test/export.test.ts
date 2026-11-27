@@ -133,6 +133,16 @@ test('GET /api/export answers a dated JSON download of every table from one snap
     imported_at: '2026-11-27T01:00:00.000000Z',
     deleted_at: null,
   };
+  const essay = {
+    id: 1,
+    title: 'On wine',
+    body: 'Notes',
+    written_date: '2026-11-20',
+    status: 'draft',
+    tags: ['wine'],
+    created_at: '2026-11-20T01:00:00.000000Z',
+    updated_at: '2026-11-20T01:00:00.000000Z',
+  };
   const { pool, asked } = fakePool({
     items: [item],
     item_quotes: [quote],
@@ -141,6 +151,7 @@ test('GET /api/export answers a dated JSON download of every table from one snap
     journal_entries: [journalEntry],
     journal_entry_items: [journalLink],
     notion_pages: [notionPage],
+    essays: [essay],
     audit_log: [audit],
   });
   await withApi(createApp(pool, { today: () => '2026-11-26' }), async (call) => {
@@ -163,6 +174,7 @@ test('GET /api/export answers a dated JSON download of every table from one snap
       journal_entries: [journalEntry],
       journal_entry_items: [journalLink],
       notion_pages: [notionPage],
+      essays: [essay],
       audit_log: [audit],
     });
   });
@@ -175,6 +187,7 @@ test('GET /api/export answers a dated JSON download of every table from one snap
     'read journal_entries',
     'read journal_entry_items',
     'read notion_pages',
+    'read essays',
     'read audit_log',
     'COMMIT',
     'release',

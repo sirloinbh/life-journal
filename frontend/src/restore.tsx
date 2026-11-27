@@ -28,6 +28,8 @@ type Restored = {
     journal_entry_items?: number;
     // Missing in an answer from a server older than #241.
     notion_pages?: number;
+    // Missing in an answer from a server older than #253.
+    essays?: number;
   };
 };
 
@@ -70,6 +72,7 @@ export function RestoreRecords() {
         entries: restored.journal_entries,
         entryLinks: restored.journal_entry_items,
         notionPages: restored.notion_pages,
+        essays: restored.essays,
       });
       status(`Restored ${counts} from ${chosen.name}.`);
       setChosen(null);
@@ -89,8 +92,8 @@ export function RestoreRecords() {
         <CardTitle asHeading="h2">Restore records</CardTitle>
         <CardDescription>
           Choose a JSON file downloaded above. A restore replaces every current record, learned
-          term, journal entry, imported Notion page, and history entry with the ones in the file, so
-          download a fresh export first to keep what you have now.
+          term, journal entry, essay, imported Notion page, and history entry with the ones in the
+          file, so download a fresh export first to keep what you have now.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">

@@ -97,6 +97,12 @@ export const EXPORT_TABLES = {
     sql: `SELECT id, notion_id, parent_notion_id, kind, title, body, path, ${utc('notion_edited_at')},
             ${utc('imported_at')}, ${utc('deleted_at')} FROM notion_pages ORDER BY id`,
   },
+  // Essays (#239, #253); tags is a text[] and comes out as a JSON array of strings.
+  essays: {
+    columns: ['id', 'title', 'body', 'written_date', 'status', 'tags', 'created_at', 'updated_at'],
+    sql: `SELECT id, title, body, written_date, status, tags, ${utc('created_at')}, ${utc('updated_at')}
+          FROM essays ORDER BY id`,
+  },
   // The change history (owner decision on #208, option B); before and after are JSON snapshots.
   audit_log: {
     columns: [
