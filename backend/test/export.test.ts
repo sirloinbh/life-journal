@@ -121,6 +121,18 @@ test('GET /api/export answers a dated JSON download of every table from one snap
     updated_at: '2026-11-02T14:00:00.000000Z',
   };
   const journalLink = { entry_id: 1, item_id: 1, linked_at: '2026-11-02T14:05:00.000000Z' };
+  const notionPage = {
+    id: 1,
+    notion_id: 'aaa',
+    parent_notion_id: null,
+    kind: 'page',
+    title: 'Travel',
+    body: '# Travel',
+    path: 'Travel',
+    notion_edited_at: '2026-11-20T00:00:00.000000Z',
+    imported_at: '2026-11-27T01:00:00.000000Z',
+    deleted_at: null,
+  };
   const { pool, asked } = fakePool({
     items: [item],
     item_quotes: [quote],
@@ -128,6 +140,7 @@ test('GET /api/export answers a dated JSON download of every table from one snap
     learned_terms: [{ term_id: 'wine-tannin', learned_at: '2026-11-20T01:02:03.000004Z' }],
     journal_entries: [journalEntry],
     journal_entry_items: [journalLink],
+    notion_pages: [notionPage],
     audit_log: [audit],
   });
   await withApi(createApp(pool, { today: () => '2026-11-26' }), async (call) => {
@@ -149,6 +162,7 @@ test('GET /api/export answers a dated JSON download of every table from one snap
       learned_terms: [{ term_id: 'wine-tannin', learned_at: '2026-11-20T01:02:03.000004Z' }],
       journal_entries: [journalEntry],
       journal_entry_items: [journalLink],
+      notion_pages: [notionPage],
       audit_log: [audit],
     });
   });
@@ -160,6 +174,7 @@ test('GET /api/export answers a dated JSON download of every table from one snap
     'read learned_terms',
     'read journal_entries',
     'read journal_entry_items',
+    'read notion_pages',
     'read audit_log',
     'COMMIT',
     'release',

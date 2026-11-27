@@ -4,6 +4,7 @@ For each working day in Asia/Seoul, create a new `YYYY-MM-DD.md`, and add more w
 
 ## Summary by date
 
+- [2026-11-27](2026-11-27.md)
 - [2026-11-23](2026-11-23.md)
 - [2026-11-02](2026-11-02.md)
 - [2026-11-01](2026-11-01.md)

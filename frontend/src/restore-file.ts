@@ -17,6 +17,8 @@ export type ExportSummary = {
   /** Journal entries and their item links; files from before #233 have none. */
   entries: number;
   entryLinks: number;
+  /** Pages imported from Notion (#241); files from before it have none. */
+  notionPages: number;
   /** The parsed file, sent as it is. */
   body: unknown;
 };
@@ -54,6 +56,7 @@ export function summarizeExport(text: string): ExportSummary {
     history: Array.isArray(tables.audit_log) ? tables.audit_log.length : 0,
     entries: Array.isArray(tables.journal_entries) ? tables.journal_entries.length : 0,
     entryLinks: Array.isArray(tables.journal_entry_items) ? tables.journal_entry_items.length : 0,
+    notionPages: Array.isArray(tables.notion_pages) ? tables.notion_pages.length : 0,
     body,
   };
 }
@@ -69,8 +72,9 @@ export function describeCounts({
   history = 0,
   entries = 0,
   entryLinks = 0,
+  notionPages = 0,
 }: Pick<ExportSummary, 'items' | 'quotes' | 'logs' | 'learnedTerms'> &
-  Partial<Pick<ExportSummary, 'history' | 'entries' | 'entryLinks'>>) {
+  Partial<Pick<ExportSummary, 'history' | 'entries' | 'entryLinks' | 'notionPages'>>) {
   const parts = [
     count(items, 'item', 'items'),
     quotes > 0 && count(quotes, 'quote', 'quotes'),
@@ -78,6 +82,7 @@ export function describeCounts({
     entries > 0 && count(entries, 'journal entry', 'journal entries'),
     entryLinks > 0 && count(entryLinks, 'entry link', 'entry links'),
     count(learnedTerms, 'learned term', 'learned terms'),
+    notionPages > 0 && count(notionPages, 'imported Notion page', 'imported Notion pages'),
     history > 0 && count(history, 'history entry', 'history entries'),
   ].filter((part): part is string => typeof part === 'string');
   return parts.length === 2

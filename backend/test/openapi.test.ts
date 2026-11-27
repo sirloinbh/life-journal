@@ -28,6 +28,8 @@ const mounts = [
   '/api/restore',
   '/api/journal',
   '/api/essays',
+  '/api/notion',
+  '/api/documents',
 ];
 function routesOf(stack: Layer[], prefix: string): string[] {
   return stack.flatMap((layer) => {

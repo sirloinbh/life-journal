@@ -16,7 +16,14 @@ test(
     const pool = testPool();
     t.after(() => pool.end());
     const client = await pool.connect();
-    const tables = ['items', 'item_quotes', 'item_logs', 'journal_entries', 'audit_log'] as const;
+    const tables = [
+      'items',
+      'item_quotes',
+      'item_logs',
+      'journal_entries',
+      'audit_log',
+      'notion_pages',
+    ] as const;
     const sequence = (table: string) => `pg_get_serial_sequence('${table}', 'id')`;
     const started = new Map<string, number>();
     try {
@@ -31,7 +38,7 @@ test(
       // rollback, so every statement here sees the same rows. Reads still go through.
       await client.query(
         `LOCK TABLE items, item_quotes, item_logs, learned_terms, audit_log, journal_entries,
-           journal_entry_items IN EXCLUSIVE MODE`,
+           journal_entry_items, notion_pages IN EXCLUSIVE MODE`,
       );
       const { rows: seeded } = await client.query<{ id: number }>(
         `INSERT INTO items (category, subtype, title, status, cost_krw, planned_date, completed_date,
@@ -71,6 +78,11 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
         [entries[0].id, seeded[2].id],
       );
       await client.query(
+        `INSERT INTO notion_pages (notion_id, parent_notion_id, kind, title, body, path, notion_edited_at)
+         VALUES ('r1', NULL, 'page', 'Top', 'Body', 'Top', '2026-11-20 09:00:00+09'),
+                ('r2', 'r1', 'page', 'Child', 'More', 'Top / Child', '2026-11-21 09:00:00+09')`,
+      );
+      await client.query(
         `INSERT INTO learned_terms (term_id, learned_at) VALUES ('wine-tannin', '2026-11-20 09:00:00.000004+09')
          ON CONFLICT (term_id) DO UPDATE SET learned_at = EXCLUDED.learned_at`,
       );
@@ -91,12 +103,14 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
       assert.ok(before.tables.audit_log.length >= 1);
       assert.ok(before.tables.journal_entries.length >= 2);
       assert.ok(before.tables.journal_entry_items.length >= 1);
+      assert.ok(before.tables.notion_pages.length >= 2);
 
       // An empty database, as after `docker compose down -v` and the migrations.
       await client.query('DELETE FROM learned_terms');
       await client.query('DELETE FROM journal_entries');
       await client.query('DELETE FROM items');
       await client.query('DELETE FROM audit_log');
+      await client.query('DELETE FROM notion_pages');
       const restored = await replaceRecords(client, file);
       assert.deepEqual(restored, {
         items: before.tables.items.length,
@@ -106,6 +120,7 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
         audit_log: before.tables.audit_log.length,
         journal_entries: before.tables.journal_entries.length,
         journal_entry_items: before.tables.journal_entry_items.length,
+        notion_pages: before.tables.notion_pages.length,
       });
       assert.deepEqual(await readExport(client, now), before);
 
@@ -150,6 +165,10 @@ second line', 12, '메모', '2026-11-21 10:00:00.000007+09', now())`,
         "INSERT INTO journal_entries (entry_date, body) VALUES ('2000-01-01', 'After the restore') RETURNING id",
       );
       assert.equal(journal[0].id, largest(file.tables.journal_entries) + 1);
+      const { rows: page } = await client.query<{ id: number }>(
+        "INSERT INTO notion_pages (notion_id, title, path, notion_edited_at) VALUES ('after', 'After', 'After', now()) RETURNING id",
+      );
+      assert.equal(page[0].id, largest(file.tables.notion_pages) + 1);
       const { rows: entry } = await client.query<{ id: number }>(
         "INSERT INTO audit_log (actor_type, action, entity) VALUES ('user', 'create', 'items') RETURNING id",
       );

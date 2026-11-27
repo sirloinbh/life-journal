@@ -114,6 +114,7 @@ test('the app opens on the day log and the menu follows the shared order (#235)'
     'Week',
     '12 weeks',
     'Essays',
+    'Documents',
     'Bucket list',
     'Table view',
     'Calendar',

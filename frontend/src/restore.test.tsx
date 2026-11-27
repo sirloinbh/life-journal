@@ -27,6 +27,8 @@ function fakeApi(
     'fetch',
     vi.fn((path: string, init: { method?: string; body?: string } = {}) => {
       if (path === '/api/health') return Promise.resolve(json({ today: '2026-11-26' }));
+      if (path === '/api/notion/import')
+        return Promise.resolve(json({ configured: false, state: 'idle' }));
       sent.push({
         path,
         method: init.method ?? 'GET',
@@ -167,6 +169,12 @@ test('summarizeExport reads the counts and refuses files it cannot restore', () 
   );
   expect(() => summarizeExport('[]')).toThrow('not a life-journal export');
   expect(MAX_RESTORE_BYTES).toBe(20 * 1024 * 1024);
+});
+
+test('describeCounts names imported Notion pages only when the file has some', () => {
+  expect(describeCounts({ items: 1, quotes: 0, logs: 0, learnedTerms: 0, notionPages: 4 })).toBe(
+    '1 item, 0 learned terms, and 4 imported Notion pages',
+  );
 });
 
 test('describeCounts names journal entries and links only when the file has some', () => {
