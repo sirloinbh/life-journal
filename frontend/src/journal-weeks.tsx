@@ -1,13 +1,15 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, Navigate, useParams } from 'react-router';
 
+import { addDays, lastWeeks, weekDays, weekStart } from './components/period-nav/periods';
 import { Button } from './components/ui/button';
 import { Spinner } from './components/ui/spinner';
-import { formatDate, itemAnchor, serviceToday } from './items';
+import { itemAnchor } from './items';
+import { formatDate, serviceToday } from './lib/format';
 import { apiKey, useApiQuery } from './lib/query';
 import { LoadFailed } from './load-failed';
 import { useSettledError } from './settled-error';
-import { addDays, isDate, lastWeeks, weekDays, weekStart } from './week-dates';
+import { isDate } from './week-dates';
 
 // #235: the Week and 12-week views of the day log. They read the same records: the journal entries
 // (GET /api/journal with from and to) and, for the week, the items completed on each day (the calendar).

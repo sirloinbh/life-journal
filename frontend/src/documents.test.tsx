@@ -113,7 +113,7 @@ test('a page shows its Markdown, and "Copy into an essay" opens the new draft', 
   expect(screen.getByText('Travel / Japan')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Japan 2027' })).toBeInTheDocument();
   expect(screen.getByText('Tokyo')).toBeInTheDocument();
-  expect(screen.getByText(/Edited in Notion November 20, 2026/)).toBeInTheDocument();
+  expect(screen.getByText(/Edited in Notion Nov 20, 2026/)).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Copy into an essay' }));
   await waitFor(() => expect(window.location.pathname).toBe('/essays/77'));

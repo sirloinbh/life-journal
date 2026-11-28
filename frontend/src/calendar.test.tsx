@@ -41,7 +41,7 @@ const MONTHS: Record<string, unknown[]> = {
   ],
 };
 
-// Today is November 10, 2026 in Seoul (the morning of the same day in UTC).
+// Today is Nov 10, 2026 in Seoul (the morning of the same day in UTC).
 function fakeApi({ fail = false } = {}) {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-11-10T03:00:00Z'));
@@ -68,13 +68,9 @@ test('the calendar opens on this month and places items on their planned and com
   await waitFor(() => expect(window.location.pathname).toBe('/calendar/2026-11'));
   const days = await screen.findByRole('list', { name: 'Days of November 2026' });
   // Planned and done are told apart by words, not only by how they look.
-  expect(
-    within(days).getByRole('button', { name: 'November 3, 2026: 1 planned' }),
-  ).toBeInTheDocument();
-  expect(
-    within(days).getByRole('button', { name: 'November 5, 2026: 1 planned' }),
-  ).toBeInTheDocument();
-  expect(within(days).getByRole('button', { name: 'November 8, 2026: 1 done' })).toHaveTextContent(
+  expect(within(days).getByRole('button', { name: 'Nov 3, 2026: 1 planned' })).toBeInTheDocument();
+  expect(within(days).getByRole('button', { name: 'Nov 5, 2026: 1 planned' })).toBeInTheDocument();
+  expect(within(days).getByRole('button', { name: 'Nov 8, 2026: 1 done' })).toHaveTextContent(
     'Done: Parasite',
   );
   // A day with nothing on it is not a stop for the keyboard.
@@ -96,8 +92,8 @@ test('moving to next month and opening a day shows its items with a link to each
   expect(screen.getByRole('link', { name: 'Next month' })).toHaveFocus();
   expect(asked).toEqual(['2026-11', '2026-12']);
 
-  fireEvent.click(within(days).getByRole('button', { name: 'December 24, 2026: 1 done' }));
-  const dialog = within(await screen.findByRole('dialog', { name: 'December 24, 2026' }));
+  fireEvent.click(within(days).getByRole('button', { name: 'Dec 24, 2026: 1 done' }));
+  const dialog = within(await screen.findByRole('dialog', { name: 'Dec 24, 2026' }));
   expect(window.location.search).toBe('?day=2026-12-24');
   const link = dialog.getByRole('link', { name: 'La Boheme' });
   expect(link).toHaveAttribute('href', '/bucket-list/stage#item-7');
@@ -110,13 +106,13 @@ test('moving to next month and opening a day shows its items with a link to each
 test('a reload keeps the open day, and closing it returns to the day', async () => {
   fakeApi();
   openAt('/calendar/2026-11?day=2026-11-05');
-  const dialog = within(await screen.findByRole('dialog', { name: 'November 5, 2026' }));
+  const dialog = within(await screen.findByRole('dialog', { name: 'Nov 5, 2026' }));
   expect(dialog.getByText('Planned · Movies & TV')).toBeInTheDocument();
   fireEvent.click(dialog.getByRole('button', { name: 'Close' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   expect(window.location.pathname + window.location.search).toBe('/calendar/2026-11');
   // The address opened the dialog, so the focus goes back to the day it showed.
-  expect(screen.getByRole('button', { name: 'November 5, 2026: 1 planned' })).toHaveFocus();
+  expect(screen.getByRole('button', { name: 'Nov 5, 2026: 1 planned' })).toHaveFocus();
 });
 
 test('a month with nothing in it says so, and "This month" goes back', async () => {

@@ -70,8 +70,8 @@ test('the main menu opens the table, which shows every column', async () => {
     'Stage',
     'Done',
     '₩150,000',
-    'September 1, 2026',
-    'September 2, 2026',
+    'Sep 1, 2026',
+    'Sep 2, 2026',
     '4.5',
   ]);
 });

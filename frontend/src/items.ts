@@ -9,6 +9,7 @@ import {
   MAX_REVIEW_LINES,
   SCORES,
 } from '../../shared/contract';
+import { formatDate } from './lib/format';
 
 // Category rules come from shared/contract.ts, which the server also uses. It checks every value again.
 export {
@@ -51,18 +52,8 @@ export type Category = {
 };
 
 const krw = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'KRW' });
-const day = new Intl.DateTimeFormat('en-US', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-  timeZone: 'UTC',
-});
-
 /** Won as shown on screen, e.g. `₩12,500`. */
 export const formatKrw = (amount: number) => krw.format(amount);
-
-/** A `YYYY-MM-DD` date as shown on screen, e.g. `October 22, 2026`. */
-export const formatDate = (date: string) => day.format(new Date(`${date}T00:00:00Z`));
 
 /** An item count as shown on screen: `1 item`, `2 items`, `0 items`. */
 export const itemCount = (count: number) => (count === 1 ? '1 item' : `${count} items`);
@@ -78,16 +69,6 @@ export const categories: Category[] = CATEGORIES.map((rule) => ({
   fields: rule.fields.map(({ key, label, type }) => ({ key, label, numeric: type === 'year' })),
   criteria: [...rule.criteria],
 }));
-
-/** Today in the service time zone. The server rejects a completed date after its own today. */
-export function serviceToday() {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-}
 
 // Only plain integers such as 15000 or 15,000 become numbers. Anything else, such as 15.000 or 1e3,
 // goes to the server as it is, so the server's Korean message explains it.

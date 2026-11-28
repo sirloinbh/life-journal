@@ -15,7 +15,7 @@ import {
   type Node,
   seoulDate,
 } from './documents-data';
-import { formatDate } from './items';
+import { formatDate } from './lib/format';
 import { apiKey, useApiMutation, useApiQuery } from './lib/query';
 import { useNotice } from './lib/use-notice';
 import { LoadFailed } from './load-failed';

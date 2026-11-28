@@ -20,8 +20,9 @@ import {
 } from './components/ui/select';
 import { Spinner } from './components/ui/spinner';
 import { Textarea } from './components/ui/textarea';
-import { addName, formatDate, MAX_ITEM_NAME_LENGTH } from './items';
+import { addName, MAX_ITEM_NAME_LENGTH } from './items';
 import { RequestError, requestJson } from './lib/api';
+import { formatDate } from './lib/format';
 import { apiKey, useApiMutation, useApiQuery } from './lib/query';
 import { useNotice } from './lib/use-notice';
 import { LoadFailed } from './load-failed';
