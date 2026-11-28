@@ -46,8 +46,8 @@ function fakeApi() {
 
 test('the week lists each day with its entry and what was completed', async () => {
   const asked = fakeApi();
-  openAt('/week');
-  await waitFor(() => expect(window.location.pathname).toBe('/week/2026-11-08'));
+  openAt('/dashboard/week');
+  await waitFor(() => expect(window.location.pathname).toBe('/dashboard/week/2026-11-08'));
   const days = await screen.findByRole('list', { name: 'Days of the week' });
   expect(within(days).getByText('Saw a play')).toBeInTheDocument();
   expect(within(days).getByText('A quiet day.')).toBeInTheDocument();
@@ -58,23 +58,36 @@ test('the week lists each day with its entry and what was completed', async () =
   // Today's week has no next week.
   expect(screen.queryByRole('link', { name: 'Next week' })).toBeNull();
   fireEvent.click(screen.getByRole('link', { name: 'Previous week' }));
-  await waitFor(() => expect(window.location.pathname).toBe('/week/2026-11-01'));
+  await waitFor(() => expect(window.location.pathname).toBe('/dashboard/week/2026-11-01'));
   expect(await screen.findByRole('link', { name: 'Next week' })).toBeInTheDocument();
 });
 
 test('a date inside a week or a wrong date goes to the Sunday that starts the week', async () => {
   fakeApi();
-  openAt('/week/2026-11-12');
-  await waitFor(() => expect(window.location.pathname).toBe('/week/2026-11-08'));
+  openAt('/dashboard/week/2026-11-12');
+  await waitFor(() => expect(window.location.pathname).toBe('/dashboard/week/2026-11-08'));
 });
 
 test('12 weeks count the days written in each week and open the week', async () => {
   fakeApi();
-  openAt('/weeks');
+  openAt('/dashboard/weeks');
   const weeks = await screen.findByRole('list', { name: 'Weeks' });
   expect(within(weeks).getAllByRole('listitem')).toHaveLength(12);
   const latest = within(weeks).getAllByRole('link')[0];
   expect(latest).toHaveTextContent('2 of 7 days written');
   fireEvent.click(latest);
-  await waitFor(() => expect(window.location.pathname).toBe('/week/2026-11-08'));
+  await waitFor(() => expect(window.location.pathname).toBe('/dashboard/week/2026-11-08'));
+});
+
+test('the old Week and 12 weeks addresses move to the Dashboard views with their date (#1215)', async () => {
+  fakeApi();
+  openAt('/week/2026-11-08');
+  await waitFor(() => expect(window.location.pathname).toBe('/dashboard/week/2026-11-08'));
+});
+
+test('the old 12 weeks address moves to the Dashboard view (#1215)', async () => {
+  fakeApi();
+  openAt('/weeks');
+  await waitFor(() => expect(window.location.pathname).toBe('/dashboard/weeks'));
+  expect(await screen.findByRole('list', { name: 'Weeks' })).toBeInTheDocument();
 });

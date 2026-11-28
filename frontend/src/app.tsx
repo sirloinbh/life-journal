@@ -2,24 +2,23 @@ import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   BookOpen,
   CalendarDays,
-  CalendarRange,
   ChartColumn,
   FileText,
   LayoutDashboard,
   ListChecks,
   NotebookPen,
   PenLine,
-  Rows3,
   Settings2,
   Table2,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
 
 import { DataBackup } from './backup';
 import { BucketList } from './bucket-list';
 import { Calendar } from './calendar';
 import { AppShell, type NavItem } from './components/layout/app-shell';
+import { NavTabs } from './components/nav-tabs/nav-tabs';
 import { EmptyState } from './components/ui/empty-state';
 import { Toaster } from './components/ui/sonner';
 import { DocumentList, DocumentView } from './documents';
@@ -39,8 +38,9 @@ import { TermsStudy } from './terms-study';
 const pages = {
   start: '/',
   overview: '/dashboard',
-  week: '/week',
-  weeks: '/weeks',
+  // #280: Week and 12 weeks are views of the Dashboard; /week and /weeks redirect here.
+  week: '/dashboard/week',
+  weeks: '/dashboard/weeks',
   essays: '/essays',
   documents: '/documents',
   bucketList: '/bucket-list',
@@ -52,12 +52,10 @@ const pages = {
   settings: '/settings',
 } as const;
 
-// Main menu (LNB) items, in display order (central rule, #1128): the day log, Week, 12 weeks, the other
-// pages, Dashboard, Settings. The day log is the start page: `/` opens it, and it lives at /journal/<date>.
+// Main menu (LNB) items, in display order (central rule, #1128): the day log, the other
+// pages, Dashboard (with the Week and 12 weeks views), Settings. The day log is the start page: `/` opens it, and it lives at /journal/<date>.
 const nav: NavItem[] = [
   { to: pages.journal, label: 'Day log', icon: NotebookPen },
-  { to: pages.week, label: 'Week', icon: Rows3 },
-  { to: pages.weeks, label: '12 weeks', icon: CalendarRange },
   { to: pages.essays, label: 'Essays', icon: PenLine },
   { to: pages.documents, label: 'Documents', icon: FileText },
   { to: pages.bucketList, label: 'Bucket list', icon: ListChecks },
@@ -104,7 +102,7 @@ function Page({
   children,
 }: {
   title: string;
-  description: string;
+  description?: string;
   health: Health;
   children?: ReactNode;
 }) {
@@ -112,7 +110,7 @@ function Page({
     <section aria-labelledby="page-title" className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
         <h1 id="page-title">{title}</h1>
-        <p className="text-body text-muted-foreground">{description}</p>
+        {description ? <p className="text-body text-muted-foreground">{description}</p> : null}
         {health.state === 'error' ? (
           <p role="alert" className="text-body-sm text-destructive">
             {healthText(health)}
@@ -133,6 +131,29 @@ function Page({
   );
 }
 
+/** The Dashboard: the Week and 12 weeks views behind one choice (#280). */
+function DashboardPage({ health, children }: { health: Health; children: ReactNode }) {
+  return (
+    <Page title="Dashboard" health={health}>
+      <NavTabs
+        label="Dashboard view"
+        items={[
+          { to: pages.week, label: 'Week' },
+          { to: pages.weeks, label: '12 weeks' },
+        ]}
+        className="mb-4"
+      />
+      {children}
+    </Page>
+  );
+}
+
+/** An old address (/week/<date>) opens the new one with the same date. */
+function MovedTo({ to }: { to: string }) {
+  const { date } = useParams();
+  return <Navigate to={date ? `${to}/${date}` : to} replace />;
+}
+
 /** `queryClient` is for tests, which use one without retries; the app makes its own once (#158). */
 export function App({ queryClient }: { queryClient?: QueryClient }) {
   const health = useHealth();
@@ -149,16 +170,7 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
           >
             <Routes>
               <Route path={pages.start} element={<Navigate to={pages.journal} replace />} />
-              <Route
-                path={pages.overview}
-                element={
-                  <Page
-                    title="Dashboard"
-                    description="A personal service for recording experiences: book and movie reviews, a diary, plays, concerts, and more"
-                    health={health}
-                  />
-                }
-              />
+              <Route path={pages.overview} element={<Navigate to={pages.week} replace />} />
               <Route
                 path={`${pages.bucketList}/:category?`}
                 element={
@@ -210,31 +222,25 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
               <Route
                 path={`${pages.week}/:date?`}
                 element={
-                  <Page
-                    title="Week"
-                    description="See each day of a week: the entry you wrote and what you completed"
-                    health={health}
-                  >
+                  <DashboardPage health={health}>
                     <Week
                       path={pages.week}
                       dayPath={pages.journal}
                       bucketListPath={pages.bucketList}
                     />
-                  </Page>
+                  </DashboardPage>
                 }
               />
               <Route
                 path={`${pages.weeks}/:date?`}
                 element={
-                  <Page
-                    title="12 weeks"
-                    description="See how many days you wrote in each of the last 12 weeks"
-                    health={health}
-                  >
+                  <DashboardPage health={health}>
                     <TwelveWeeks path={pages.weeks} weekPath={pages.week} />
-                  </Page>
+                  </DashboardPage>
                 }
               />
+              <Route path="/week/:date?" element={<MovedTo to={pages.week} />} />
+              <Route path="/weeks/:date?" element={<MovedTo to={pages.weeks} />} />
               <Route
                 path={pages.essays}
                 element={
