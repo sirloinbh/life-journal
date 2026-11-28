@@ -8,7 +8,7 @@ import { isStorable } from './validation.js';
 // `GET /api/search?q=` answers { results } with at most 20 records, newest first: items, essays, day log entries
 // and imported documents. A record matches when every word of the query appears, ignoring case, in its text.
 
-export const MAX_RESULTS = 20;
+const MAX_RESULTS = 20;
 const MAX_QUERY_LENGTH = 100;
 const MAX_TITLE_LENGTH = 80;
 const MAX_SNIPPET_LENGTH = 120;
