@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 
-import { addDays, isDate, lastWeeks, weekDays, weekStart } from './week-dates';
+import { addDays, lastWeeks, weekDays, weekStart } from './components/period-nav/periods';
+import { isDate } from './week-dates';
 
 test('a week starts on Sunday and has seven days', () => {
   // 2026-11-26 is a Thursday.

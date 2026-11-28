@@ -11,7 +11,8 @@ import {
   DialogTitle,
 } from './components/ui/dialog';
 import { Spinner } from './components/ui/spinner';
-import { categories, formatDate, type Item, itemAnchor, serviceToday } from './items';
+import { categories, type Item, itemAnchor } from './items';
+import { formatDate, serviceToday } from './lib/format';
 import { apiKey, useApiQuery } from './lib/query';
 import { cn } from './lib/utils';
 import { LoadFailed } from './load-failed';

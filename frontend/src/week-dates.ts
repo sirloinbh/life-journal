@@ -10,22 +10,3 @@ export const isDate = (value: string) => {
   const day = utc(value);
   return !Number.isNaN(day.getTime()) && text(day) === value;
 };
-
-/** The date `step` days after `date`. */
-export function addDays(date: string, step: number) {
-  const day = utc(date);
-  day.setUTCDate(day.getUTCDate() + step);
-  return text(day);
-}
-
-/** The Sunday of the week that holds `date`. */
-export const weekStart = (date: string) => addDays(date, -utc(date).getUTCDay());
-
-/** The seven dates of the week that starts on `start`. */
-export const weekDays = (start: string) => Array.from({ length: 7 }, (_, n) => addDays(start, n));
-
-/** The starts of the `count` weeks that end with the week of `date`, oldest first. */
-export function lastWeeks(date: string, count: number) {
-  const last = weekStart(date);
-  return Array.from({ length: count }, (_, n) => addDays(last, (n - count + 1) * 7));
-}

@@ -323,7 +323,9 @@ test('a failed refresh keeps the terms on screen, says so, and can be tried agai
   api.failList = true;
   fireEvent.click(tannin);
   expect(await screen.findByText('Tannin: Term not found')).toBeInTheDocument();
-  expect(await screen.findByText('A server error occurred')).toHaveAttribute('role', 'alert');
+  expect(
+    (await screen.findByText('A server error occurred')).closest('[role="alert"]'),
+  ).not.toBeNull();
   expect(await box('Terroir learned')).toBeInTheDocument();
 
   api.failList = false;

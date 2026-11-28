@@ -1,3 +1,5 @@
+import { downloadBlob } from './components/file-field/download-blob';
+
 // File downloads from the API for the backup screen (#208).
 
 /** The file name in a Content-Disposition header, quoted or not, or null. */
@@ -25,14 +27,6 @@ export async function download(path: string, fallbackName: string) {
   }
   const blob = await response.blob();
   const name = attachmentName(response.headers.get('content-disposition')) ?? fallbackName;
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  // Some browsers start reading the file after click() returns, so the address lives a little longer.
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  downloadBlob(name, blob.type, blob);
   return name;
 }

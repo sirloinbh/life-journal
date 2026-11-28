@@ -80,7 +80,7 @@ for (const { tab, key, field, detail, ...rest } of cases) {
       },
     });
     expect(await screen.findByText('첫 항목')).toBeInTheDocument();
-    expect(screen.getByText(/Cost ₩15,000 · Planned March 1, 2027/)).toBeInTheDocument();
+    expect(screen.getByText(/Cost ₩15,000 · Planned Mar 1, 2027/)).toBeInTheDocument();
 
     dialog = await openDialog('Edit 첫 항목');
     expect(dialog.getByLabelText('Title')).toHaveValue('첫 항목');
@@ -97,7 +97,7 @@ for (const { tab, key, field, detail, ...rest } of cases) {
     fireEvent.click(dialog.getByRole('button', { name: 'Mark as done' }));
     await dialogClosed();
     expect(api.requests.at(-1)?.body).toEqual({ status: 'done', completedDate: TODAY });
-    expect(await screen.findByText(new RegExp(`Completed October 31, 2026`))).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`Completed Oct 31, 2026`))).toBeInTheDocument();
 
     dialog = await openDialog('Mark 고친 항목 as not done');
     fireEvent.click(dialog.getByRole('button', { name: 'Mark as not done' }));
@@ -612,12 +612,17 @@ test('a failed list load is reported, and the retry button waits for its request
   const api = fakeApi([{ title: '데미안' }]);
   api.failList = true;
   openAt('/bucket-list/reading');
-  expect(await screen.findByText('A server error occurred')).toHaveAttribute('role', 'alert');
+  expect(
+    (await screen.findByText('A server error occurred')).closest('[role="alert"]'),
+  ).not.toBeNull();
   const held = gate();
   api.gate = held.promise;
   api.failList = false;
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-  expect(screen.getByRole('button', { name: /Try again/ })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /Try again/ })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
   api.gate = null;
   held.open();
   expect(await screen.findByText('데미안')).toBeInTheDocument();
@@ -848,22 +853,22 @@ test('a wine keeps tastings newest first with the rating change, and only drinks
     within(screen.getByRole('list', { name: 'Tastings of 샤또 마고' })).getAllByRole('listitem');
   await waitFor(() => expect(list()).toHaveLength(2));
   // Newest first, with the change from the tasting before.
-  expect(list()[0]).toHaveTextContent('October 1, 2026Rating 4.5Up 1 since March 1, 2026');
-  expect(list()[1]).toHaveTextContent('March 1, 2026Rating 3.5Cost ₩90,000아직 닫혀 있음');
+  expect(list()[0]).toHaveTextContent('Oct 1, 2026Rating 4.5Up 1 since Mar 1, 2026');
+  expect(list()[1]).toHaveTextContent('Mar 1, 2026Rating 3.5Cost ₩90,000아직 닫혀 있음');
   expect(dialog.getByText('Rating over time, oldest first: 3.5 → 4.5')).toBeInTheDocument();
 
   // Edit the older tasting in place: its rating goes above the newer one.
   fireEvent.click(
-    within(list()[1]).getByRole('button', { name: 'Edit the tasting of March 1, 2026' }),
+    within(list()[1]).getByRole('button', { name: 'Edit the tasting of Mar 1, 2026' }),
   );
   const edit = within(screen.getByRole('form', { name: 'Edit the tasting' }));
   expect(edit.getByLabelText('Date')).toHaveFocus();
   await choose(edit, 'Rating', '5');
   fireEvent.click(edit.getByRole('button', { name: 'Save tasting' }));
-  await waitFor(() => expect(list()[0]).toHaveTextContent('Down 0.5 since March 1, 2026'));
+  await waitFor(() => expect(list()[0]).toHaveTextContent('Down 0.5 since Mar 1, 2026'));
   await waitFor(() =>
     expect(
-      within(list()[1]).getByRole('button', { name: 'Edit the tasting of March 1, 2026' }),
+      within(list()[1]).getByRole('button', { name: 'Edit the tasting of Mar 1, 2026' }),
     ).toHaveFocus(),
   );
   expect(api.requests.at(-1)).toMatchObject({
@@ -873,7 +878,7 @@ test('a wine keeps tastings newest first with the rating change, and only drinks
   });
 
   fireEvent.click(
-    within(list()[0]).getByRole('button', { name: 'Delete the tasting of October 1, 2026' }),
+    within(list()[0]).getByRole('button', { name: 'Delete the tasting of Oct 1, 2026' }),
   );
   fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
   await waitFor(() => expect(list()).toHaveLength(1));

@@ -137,7 +137,7 @@ test('writing an entry for today keeps it after a reload and lists it', async ()
   openAt('/journal');
   await waitFor(() => expect(window.location.pathname).toBe(`/journal/${TODAY}`));
   const field = await editor();
-  expect(field).toHaveAccessibleName('Entry for November 10, 2026');
+  expect(field).toHaveAccessibleName('Entry for Nov 10, 2026');
   expect(field).toHaveValue('');
   // No entry yet, so nothing to delete; today has no next day.
   expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
@@ -164,8 +164,8 @@ test('writing an entry for today keeps it after a reload and lists it', async ()
   const list = await pastEntries();
   const links = within(list).getAllByRole('link');
   expect(links.map((link) => link.textContent)).toEqual([
-    'November 10, 2026A quiet day.',
-    'November 8, 2026Saw a play.',
+    'Nov 10, 2026A quiet day.',
+    'Nov 8, 2026Saw a play.',
   ]);
   expect(links[0]).toHaveAttribute('aria-current', 'page');
 });
@@ -203,7 +203,7 @@ test('an optional title is saved trimmed, shown in the list, and removed when cl
   expect(api.writes.at(-1)?.body).toEqual({ title: '공원 산책', body: 'Body text' });
   await waitFor(() =>
     expect(screen.getByRole('list', { name: 'Past entries' })).toHaveTextContent(
-      'November 10, 2026공원 산책Body text',
+      'Nov 10, 2026공원 산책Body text',
     ),
   );
 
@@ -230,7 +230,7 @@ test("a refused save shows the server's message and keeps the text", async () =>
 test('past days open from the list, the previous-day link, and the date field', async () => {
   fakeApi({ '2026-11-08': 'Saw a play.', '2026-11-09': 'Rainy.' });
   openAt(`/journal/${TODAY}`);
-  fireEvent.click(within(await pastEntries()).getByRole('link', { name: /November 8, 2026/ }));
+  fireEvent.click(within(await pastEntries()).getByRole('link', { name: /Nov 8, 2026/ }));
   await waitFor(() => expect(window.location.pathname).toBe('/journal/2026-11-08'));
   await waitFor(async () => expect(await editor()).toHaveValue('Saw a play.'));
 

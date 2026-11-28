@@ -57,7 +57,7 @@ const YEARS: Record<string, unknown> = {
   '2025': yearStats('2025', [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], { spendingKrw: 50000 }),
 };
 
-// Today is November 10, 2026 in Seoul.
+// Today is Nov 10, 2026 in Seoul.
 function fakeApi({ fail = false } = {}) {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-11-10T03:00:00Z'));
@@ -150,7 +150,7 @@ test('the statistics open on this year with counts, spending, averages, and the 
     'href',
     '/bucket-list/reading#item-4',
   );
-  expect(top.getByText('Reading · Rating 5/5 · December 31, 2026')).toBeInTheDocument();
+  expect(top.getByText('Reading · Rating 5/5 · Dec 31, 2026')).toBeInTheDocument();
   expect(asked).toEqual(['2026']);
 });
 

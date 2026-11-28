@@ -17,7 +17,8 @@ import {
 import { Spinner } from './components/ui/spinner';
 import { needsReset, typedCondition } from './filter-field';
 import { fetchItemPage, type ItemPage, itemPagesKey } from './item-pages';
-import { categories, formatDate, formatKrw, itemAnchor, itemCount } from './items';
+import { categories, formatKrw, itemAnchor, itemCount } from './items';
+import { formatDate } from './lib/format';
 import { apiKey, useApiQuery } from './lib/query';
 import { errorText } from './lib/use-notice';
 

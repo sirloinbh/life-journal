@@ -49,10 +49,10 @@ import {
   ratingSummary,
   reviewPreview,
   reviewProblem,
-  serviceToday,
   usedNames,
 } from './items';
 import { RequestError } from './lib/api';
+import { serviceToday } from './lib/format';
 import { useApiMutation } from './lib/query';
 import { useNotice } from './lib/use-notice';
 import { LoadFailed } from './load-failed';
