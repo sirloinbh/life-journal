@@ -10,6 +10,7 @@ import { createItemsRouter } from './items.js';
 import { createJournalRouter } from './journal.js';
 import { createDocumentsRouter, createNotionRouter, type NotionConfig } from './notion.js';
 import { createRestoreRouter, RESTORE_PATH } from './restore.js';
+import { createSearchRouter } from './search.js';
 import { errorHandler, notFound, requestLog, serviceDate } from './standard/http.js';
 import { apiRateLimit } from './standard/rate-limit.js';
 import { registerToolRoutes } from './standard/tools.js';
@@ -50,6 +51,7 @@ export function createApp(
   app.use(RESTORE_PATH, createRestoreRouter(pool));
   app.use('/api/calendar', createCalendarRouter(pool, today));
   app.use('/api/stats', createStatsRouter(pool, today));
+  app.use('/api/search', createSearchRouter(pool));
   app.use('/api/journal', createJournalRouter(pool, today));
   app.use('/api/essays', createEssaysRouter(pool, today));
   app.use(

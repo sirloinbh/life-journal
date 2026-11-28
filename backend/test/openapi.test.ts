@@ -25,6 +25,7 @@ const mounts = [
   '/api/export',
   '/api/calendar',
   '/api/stats',
+  '/api/search',
   '/api/restore',
   '/api/journal',
   '/api/essays',
