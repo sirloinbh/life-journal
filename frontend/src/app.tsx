@@ -30,6 +30,7 @@ import { ItemsTable } from './items-table';
 import { Journal } from './journal';
 import { TwelveWeeks, Week } from './journal-weeks';
 import { createQueryClient } from './lib/query';
+import { searchContent } from './search-content';
 import { AccountActions, SignInGate } from './sign-in';
 import { Stats } from './stats';
 import { TermsStudy } from './terms-study';
@@ -140,7 +141,12 @@ export function App({ queryClient }: { queryClient?: QueryClient }) {
     <QueryClientProvider client={client}>
       <BrowserRouter>
         <SignInGate>
-          <AppShell appName="Reviews & Diary" nav={nav} actions={<AccountActions />}>
+          <AppShell
+            appName="Reviews & Diary"
+            nav={nav}
+            actions={<AccountActions />}
+            searchContent={searchContent}
+          >
             <Routes>
               <Route path={pages.start} element={<Navigate to={pages.journal} replace />} />
               <Route

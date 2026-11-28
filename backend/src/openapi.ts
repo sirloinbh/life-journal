@@ -8,6 +8,7 @@ import { quoteFields, quotePatch } from './item-quotes.js';
 import { itemFields, itemPatch, listQuery } from './items.js';
 import { entryDate, entryInput, journalListQuery } from './journal.js';
 import { exportFile } from './restore.js';
+import { searchQuery } from './search.js';
 import { buildOpenApi, type Operation } from './standard/openapi.js';
 import { statsQuery } from './stats.js';
 
@@ -209,6 +210,12 @@ export const operations: Record<string, Operation> = {
     summary:
       'List the items with a planned or completed date in a month (month YYYY-MM, default this month in Asia/Seoul); answers { month, items }',
     query: calendarQuery,
+    status: [200, 400, 401, 500, 503],
+  },
+  'GET /api/search': {
+    summary:
+      'Search items, essays, day log entries and documents for every word of q (1-100 characters, ignoring case); at most 20 records, newest first; answers { results } of { title, href, kind, snippet }',
+    query: searchQuery,
     status: [200, 400, 401, 500, 503],
   },
   'GET /api/stats': {
